@@ -26,8 +26,10 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
   const apps = appsDir(config);
   const production = config.mode === 'production';
 
+  // Behind a proxy, the client is the address that proxy appended: the last in X-Forwarded-For.
+  // Earlier entries come from the client itself, so they can't be trusted.
   const clientOf = (c: Context) =>
-    (config.trustProxy && c.req.header('x-forwarded-for')?.split(',')[0]?.trim()) ||
+    (config.trustProxy && c.req.header('x-forwarded-for')?.split(',').at(-1)?.trim()) ||
     getConnInfo(c).remote.address ||
     'unknown';
 

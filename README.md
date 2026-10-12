@@ -76,7 +76,7 @@ One process serves the page, the API and the Data Apps. It reads the app tree on
 | `PORT`, `HOSTNAME` | `8787`, `127.0.0.1` | Where this server listens. |
 | `NODE_ENV` | | `production` serves the built page, without live reload. |
 | `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client. |
-| `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`, behind a proxy that sets it. |
+| `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`: the last entry, which the one proxy in front of this server appends. |
 
 ## Checks
 

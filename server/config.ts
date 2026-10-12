@@ -13,7 +13,7 @@ export interface Config {
   repoDir: string;
   /** Requests a minute one client may send to `core.query`. */
   queryRateLimit: number;
-  /** Take the client's address from `X-Forwarded-For`: only behind a proxy that sets it. */
+  /** Take the client's address from `X-Forwarded-For`, as the one proxy in front of this server appends it. */
   trustProxy: boolean;
 }
 
