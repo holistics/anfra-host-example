@@ -1,12 +1,4 @@
-import {
-  ArrowRight,
-  Box,
-  ChevronRight,
-  LayoutGrid,
-  SlidersHorizontal,
-  Table2,
-  TriangleAlert,
-} from 'lucide-react';
+import { ArrowRight, ChevronRight, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
@@ -24,10 +16,19 @@ interface Props {
   onShowInData: (node: StructureNode) => void;
 }
 
-const icons = { container: LayoutGrid, block: Box, query: Table2, control: SlidersHorizontal };
+/** Each kind's pill, colored so a glance tells containers, blocks, queries and controls apart. */
+const pills: Record<StructureNode['kind'], string> = {
+  container: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  block: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  query: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  control: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+};
 
-/** A node's name: its label, else its id (a container or block) or name (a query or control). */
-const nameOf = (node: StructureNode) => node.label ?? node.id ?? node.name ?? node.kind;
+/** What the markup names a node by: its id (a container or block) or name (a query or control). */
+function idOf(node: StructureNode): string {
+  if (node.kind === 'container' || node.kind === 'block') return node.id ?? '';
+  return node.app ? `${node.app}/${node.name ?? ''}` : (node.name ?? '');
+}
 
 /** The keys of the nodes on the way to `key`, so a picked node can be revealed. */
 function ancestorsOf(nodes: StructureNode[], key: string, trail: string[] = []): string[] | undefined {
@@ -64,9 +65,9 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
       return next;
     });
 
-  const renderNode = (node: StructureNode, depth: number) => {
-    const Icon = icons[node.kind];
+  const renderNode = (node: StructureNode) => {
     const open = !collapsed.has(node.key);
+    const id = idOf(node);
     const select = () => {
       setSelected(node.key);
       onLocate(node.key);
@@ -77,9 +78,8 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
           data-node={node.key}
           className={cn(
             'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md pr-1 text-sm hover:bg-accent',
-            node.key === selected && 'bg-accent font-medium',
+            node.key === selected && 'bg-accent',
           )}
-          style={{ paddingLeft: depth * 14 + 4 }}
           onMouseEnter={() => onHighlight(node.key)}
           onClick={select}
           onKeyDown={(event) => event.key === 'Enter' && select()}
@@ -91,7 +91,7 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
           {node.children.length > 0 ? (
             <button
               type="button"
-              className="grid size-4 shrink-0 place-items-center text-muted-foreground"
+              className="grid size-4 shrink-0 place-items-center text-muted-foreground/60 hover:text-foreground"
               onClick={(event) => {
                 event.stopPropagation();
                 toggle(node.key);
@@ -103,14 +103,24 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
           ) : (
             <span className="size-4 shrink-0" />
           )}
-          <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{nameOf(node)}</span>
+          <span
+            className={cn(
+              'shrink-0 rounded px-2 py-px text-[11px] font-medium tracking-wide uppercase',
+              pills[node.kind],
+            )}
+          >
+            {node.kind}
+          </span>
+          {id && <span className="shrink truncate font-semibold">{id}</span>}
+          {node.label && node.label !== id && (
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{node.label}</span>
+          )}
           {node.problems.length > 0 && (
             <span title={node.problems.join('\n')} className="shrink-0">
               <TriangleAlert className="size-3.5 text-amber-500" />
             </span>
           )}
-          <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{node.kind}</span>
+          <span className="ml-auto" />
           {(node.kind === 'query' || node.kind === 'control') && node.problems.length === 0 && (
             <Button
               variant="ghost"
@@ -133,7 +143,8 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
           />
         </div>
         {open && node.children.length > 0 && (
-          <ul>{node.children.map((child) => renderNode(child, depth + 1))}</ul>
+          // The guide runs down from under the parent's chevron, one per level.
+          <ul className="ml-2 border-l pl-5">{node.children.map(renderNode)}</ul>
         )}
       </li>
     );
@@ -141,7 +152,7 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
 
   return (
     <div role="tree" onMouseLeave={() => onHighlight(null)}>
-      <ul>{structure.nodes.map((node) => renderNode(node, 0))}</ul>
+      <ul>{structure.nodes.map(renderNode)}</ul>
     </div>
   );
 }
