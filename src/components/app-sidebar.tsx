@@ -1,10 +1,12 @@
 import { ChevronRight, FileChartColumn, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
+import { AnfraStatus } from '@/components/anfra-status';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -26,15 +28,14 @@ interface Props {
 /** The Data Apps in the repo, as a tree of folders. */
 export function AppSidebar({ entries, selected, onSelect }: Props) {
   return (
-    <Sidebar>
-      <SidebarHeader className="flex-row items-center justify-between">
+    <Sidebar variant="inset">
+      <SidebarHeader>
         <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
           <span className="grid size-6 place-items-center rounded-md bg-primary text-xs text-primary-foreground">
             a
           </span>
           Data Apps
         </a>
-        <ThemeToggle />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -51,6 +52,10 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="flex-row items-center justify-between border-t">
+        <AnfraStatus />
+        <ThemeToggle />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

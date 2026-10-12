@@ -47,3 +47,12 @@ export function findApp(entries: Entry[], path: string): Extract<Entry, { kind: 
   }
   return undefined;
 }
+
+/** The versions serving, from `/health`: this host's, and anfra's, or null while anfra does not answer. */
+export type Health = { host: string; anfra: string | null };
+
+export async function health(): Promise<Health> {
+  // 503 still carries the body: anfra is down, the host is not.
+  const response = await fetch('/health');
+  return response.json();
+}

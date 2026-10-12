@@ -144,7 +144,7 @@ export function App() {
     <TooltipProvider delayDuration={300}>
       <SidebarProvider className="h-full">
         <AppSidebar entries={entries} selected={path} onSelect={select} />
-        <SidebarInset className="min-w-0">
+        <SidebarInset className="min-w-0 overflow-hidden md:peer-data-[variant=inset]:border">
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
             <SidebarTrigger />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />

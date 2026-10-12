@@ -10,7 +10,7 @@ A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yo
 - Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
-Tested with anfra 0.6.1 and `@holistics/anfra-sdk` 0.6.1. Bump them together: the SDK is released with anfra.
+Tested with anfra 0.7.1 and `@holistics/anfra-sdk` 0.7.1. Bump them together: the SDK is released with anfra.
 
 ## How it fits together
 
@@ -44,7 +44,7 @@ You need Node 22 or newer, pnpm, and anfra.
    Or `pnpm dev:anfra`, which does the same in `ANFRA_REPO`. With Docker:
 
    ```sh
-   docker run --rm -p 127.0.0.1:7878:7878 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.6.1 serve --no-apps --addr 0.0.0.0:7878
+   docker run --rm -p 127.0.0.1:7878:7878 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.7.1 serve --no-apps --addr 0.0.0.0:7878
    ```
 
 2. Start the host:

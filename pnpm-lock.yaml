@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@holistics/anfra-sdk':
-        specifier: 0.6.1
-        version: 0.6.1
+        specifier: 0.7.1
+        version: 0.7.1
       '@hono/node-server':
         specifier: ^2.1.4
         version: 2.1.4(hono@4.13.13)
@@ -306,8 +306,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@holistics/anfra-sdk@0.6.1':
-    resolution: {integrity: sha512-YDjtuYCwb2ryDOPLS32vXZ/kQ+7eN/WZzirXxqL3TGZWTCunzZ1/K4wmp4/E6sHsZLiWAHo+iN10CRgu/0OvCw==}
+  '@holistics/anfra-sdk@0.7.1':
+    resolution: {integrity: sha512-LKk/1uTqfXsYlC7eTh1NWknJmSU5m2W9NXacm+FPYq/YtJlbWmcKyfkN8493VxmGiyGn7APZqMkmDl7C4s6lhw==}
 
   '@hono/node-server@2.1.4':
     resolution: {integrity: sha512-2g1qeHl4BduwDn6L8nkAvDrPUWPMlkQ//a5NhP/zIyaXKMjZNRV+cG9Csu+BiJFf6+68pqzjf4Hi5sJGKHuS1g==}
@@ -1855,7 +1855,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@holistics/anfra-sdk@0.6.1':
+  '@holistics/anfra-sdk@0.7.1':
     dependencies:
       openapi-fetch: 0.17.0
 
