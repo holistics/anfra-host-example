@@ -1,5 +1,6 @@
 import { ChevronRight, FileChartColumn, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -26,13 +27,14 @@ interface Props {
 export function AppSidebar({ entries, selected, onSelect }: Props) {
   return (
     <Sidebar>
-      <SidebarHeader>
+      <SidebarHeader className="flex-row items-center justify-between">
         <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
           <span className="grid size-6 place-items-center rounded-md bg-primary text-xs text-primary-foreground">
             a
           </span>
           Data Apps
         </a>
+        <ThemeToggle />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

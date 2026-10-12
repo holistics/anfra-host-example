@@ -2,13 +2,18 @@ import { Crosshair, PanelRight, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
-import { InspectPanel } from '@/components/inspect-panel';
+import { InspectPanel, type InspectTab } from '@/components/inspect-panel';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { type DatasetDescriptor, type InspectedStructure, datasets as loadDatasets } from '@/data-app';
+import {
+  type DatasetDescriptor,
+  type InspectedApp,
+  type InspectedStructure,
+  datasets as loadDatasets,
+} from '@/data-app';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +27,8 @@ export function App() {
   const [inspecting, setInspecting] = useState(false);
   const [picking, setPicking] = useState(false);
   const [structure, setStructure] = useState<InspectedStructure>();
+  const [inspectedApps, setInspectedApps] = useState<InspectedApp[]>();
+  const [tab, setTab] = useState<InspectTab>('structure');
   const [picked, setPicked] = useState<string>();
   const stage = useRef<StageHandle>(null);
 
@@ -59,6 +66,7 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
   useEffect(() => {
     setStructure(undefined);
+    setInspectedApps(undefined);
     setPicked(undefined);
     setPicking(false);
   }, [path, revision]);
@@ -85,7 +93,10 @@ export function App() {
   // Pick works on the structure, which the frame reads only while it is inspected: picking opens
   // the panel, and closing the panel ends picking.
   const togglePicking = () => {
-    if (!picking) setInspecting(true);
+    if (!picking) {
+      setInspecting(true);
+      setTab('structure');
+    }
     setPicking(!picking);
   };
   const toggleInspecting = () => {
@@ -94,7 +105,10 @@ export function App() {
   };
 
   const onPick = (node: string | null) => {
-    if (node) setPicked(node);
+    if (node) {
+      setPicked(node);
+      setTab('structure');
+    }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
     setPicking(false);
   };
@@ -117,7 +131,10 @@ export function App() {
         datasets={datasets}
         inspecting={inspecting}
         picking={picking}
-        onInspect={setStructure}
+        onInspect={(apps, next) => {
+          setInspectedApps(apps);
+          setStructure(next);
+        }}
         onPick={onPick}
       />
     );
@@ -148,7 +165,7 @@ export function App() {
                 <Crosshair />
               </ToolbarButton>
               <ToolbarButton
-                label={inspecting ? 'Close the inspect panel' : 'Inspect the structure'}
+                label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
                 disabled={!app}
                 active={inspecting}
                 onClick={toggleInspecting}
@@ -166,10 +183,13 @@ export function App() {
                 <ResizableHandle />
                 <ResizablePanel id="inspect" defaultSize="320px" minSize="220px" maxSize="60%">
                   <InspectPanel
+                    apps={inspectedApps}
                     structure={structure}
+                    tab={tab}
+                    onTab={setTab}
                     picked={picked}
                     onHighlight={(node) => stage.current?.highlight(node)}
-                    onLocate={(node) => stage.current?.locate({ node })}
+                    onLocate={(target) => stage.current?.locate(target)}
                     onClose={toggleInspecting}
                   />
                 </ResizablePanel>

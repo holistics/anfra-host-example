@@ -4,7 +4,10 @@ A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yo
 
 - A sidebar lists the repo's Data Apps; each opens at `/apps/<path>`.
 - The stage runs the open Data App in a sandboxed frame. Its queries come back to the page over the SDK's bridge and are answered by anfra through this host's server.
-- A toolbar reloads the app, and opens the inspect panel: the app's structure as a tree (hover a node to highlight it on the page, click to scroll to it), and pick mode, to go from the page to the tree.
+- A toolbar reloads the app, and opens the inspect panel:
+  - Structure: the app's parts as its markup declares them, as a tree. Hover a node to highlight it on the page, click to scroll to it, copy its handle (`[Revenue](data-anfra-block="revenue")`) to point an agent at it. Pick mode goes from the page to the tree.
+  - Data: every app's queries (state, rows, executed AQL and SQL), controls and selection.
+- Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
 Tested with anfra 0.6.1 and `@holistics/anfra-sdk` 0.6.1. Bump them together: the SDK is released with anfra.

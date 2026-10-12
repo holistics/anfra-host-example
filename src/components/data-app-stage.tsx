@@ -2,6 +2,7 @@ import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'reac
 import {
   type DataApp,
   type DatasetDescriptor,
+  type InspectedApp,
   type InspectedStructure,
   type LocateTarget,
   mount,
@@ -18,7 +19,7 @@ interface Props {
   datasets: Record<string, DatasetDescriptor>;
   inspecting: boolean;
   picking: boolean;
-  onInspect: (structure: InspectedStructure) => void;
+  onInspect: (apps: InspectedApp[], structure: InspectedStructure) => void;
   onPick: (node: string | null) => void;
   ref?: Ref<StageHandle>;
 }
@@ -46,7 +47,7 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
       container: element,
       path,
       datasets,
-      onInspect: (_apps, structure) => callbacks.current.onInspect(structure),
+      onInspect: (apps, structure) => callbacks.current.onInspect(apps, structure),
       onPick: (node) => callbacks.current.onPick(node),
     }).then(
       (result) => {

@@ -1,13 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { applyTheme, initialTheme } from '@/components/theme-toggle';
 import { App } from './App';
 import './index.css';
 
-// Light or dark, as the system is set, following it when it changes.
-const dark = window.matchMedia('(prefers-color-scheme: dark)');
-const applyTheme = () => document.documentElement.classList.toggle('dark', dark.matches);
-applyTheme();
-dark.addEventListener('change', applyTheme);
+// Before the first render, so the page doesn't flash the other theme.
+applyTheme(initialTheme());
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
