@@ -26,7 +26,7 @@ interface Props {
 /** The Data Apps in the repo, as a tree of folders. */
 export function AppSidebar({ entries, selected, onSelect }: Props) {
   return (
-    <Sidebar>
+    <Sidebar variant="inset">
       <SidebarHeader className="flex-row items-center justify-between">
         <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
           <span className="grid size-6 place-items-center rounded-md bg-primary text-xs text-primary-foreground">
