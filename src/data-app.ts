@@ -5,6 +5,7 @@
 //   @holistics/anfra-sdk/host  mounts a Data App in a sandboxed frame and answers it over the bridge
 import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
 import type {
+  Backend,
   DatasetDescriptor,
   InspectedApp,
   InspectedStructure,
@@ -78,6 +79,8 @@ export interface MountOptions {
   onInspect: (apps: InspectedApp[], structure: InspectedStructure) => void;
   /** In pick mode, the node the reader pointed at (its key), or null when they left the mode. */
   onPick: (node: string | null) => void;
+  /** Wraps the backend the frame's queries go to, to record them for the inspector. */
+  record?: (backend: Backend) => Backend;
 }
 
 /** What the page does with a mounted Data App. */
@@ -115,7 +118,7 @@ export async function mount(options: MountOptions): Promise<DataApp> {
     baseHref,
     datasets: options.datasets,
     user: reader,
-    backend: coreApiBackend(api, { datasets: options.datasets }),
+    backend: (options.record ?? ((b) => b))(coreApiBackend(api, { datasets: options.datasets })),
     onInspect: options.onInspect,
     onPick: options.onPick,
     render: true,

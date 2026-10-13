@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -6,6 +6,7 @@ import { wiringChecks } from '../model/checks';
 import { countProblems, entityKey } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
+import { attributeRequests } from '../model/requests';
 import type { InspectorTab, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
@@ -33,6 +34,8 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
   const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot);
   const apps = snapshot?.apps;
   const structure = snapshot?.structure;
+  const requests = useSyncExternalStore(source.requests.subscribe, source.requests.entries);
+  const attributed = useMemo(() => attributeRequests(requests, apps ?? []), [requests, apps]);
   const problems = structure ? countProblems(structure.nodes) : 0;
   const counts = apps && queryCounts(apps);
   const warnings = (apps ?? []).flatMap(wiringChecks).filter((c) => c.level !== 'info').length;
@@ -76,7 +79,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
           title={title}
           counts={counts}
           onShowQueries={() => onTab('data')}
-          report={() => JSON.stringify(buildReport(snapshot, source.env), null, 2)}
+          report={() => JSON.stringify(buildReport(snapshot, source.env, requests), null, 2)}
           onClose={onClose}
         />
         <div className="shrink-0 overflow-x-auto border-b px-2 py-1.5">
@@ -101,7 +104,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
 
         <TabsContent value="overview" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <OverviewTab snapshot={snapshot} env={source.env} onReveal={reveal} />
+            <OverviewTab snapshot={snapshot} env={source.env} requests={requests} onReveal={reveal} />
           </div>
         </TabsContent>
 
@@ -135,7 +138,13 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
 
         <TabsContent value="data" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <DataTab apps={apps} structure={structure} focus={focus} onLocate={source.locate} />
+            <DataTab
+              apps={apps}
+              structure={structure}
+              requests={attributed}
+              focus={focus}
+              onLocate={source.locate}
+            />
           </div>
         </TabsContent>
 

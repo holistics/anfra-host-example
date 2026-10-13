@@ -2,6 +2,13 @@
 // How it behaves, how it is built and how to bring it to another host: SPEC.md.
 
 export { buildReport, type InspectorReport } from './model/report';
+export {
+  createRequestLog,
+  type RecordOptions,
+  type RequestEntry,
+  type RequestLog,
+  type RequestRecorder,
+} from './model/requests';
 export type { InspectorEnv, InspectorTab } from './model/types';
 export {
   createInspectorStore,

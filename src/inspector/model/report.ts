@@ -5,6 +5,7 @@ import type { InspectorSnapshot } from '../source';
 import { type Check, wiringChecks } from './checks';
 import { handleFor } from './format';
 import { problemNodes } from './issues';
+import type { RequestEntry } from './requests';
 import { appTrust, type Trust } from './trust';
 import type { InspectorEnv } from './types';
 
@@ -18,9 +19,15 @@ export interface InspectorReport {
   datasets: string[];
   apps: Array<InspectedApp & { trust: Trust; checks: Check[] }>;
   structure: { problems: Array<{ node: string; handle: string; problems: string[] }> };
+  /** The request log, without the rows. */
+  requests: Omit<RequestEntry, 'preview'>[];
 }
 
-export function buildReport(snapshot: InspectorSnapshot | undefined, env: InspectorEnv): InspectorReport {
+export function buildReport(
+  snapshot: InspectorSnapshot | undefined,
+  env: InspectorEnv,
+  requests: readonly RequestEntry[] = [],
+): InspectorReport {
   return {
     inspector: INSPECTOR_VERSION,
     capturedAt: new Date().toISOString(),
@@ -35,5 +42,6 @@ export function buildReport(snapshot: InspectorSnapshot | undefined, env: Inspec
         problems: node.problems,
       })),
     },
+    requests: requests.map(({ preview: _, ...entry }) => entry),
   };
 }

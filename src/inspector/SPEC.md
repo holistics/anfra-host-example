@@ -115,9 +115,8 @@ The landing tab. It answers "is this app healthy, and where do I look?"
      the Errors filter, then Wiring checks, then Structure.
    - **Queries** (ok / error / running / idle): goes to Data › Queries.
    - **Controls** (count, and how many are unapplied): goes to Data › Controls.
-   - **Last run** (time, query, cache or database, from each result's `executedAt`): goes to that
-     query's row in Data. Once the request log lands it becomes **Last request** and adds the
-     duration.
+   - **Last request** (time, query, duration, cache or database), from the log: goes to that
+     query's row in Data.
 3. **Issues list**: the five most severe issues, each a link to where it is (a query row, a check
    or a structure node). "Show all" appears when there are more.
 4. **Environment** (collapsible, closed by default):
@@ -273,21 +272,22 @@ of this.
 src/inspector/
   SPEC.md                 this file
   index.ts                the public API; the only file a host imports from
-  source.ts               InspectorSource and the types the host provides
-  model/                  pure TypeScript: no React, no DOM, unit-tested
-    view-model.ts         snapshot + requests → InspectorModel (per app: queries, controls, inputs, issues)
+  source.ts               InspectorSource, and createInspectorStore to provide one
+  model/                  pure TypeScript: no React, no DOM
+    types.ts              InspectorTab, RevealTarget, InspectorEnv
+    format.ts             conditions, times, handles, where an entity is drawn
     trust.ts              query and app trust levels
-    checks.ts             wiring checks
+    checks.ts             wiring checks; control mappings and cross-filters of an app
+    issues.ts             every issue in one list; query counts
     declaration-code.ts   declaration → JS text
-    report.ts             InspectorModel → InspectorReport
-    requests.ts           request log store + attribution to queries
-    format.ts             formatCondition, formatTime, handles, usage (today's lib/inspect.ts)
-    highlight.ts          tiny AQL/SQL/JS tokenizer for code blocks
+    highlight.ts          a small AQL/SQL/JS tokenizer, returning plain tokens
+    requests.ts           the request log, the backend wrapper that fills it, attribution
+    report.ts             snapshot + env + log → InspectorReport
   ui/                     React; imports only from model/, source.ts and the host's shadcn ui
-    inspector.tsx         shell: header, status bar, tabs, reveal()
-    use-inspector.ts      subscribes to the source, builds the model, holds UI state
+    inspector.tsx         shell: subscriptions, tabs, reveal()
+    header.tsx            title, status bar, Copy report, close
     overview/  structure/  data/  wiring/
-    shared/               code-block, fields, section, row, copy-button, empty-note, stat-card
+    shared/               code-block, copy-button, fields, reveal, tone
 ```
 
 Rules:
@@ -302,77 +302,82 @@ Rules:
 
 ```ts
 /** Everything the inspector needs from a host. One per mounted frame. */
-export interface InspectorSource {
-  /** Latest snapshot, or undefined until the frame reports. */
-  getSnapshot(): { apps: InspectedApp[]; structure: InspectedStructure } | undefined;
-  /** The request log for this frame (see recordRequests). */
-  requests: RequestLog;
-  /** Who reads the app, and what the frame was provisioned with. */
-  env: { reader: User; datasets: Record<string, DatasetDescriptor>; sdkVersion?: string; hostName: string; path?: string };
-  /** Called when the snapshot or the log changes; returns an unsubscribe. */
+interface InspectorSource {
+  env: InspectorEnv;            // hostName, path, sdkVersion, reader, datasets
+  requests: RequestLog;         // from createRequestLog
+  getSnapshot(): InspectorSnapshot | undefined;   // { apps, structure }, stable until it changes
   subscribe(listener: () => void): () => void;
   highlight(node: string | null): void;
   locate(target: LocateTarget): void;
 }
 
-export function recordRequests(backend: Backend, options?: { limit?: number; previewRows?: number }): {
-  backend: Backend;   // pass this to mountDataApp instead
+/** A log for one frame, made before the frame so its first requests are in it. */
+function createRequestLog(options?: { limit?: number; previewRows?: number }): {
   log: RequestLog;
+  record(backend: Backend): Backend;   // give the frame this backend in place of yours
 };
 
-export function Inspector(props: {
+/** A source plus `publish`, to pass as the frame's onInspect. */
+function createInspectorStore(frame: { env; requests; highlight; locate }): {
   source: InspectorSource;
-  /** Node picked in the frame; the host owns pick mode. */
-  picked?: string;
-  tab?: InspectorTab; onTab?(tab: InspectorTab): void;
+  publish(apps: InspectedApp[], structure: InspectedStructure): void;
+};
+
+function Inspector(props: {
+  source: InspectorSource;
+  tab: InspectorTab; onTab(tab: InspectorTab): void;
+  picked: string | undefined;   // node picked in the frame; the host owns pick mode
   onClose(): void;
 }): JSX.Element;
 ```
 
-In this host, `src/data-app.ts`'s `mount()` wraps `coreApiBackend` with `recordRequests` and
-returns the log on `DataApp`. `App.tsx` builds the source from the stage and renders `<Inspector>`
-in its resizable panel. The toolbar, pick mode and the panel slot stay host code.
+In this host, `App.tsx` makes a request log and a store per mounted frame (per path, revision and
+datasets). It passes `record` down to `mount()` in `src/data-app.ts`, which wraps `coreApiBackend`
+with it, and passes `publish` as `onInspect`. It renders `<Inspector>` in its resizable panel.
+The toolbar, pick mode and the panel slot stay host code.
 
 ### 5.3 Request log
 
-- Each `submitQuery` records an entry:
-  `{ id, at, durationMs, dataset, aql, input, page, pageSize, bustCache, status: 'ok' | 'error' | 'aborted', fromCache, numRows, columns, preview (first 20 rows), error }`.
-  It records each `fieldSuggestions` call too, with no preview.
+- Each `submitQuery` records an entry when it is sent (`pending`) and updates it when it settles:
+  `{ id, method, at, durationMs, status: 'pending' | 'ok' | 'error' | 'aborted', dataset, aql, input, page, pageSize, bustCache, fromCache, numRows, columns, preview, error }`.
+  Each `fieldSuggestions` call is recorded too, with its field, what was typed and how many values
+  came back.
 - **Attribution**: a request carries the *declared* AQL; filters and sorts are in `input`. So a
   request belongs to the queries whose `declaration.queries[name]` has the same `dataset` and
   `aql`. This is checked across every app in the frame:
   - If more than one query matches, the request is listed under each one, tagged "shared".
-  - If none match, the request is unattributed and goes under Other requests.
-- **Retention**: the last 200 requests per frame, in memory only. The log is cleared on remount.
-  Rows beyond the preview are never kept.
+  - If none match (field suggestions among them), it goes under Other requests.
+- **Retention**: the last 200 requests per frame, in memory only. A remount starts a new log.
+  Rows beyond the 20-row preview are never kept.
 - An aborted request (the SDK cancelled it) is logged as `aborted`, not as an error.
 
 ### 5.4 Data flow
 
 ```
-frame ──postMessage──▶ mountDataApp ──onInspect──▶ source.getSnapshot ─┐
-frame ──anfra:request─▶ recordRequests(backend) ──▶ RequestLog ─────────┼─▶ useInspector ─▶ model ─▶ ui
-                                                    │                   │        (memoized per snapshot)
-                                     coreApiBackend ▼                   │
-                                            POST /api/core.query        │
-ui ──highlight/locate──▶ source ──▶ DataApp.highlight / locate ─────────┘
+frame ──postMessage──▶ mountDataApp ──onInspect──▶ store.publish ──▶ source.getSnapshot ─┐
+frame ──anfra:request─▶ record(backend) ──▶ RequestLog ────────────────────────────────────┼─▶ Inspector ─▶ model ─▶ tabs
+                            │                                                              │   (useSyncExternalStore)
+             coreApiBackend ▼                                                              │
+                    POST /api/core.query                                                   │
+tabs ──highlight/locate──▶ source ──▶ DataApp.highlight / locate ──────────────────────────┘
 ```
 
-The model is rebuilt only when the snapshot or log changes; the source's `subscribe` drives
-`useSyncExternalStore`. UI state (tab, open rows, filters, code tabs) lives in `useInspector`, so
-it survives new snapshots.
+`Inspector` subscribes to the snapshot and the log with `useSyncExternalStore`, and derives
+everything else from them on render. UI state (open rows and sections, code tabs, revealed
+targets) lives in the tabs, so it survives new snapshots.
 
 ## 6. Porting to another host
 
 What the next host needs:
 1. React 19, Tailwind v4 and the shadcn primitives the inspector uses: `badge`, `button`,
-   `collapsible`, `input`, `tabs`, `tooltip`, plus `cn` from `@/lib/utils`. If its paths differ,
-   change the imports in `ui/` (one search-and-replace on `@/components/ui`).
+   `collapsible`, `tabs`, `tooltip`, plus `cn` from `@/lib/utils`. If its paths differ, change
+   the imports in `ui/` (one search-and-replace on `@/components/ui`).
 2. Copy `src/inspector/`.
-3. Wrap its backend with `recordRequests`, keep the snapshot from `onInspect`, and build an
-   `InspectorSource` (about 30 lines; this host's version is the example).
-4. Render `<Inspector source={…} onClose={…} />` wherever it docks panels, and call
-   `setInspecting(true)` on the frame while it shows.
+3. Per mounted frame: `createRequestLog()`, wrap the frame's backend with its `record`, then
+   `createInspectorStore({ env, requests: log, highlight, locate })` and pass `publish` as the
+   frame's `onInspect`. This host's `App.tsx` does it in about 15 lines.
+4. Render `<Inspector source={…} … />` wherever it docks panels, and call `setInspecting(true)`
+   on the frame while it shows.
 
 If the inspector ever needs to run outside React, `model/` already stands alone. Only `ui/` would
 need rewriting.
