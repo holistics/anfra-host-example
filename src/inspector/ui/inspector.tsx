@@ -7,7 +7,7 @@ import { countProblems, entityKey } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
-import type { InspectorTab, RevealTarget } from '../model/types';
+import type { DataFilter, InspectorTab, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
@@ -44,6 +44,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
   const [node, setNode] = useState<string>();
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
+  const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   useEffect(() => setNode(picked), [picked]);
 
   const reveal = (target: RevealTarget) => {
@@ -78,7 +79,10 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
         <InspectorHeader
           title={title}
           counts={counts}
-          onShowQueries={() => onTab('data')}
+          onShowQueries={(filter) => {
+            setView({ search: '', filter });
+            onTab('data');
+          }}
           report={() => JSON.stringify(buildReport(snapshot, source.env, requests), null, 2)}
           onClose={onClose}
         />
@@ -142,8 +146,12 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
               apps={apps}
               structure={structure}
               requests={attributed}
+              view={view}
+              onView={setView}
+              canViewSql={source.env.reader.permissions.canViewGeneratedSql}
               focus={focus}
               onLocate={source.locate}
+              onReveal={reveal}
             />
           </div>
         </TabsContent>
