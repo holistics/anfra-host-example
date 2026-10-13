@@ -21,7 +21,10 @@ export type {
   StructureNode,
 } from '@holistics/anfra-sdk/common';
 
-/** The core API, as this host's server lets it through (server/anfra.ts): `core.show` and `core.query`. */
+/**
+ * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`
+ * and `core.query.export`.
+ */
 const api = coreClient('/api');
 
 /** Every dataset a Data App may query, from `core.show`. Each frame is provisioned with them. */
@@ -78,7 +81,8 @@ export interface DataApp {
 /**
  * Mount a Data App in `container`: a sandboxed frame running its definition, with the SDK and the
  * datasets provisioned ahead of it. Its queries come back to this page over the bridge, and are
- * answered by `core.query` through this host's server.
+ * answered by `core.query` through this host's server. Its exports too, by `core.query.export`: the
+ * SDK saves the file from this page, by following the link anfra made at this host's origin.
  */
 export async function mount(options: MountOptions): Promise<DataApp> {
   const { html, baseHref } = await definition(options.path);

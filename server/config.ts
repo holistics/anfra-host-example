@@ -13,9 +13,11 @@ export interface Config {
   repoDir: string;
   /** Requests a minute one client may send to `core.query`. */
   queryRateLimit: number;
+  /** Requests a minute one client may send to `core.query.export`. */
+  exportRateLimit: number;
   /** Take the client's address from `X-Forwarded-For`, as the one proxy in front of this server appends it. */
   trustProxy: boolean;
-  /** Pass anfra's MCP endpoint through at `/mcp`, with the export files it links to. */
+  /** Pass anfra's MCP endpoint through at `/mcp`. */
   mcp: boolean;
 }
 
@@ -28,6 +30,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     anfraUrl: (env.ANFRA_URL ?? 'http://127.0.0.1:7878').replace(/\/+$/, ''),
     repoDir,
     queryRateLimit: Number(env.QUERY_RATE_LIMIT ?? 120),
+    exportRateLimit: Number(env.EXPORT_RATE_LIMIT ?? 10),
     trustProxy: env.TRUST_PROXY === '1',
     mcp: env.MCP === '1',
   };

@@ -13,7 +13,7 @@
     "dev": "concurrently -k -n server,page -c blue,magenta \"pnpm dev:server\" \"pnpm dev:page\"",
     "dev:server": "tsx watch --clear-screen=false server/main.ts",
     "dev:page": "vite",
-    "dev:anfra": "cd \"${ANFRA_REPO:-../demo-data}\" && anfra serve --no-apps",
+    "dev:anfra": "cd \"${ANFRA_REPO:-../demo-data}\" && ANFRA_SITE_URL=\"${ANFRA_SITE_URL:-http://localhost:5173}\" anfra serve --no-apps",
     "build": "vite build && tsc -b tsconfig.server.json --force",
     "start": "NODE_ENV=production node dist/server/main.js",
     "typecheck": "tsc -p tsconfig.page.json && tsc -p tsconfig.server.json --noEmit",

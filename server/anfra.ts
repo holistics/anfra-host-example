@@ -4,10 +4,11 @@ import type { Config } from './config.js';
 
 /**
  * The core API ops a visitor may reach: what a Data App needs, and nothing else. `core.show` lists
- * the datasets the page provisions; `core.query` answers queries and field suggestions. Everything
- * else anfra serves (ingest, search, validate, …) stays private to this server.
+ * the datasets the page provisions; `core.query` answers queries and field suggestions;
+ * `core.query.export` makes a query's whole result a file and answers its link. Everything else
+ * anfra serves (ingest, search, validate, …) stays private to this server.
  */
-export const allowedOps = new Set(['core.query', 'core.show']);
+export const allowedOps = new Set(['core.query', 'core.query.export', 'core.show']);
 
 /** The request headers passed on to anfra. Nothing else crosses, cookies and Origin included. */
 const forwardedHeaders = ['accept', 'content-type', 'x-request-id', 'traceparent'];
@@ -91,9 +92,59 @@ export function coreApi(config: Config, clientOf: (c: Context) => string): Hono 
 
   const api = new Hono();
   api.use('/core.query', rateLimit(config.queryRateLimit, clientOf));
+  // An export runs its query to the last row before it answers, holding the warehouse far longer
+  // than a page of rows does: its own, tighter limit. No timeout of this server's own: the request
+  // lasts as long as anfra takes or the browser waits.
+  api.use('/core.query.export', rateLimit(config.exportRateLimit, clientOf));
   api.all('/:op', guard, bodyLimit({ maxSize: 256 * 1024 }), forward);
   api.all('*', (c) => c.json({ error: { code: 'not_found', message: 'Not served here.' } }, 404));
   return api;
+}
+
+/** The request headers a download passes on: what resuming one needs. */
+const downloadRequestHeaders = ['range', 'if-range'];
+
+/** The response headers a download passes back: the file, its name, and what resuming it needs. */
+const downloadResponseHeaders = [
+  'content-type',
+  'content-length',
+  'content-disposition',
+  'content-range',
+  'accept-ranges',
+  'last-modified',
+];
+
+/**
+ * `GET /exports/download/<token>/<name>`: an export's file, streamed from anfra. anfra makes its
+ * export links at this host's origin (it runs with `ANFRA_SITE_URL` set to it), so the browser
+ * follows them here. anfra's link is a bearer link: whoever has it may download until it expires.
+ * A host whose readers sign in checks the session here too.
+ */
+export async function exportDownload(c: Context, config: Config): Promise<Response> {
+  // Your auth goes here.
+  const headers: Record<string, string> = {};
+  for (const name of downloadRequestHeaders) {
+    const value = c.req.header(name);
+    if (value) headers[name] = value;
+  }
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${config.anfraUrl}${c.req.path}`, {
+      method: c.req.method,
+      headers,
+      signal: c.req.raw.signal,
+    });
+  } catch (err) {
+    console.warn('anfra:', (err as Error).message);
+    return c.json({ error: { code: 'unavailable', message: 'The anfra server did not answer.' } }, 502);
+  }
+  const response = new Response(upstream.body, { status: upstream.status });
+  for (const name of downloadResponseHeaders) {
+    const value = upstream.headers.get(name);
+    if (value) response.headers.set(name, value);
+  }
+  response.headers.set('cache-control', 'no-store');
+  return response;
 }
 
 /** The versions serving, for deploy checks: this host's, and anfra's; 503 while anfra does not answer. */
