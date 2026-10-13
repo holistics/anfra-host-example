@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { entityKey, usageOf } from '../../model/format';
 import { Note } from '../shared/fields';
+import { scrollToAndFlash } from '../shared/reveal';
 import { ControlRow } from './control-row';
 import { type CodeTab, QueryRow } from './query-row';
 import { SelectionCard } from './selection-card';
@@ -40,11 +41,7 @@ export function DataTab({ apps, structure, focus, onLocate }: Props) {
       next.delete(`${app}:${focus.key.split(':')[0]}`);
       return next;
     });
-    requestAnimationFrame(() =>
-      document
-        .querySelector(`[data-entity="${CSS.escape(focus.key)}"]`)
-        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
-    );
+    scrollToAndFlash(`[data-entity="${CSS.escape(focus.key)}"]`);
   }, [focus]);
 
   if (!apps) return <Note>Waiting for the Data App…</Note>;

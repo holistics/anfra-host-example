@@ -17,7 +17,7 @@ import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { appTrust, TRUST_LEVELS, type TrustLevel } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
-import { Field, Fields, Note } from '../shared/fields';
+import { Field, Fields, Note, SectionTitle } from '../shared/fields';
 import { toneFill, toneText } from '../shared/tone';
 
 interface Props {
@@ -254,7 +254,7 @@ function Environment({ apps, env }: { apps: InspectedApp[]; env: InspectorEnv })
     <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded px-1 py-0.5 hover:text-foreground">
         <ChevronRight className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-        <SectionTitle>Environment</SectionTitle>
+        <SectionTitle className="inline">Environment</SectionTitle>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 px-1 pt-1.5">
         {mismatched.length > 0 && (
@@ -285,13 +285,5 @@ function Environment({ apps, env }: { apps: InspectedApp[]; env: InspectorEnv })
         </Fields>
       </CollapsibleContent>
     </Collapsible>
-  );
-}
-
-function SectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <span className="px-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-      {children}
-    </span>
   );
 }
