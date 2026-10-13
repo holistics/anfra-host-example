@@ -6,12 +6,15 @@ import {
   type InspectedStructure,
   type LocateTarget,
   mount,
+  type Rendering,
+  type RenderRequest,
 } from '@/data-app';
 
-/** What the inspect panel does to the page in the stage. */
+/** What the inspect panel and the toolbar do to the page in the stage. */
 export interface StageHandle {
   highlight: (node: string | null) => void;
   locate: (target: LocateTarget) => void;
+  render: (request: RenderRequest) => Promise<Rendering>;
 }
 
 interface Props {
@@ -73,6 +76,8 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
     () => ({
       highlight: (node) => app?.highlight(node),
       locate: (target) => app?.locate(target),
+      render: (request) =>
+        app ? app.render(request) : Promise.reject(new Error('The Data App has not loaded yet.')),
     }),
     [app],
   );

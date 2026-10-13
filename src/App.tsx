@@ -1,10 +1,16 @@
-import { Crosshair, PanelRight, RotateCw } from 'lucide-react';
+import { Crosshair, Download, PanelRight, RotateCw } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { InspectPanel, type InspectTab } from '@/components/inspect-panel';
 import { storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -14,6 +20,9 @@ import {
   type InspectedApp,
   type InspectedStructure,
   datasets as loadDatasets,
+  type RenderFormat,
+  type RenderRequest,
+  type StructureNode,
 } from '@/data-app';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
@@ -35,6 +44,7 @@ export function App() {
   const [inspectedApps, setInspectedApps] = useState<InspectedApp[]>();
   const [tab, setTab] = useState<InspectTab>('structure');
   const [picked, setPicked] = useState<string>();
+  const [toast, setToast] = useState<Toast>();
   const stage = useRef<StageHandle>(null);
 
   const refreshCatalog = useCallback(
@@ -118,6 +128,24 @@ export function App() {
     setPicking(false);
   };
 
+  // A picture of the app, or of one node. The browser's own download says it worked; a failure, or
+  // images left blank for want of CORS, is told in a toast.
+  const download = (request: RenderRequest) => {
+    stage.current?.render(request).then(
+      ({ omitted }) => {
+        if (omitted.length) {
+          setToast({
+            tone: 'note',
+            text: `Saved, with ${omitted.length === 1 ? 'an image' : `${omitted.length} images`} left blank: their servers send no CORS headers.`,
+          });
+        }
+      },
+      (err: Error) => setToast({ tone: 'error', text: `Couldn't save the picture: ${err.message}` }),
+    );
+  };
+  const downloadNode = (node: StructureNode, format: RenderFormat) =>
+    download(node.kind === 'block' ? { block: node.id, format } : { container: node.id, format });
+
   let content: React.ReactNode;
   if (error) {
     content = <Message>{error}</Message>;
@@ -161,6 +189,17 @@ export function App() {
               <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
                 <RotateCw />
               </ToolbarButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <ToolbarButton label="Download a picture of the page" disabled={!app}>
+                    <Download />
+                  </ToolbarButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => download({ format: 'png' })}>PNG</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => download({ format: 'pdf' })}>PDF</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <ToolbarButton
                 label={picking ? 'Stop picking' : 'Pick an element on the page'}
                 disabled={!app}
@@ -195,6 +234,7 @@ export function App() {
                     picked={picked}
                     onHighlight={(node) => stage.current?.highlight(node)}
                     onLocate={(target) => stage.current?.locate(target)}
+                    onDownload={downloadNode}
                     onClose={toggleInspecting}
                   />
                 </ResizablePanel>
@@ -203,7 +243,34 @@ export function App() {
           </ResizablePanelGroup>
         </SidebarInset>
       </SidebarProvider>
+      {toast && <ToastMessage toast={toast} onDone={() => setToast(undefined)} />}
     </TooltipProvider>
+  );
+}
+
+interface Toast {
+  tone: 'note' | 'error';
+  text: string;
+}
+
+/** A message over the page's corner, gone after a few seconds. */
+function ToastMessage({ toast, onDone }: { toast: Toast; onDone: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDone, 6000);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+  return (
+    <div
+      role="status"
+      className={cn(
+        'fixed right-4 bottom-4 z-50 max-w-sm rounded-md border px-3 py-2 text-sm shadow-md',
+        toast.tone === 'error'
+          ? 'border-destructive/40 bg-destructive text-white'
+          : 'bg-popover text-popover-foreground',
+      )}
+    >
+      {toast.text}
+    </div>
   );
 }
 

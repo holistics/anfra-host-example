@@ -5,7 +5,7 @@ import { StructureTree } from '@/components/structure-tree';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { InspectedApp, InspectedStructure, LocateTarget, StructureNode } from '@/data-app';
+import type { InspectedApp, InspectedStructure, LocateTarget, RenderFormat, StructureNode } from '@/data-app';
 import { countProblems } from '@/lib/inspect';
 
 export type InspectTab = 'structure' | 'data';
@@ -20,6 +20,8 @@ interface Props {
   picked: string | undefined;
   onHighlight: (node: string | null) => void;
   onLocate: (target: LocateTarget) => void;
+  /** Save a picture of a container or block. */
+  onDownload: (node: StructureNode, format: RenderFormat) => void;
   onClose: () => void;
 }
 
@@ -27,7 +29,17 @@ interface Props {
  * A devtool over the running Data App. Structure shows the page's parts as its markup declares
  * them; Data shows every app's queries, controls and selection.
  */
-export function InspectPanel({ apps, structure, tab, onTab, picked, onHighlight, onLocate, onClose }: Props) {
+export function InspectPanel({
+  apps,
+  structure,
+  tab,
+  onTab,
+  picked,
+  onHighlight,
+  onLocate,
+  onDownload,
+  onClose,
+}: Props) {
   const problems = structure ? countProblems(structure.nodes) : 0;
   // A query or control asked for from the Structure tab: Data opens on it.
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
@@ -82,6 +94,7 @@ export function InspectPanel({ apps, structure, tab, onTab, picked, onHighlight,
                 onHighlight={onHighlight}
                 onLocate={(node) => onLocate({ node })}
                 onShowInData={showInData}
+                onDownload={onDownload}
               />
             )}
           </div>

@@ -4,13 +4,14 @@ A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yo
 
 - A sidebar lists the repo's Data Apps; each opens at `/apps/<path>`.
 - The stage runs the open Data App in a sandboxed frame. Its queries come back to the page over the SDK's bridge and are answered by anfra through this host's server. So are its exports: a Data App's `query.export()` downloads a query's whole result as a CSV.
+- Pictures: the toolbar downloads a PNG or PDF of the whole app, a node's row in the Structure tab one of that container or block, and a Data App can save its own with `Anfra.render()`. The SDK draws them in the frame; this host turns that on (`render: true` in [`src/data-app.ts`](src/data-app.ts)), since it has the page save a file the app's code made. Turn it on only for apps you trust with that.
 - A toolbar reloads the app, and opens the inspect panel:
-  - Structure: the app's parts as its markup declares them, as a tree. Hover a node to highlight it on the page, click to scroll to it, copy its handle (`[Revenue](data-anfra-block="revenue")`) to point an agent at it. Pick mode goes from the page to the tree.
+  - Structure: the app's parts as its markup declares them, as a tree. Hover a node to highlight it on the page, click to scroll to it, copy its handle (`[Revenue](data-anfra-block="revenue")`) to point an agent at it, or download a picture of it. Pick mode goes from the page to the tree.
   - Data: every app's queries (state, rows, executed AQL and SQL), controls and selection.
 - Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
-Tested with anfra 0.7.1 and `@holistics/anfra-sdk` 0.7.1. Bump them together: the SDK is released with anfra.
+Tested with anfra 0.8.0 and `@holistics/anfra-sdk` 0.8.0. Bump them together: the SDK is released with anfra.
 
 ## How it fits together
 
@@ -48,7 +49,7 @@ You need Node 22 or newer, pnpm, and anfra.
    Or `pnpm dev:anfra`, which does the same in `ANFRA_REPO`, with `ANFRA_SITE_URL` at `http://localhost:5173` unless you set it. With Docker:
 
    ```sh
-   docker run --rm -p 127.0.0.1:7878:7878 -e ANFRA_SITE_URL=http://localhost:5173 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.7.1 serve --no-apps --addr 0.0.0.0:7878
+   docker run --rm -p 127.0.0.1:7878:7878 -e ANFRA_SITE_URL=http://localhost:5173 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.8.0 serve --no-apps --addr 0.0.0.0:7878
    ```
 
 2. Start the host:
