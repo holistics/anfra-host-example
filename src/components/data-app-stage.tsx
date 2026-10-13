@@ -5,6 +5,7 @@ import {
   type InspectedApp,
   type InspectedStructure,
   type LocateTarget,
+  type MountOptions,
   mount,
 } from '@/data-app';
 
@@ -21,6 +22,8 @@ interface Props {
   picking: boolean;
   onInspect: (apps: InspectedApp[], structure: InspectedStructure) => void;
   onPick: (node: string | null) => void;
+  /** Read once per mount. */
+  record?: MountOptions['record'];
   ref?: Ref<StageHandle>;
 }
 
@@ -28,14 +31,14 @@ interface Props {
  * The stage: one Data App, mounted in its frame. It is mounted once per path and datasets; the
  * page remounts it (with a new key) to reload it.
  */
-export function DataAppStage({ path, datasets, inspecting, picking, onInspect, onPick, ref }: Props) {
+export function DataAppStage({ path, datasets, inspecting, picking, onInspect, onPick, record, ref }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [app, setApp] = useState<DataApp>();
   const [error, setError] = useState<string>();
 
   // The latest callbacks, so a re-render doesn't remount the frame.
-  const callbacks = useRef({ onInspect, onPick });
-  callbacks.current = { onInspect, onPick };
+  const callbacks = useRef({ onInspect, onPick, record });
+  callbacks.current = { onInspect, onPick, record };
 
   useEffect(() => {
     const element = container.current;
@@ -49,6 +52,7 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
       datasets,
       onInspect: (apps, structure) => callbacks.current.onInspect(apps, structure),
       onPick: (node) => callbacks.current.onPick(node),
+      record: callbacks.current.record,
     }).then(
       (result) => {
         if (cancelled) return result.unmount();

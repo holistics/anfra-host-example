@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { formatTime } from '../../model/format';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
+import { queriesOf, type RequestEntry } from '../../model/requests';
 import { appTrust, TRUST_LEVELS, type TrustLevel } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
@@ -23,6 +24,7 @@ import { toneFill, toneText } from '../shared/tone';
 interface Props {
   snapshot: InspectorSnapshot | undefined;
   env: InspectorEnv;
+  requests: readonly RequestEntry[];
   onReveal: (target: RevealTarget) => void;
 }
 
@@ -30,7 +32,7 @@ interface Props {
 const FIRST_ISSUES = 5;
 
 /** The landing tab: is this app healthy, and where to look. See SPEC.md §4.3. */
-export function OverviewTab({ snapshot, env, onReveal }: Props) {
+export function OverviewTab({ snapshot, env, requests, onReveal }: Props) {
   if (!snapshot) return <Note>Waiting for the Data App…</Note>;
   const { apps } = snapshot;
   const issues = issuesOf(snapshot);
@@ -45,9 +47,9 @@ export function OverviewTab({ snapshot, env, onReveal }: Props) {
           <TrustCard key={index} app={app} label={apps.length > 1 ? `App ${index + 1}` : undefined} />
         ))
       )}
-      <Stats apps={apps} issues={issues} onReveal={onReveal} />
+      <Stats apps={apps} issues={issues} requests={requests} onReveal={onReveal} />
       <Issues issues={issues} onReveal={onReveal} />
-      <Environment apps={apps} env={env} />
+      <Environment apps={apps} env={env} requests={requests.length} />
     </div>
   );
 }
@@ -108,10 +110,12 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
 function Stats({
   apps,
   issues,
+  requests,
   onReveal,
 }: {
   apps: InspectedApp[];
   issues: Issue[];
+  requests: readonly RequestEntry[];
   onReveal: (target: RevealTarget) => void;
 }) {
   const counts = queryCounts(apps);
@@ -119,7 +123,8 @@ function Stats({
   const warnings = issues.length - errors;
   const controls = apps.flatMap((app) => Object.values(app.controls));
   const unapplied = controls.filter((c) => c.isDirty).length;
-  const last = lastRun(apps);
+  const last = requests.findLast((r) => r.method === 'submitQuery' && r.status !== 'pending');
+  const lastQuery = last?.aql ? queriesOf({ ...last, aql: last.aql }, apps)[0] : undefined;
   const firstIssue = issues[0];
 
   return (
@@ -157,26 +162,22 @@ function Stats({
       />
       <Stat
         icon={<Clock />}
-        title="Last run"
+        title="Last request"
         value={last ? formatTime(last.at) : '—'}
-        detail={last ? `${last.name} · ${last.fromCache ? 'cache' : 'database'}` : 'Nothing has run yet'}
-        onClick={last ? () => onReveal({ entity: 'query', app: last.app, name: last.name }) : undefined}
+        tone={last?.status === 'error' ? 'error' : undefined}
+        detail={
+          last
+            ? [
+                lastQuery?.name ?? 'no query',
+                `${last.durationMs} ms`,
+                last.status === 'ok' ? (last.fromCache ? 'cache' : 'database') : last.status,
+              ].join(' · ')
+            : 'Nothing has run yet'
+        }
+        onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
       />
     </div>
   );
-}
-
-/** The query that ran last, from each result's `executedAt`. */
-function lastRun(apps: InspectedApp[]) {
-  let last: { app: number; name: string; at: Date; fromCache: boolean } | undefined;
-  apps.forEach((app, index) => {
-    for (const [name, query] of Object.entries(app.queries)) {
-      const at = query.debug?.executedAt && new Date(query.debug.executedAt);
-      if (at && (!last || at > last.at))
-        last = { app: index, name, at, fromCache: query.debug?.fromCache ?? false };
-    }
-  });
-  return last;
 }
 
 function Stat(props: {
@@ -245,7 +246,7 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
   );
 }
 
-function Environment({ apps, env }: { apps: InspectedApp[]; env: InspectorEnv }) {
+function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: InspectorEnv; requests: number }) {
   const { reader } = env;
   const datasets = Object.values(env.datasets).map((d) => d.label || d.name);
   // An app without a timezone of its own runs in the tenant's, which the host doesn't know.
@@ -281,6 +282,7 @@ function Environment({ apps, env }: { apps: InspectedApp[]; env: InspectorEnv })
             {reader.permissions.canViewGeneratedSql ? 'can view' : 'hidden'}
           </Field>
           <Field label="Export">{reader.permissions.canExportData ? 'allowed' : 'not allowed'}</Field>
+          <Field label="Requests">{requests} since the app loaded</Field>
           <Field label={`Datasets (${datasets.length})`}>{datasets.join(', ') || 'none'}</Field>
         </Fields>
       </CollapsibleContent>

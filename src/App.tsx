@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type DatasetDescriptor, datasets as loadDatasets, reader, sdkVersion } from '@/data-app';
-import { createInspectorStore, Inspector, type InspectorTab } from '@/inspector';
+import { createInspectorStore, createRequestLog, Inspector, type InspectorTab } from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
 
@@ -63,17 +63,16 @@ export function App() {
 
   // A new Data App starts with nothing inspected: one inspector store per mounted frame.
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new store whenever the app or its revision changes
-  const inspector = useMemo(
-    () =>
-      createInspectorStore(
-        { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
-        {
-          highlight: (node) => stage.current?.highlight(node),
-          locate: (target) => stage.current?.locate(target),
-        },
-      ),
-    [path, revision, datasets],
-  );
+  const inspector = useMemo(() => {
+    const requests = createRequestLog();
+    const store = createInspectorStore({
+      env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
+      requests: requests.log,
+      highlight: (node) => stage.current?.highlight(node),
+      locate: (target) => stage.current?.locate(target),
+    });
+    return { ...store, record: requests.record };
+  }, [path, revision, datasets]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
   useEffect(() => {
     setPicked(undefined);
@@ -141,6 +140,7 @@ export function App() {
         inspecting={inspecting}
         picking={picking}
         onInspect={inspector.publish}
+        record={inspector.record}
         onPick={onPick}
       />
     );

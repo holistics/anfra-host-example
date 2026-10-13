@@ -1,19 +1,29 @@
 import type { InspectedQuery } from '@holistics/anfra-sdk/common';
 import { cn } from '@/lib/utils';
 import { formatTime, prettyJson } from '../../model/format';
+import type { RequestEntry } from '../../model/requests';
 import { CodeBlock } from '../shared/code-block';
 import { Field, Fields } from '../shared/fields';
 import { stateDot } from '../shared/tone';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
+import { RequestList } from './request-list';
 
 export type CodeTab = 'aql' | 'sql' | 'signature';
 
 export function QueryRow({
   query,
+  requests,
   codeTab,
   onCodeTab,
   ...props
-}: RowProps & { query: InspectedQuery; codeTab: CodeTab; onCodeTab: (tab: CodeTab) => void }) {
+}: RowProps & {
+  query: InspectedQuery;
+  /** This query's requests, newest first. */
+  requests: { entry: RequestEntry; shared: boolean }[];
+  codeTab: CodeTab;
+  onCodeTab: (tab: CodeTab) => void;
+}) {
+  const latest = requests.find(({ entry }) => entry.status === 'ok')?.entry;
   const rows = query.state === 'success' ? `${query.rowCount} row${query.rowCount === 1 ? '' : 's'}` : '—';
   const summary = (
     <>
@@ -45,6 +55,8 @@ export function QueryRow({
             {query.debug.executedAt && ` at ${formatTime(query.debug.executedAt)}`}
           </Field>
         )}
+        {latest?.durationMs !== undefined && <Field label="Took">{latest.durationMs} ms</Field>}
+        {query.hasMore && <Field label="Page">{query.page}, more available</Field>}
       </Fields>
       <CodeBlock
         tab={codeTab}
@@ -55,6 +67,12 @@ export function QueryRow({
           signature: { label: 'Signature', code: prettyJson(query.signature), empty: 'No signature.' },
         }}
       />
+      {requests.length > 0 && (
+        <div>
+          <p className="mb-0.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
+          <RequestList items={requests} />
+        </div>
+      )}
     </EntityRow>
   );
 }

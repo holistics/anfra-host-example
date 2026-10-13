@@ -3,15 +3,19 @@ import { ChevronRight } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { entityKey, usageOf } from '../../model/format';
+import type { attributeRequests } from '../../model/requests';
 import { Note } from '../shared/fields';
 import { scrollToAndFlash } from '../shared/reveal';
 import { ControlRow } from './control-row';
 import { type CodeTab, QueryRow } from './query-row';
+import { RequestList } from './request-list';
 import { SelectionCard } from './selection-card';
 
 interface Props {
   apps: InspectedApp[] | undefined;
   structure: InspectedStructure | undefined;
+  /** The request log, split by the query each request belongs to. */
+  requests: ReturnType<typeof attributeRequests>;
   /** An entity to open and scroll to, asked for from the Structure tab; the nonce repeats a request. */
   focus: { key: string; nonce: number } | undefined;
   onLocate: (target: LocateTarget) => void;
@@ -21,7 +25,7 @@ interface Props {
  * Every app's queries, controls and selection, one line each until opened. Which rows and
  * sections are open, and which code tab shows, survive the snapshots the frame keeps posting.
  */
-export function DataTab({ apps, structure, focus, onLocate }: Props) {
+export function DataTab({ apps, structure, requests, focus, onLocate }: Props) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [closedSections, setClosedSections] = useState<Set<string>>(new Set());
   const [codeTab, setCodeTab] = useState<CodeTab>('aql');
@@ -86,6 +90,7 @@ export function DataTab({ apps, structure, focus, onLocate }: Props) {
                 <QueryRow
                   key={name}
                   query={query}
+                  requests={requests.byQuery.get(`${index}/${name}`) ?? []}
                   codeTab={codeTab}
                   onCodeTab={setCodeTab}
                   {...row('query', name)}
@@ -112,6 +117,17 @@ export function DataTab({ apps, structure, focus, onLocate }: Props) {
           </section>
         );
       })}
+
+      {requests.other.length > 0 && (
+        <Section
+          title="Other requests"
+          count={requests.other.length}
+          open={!closedSections.has('other')}
+          onToggle={() => setClosedSections((prev) => toggleIn(prev, 'other'))}
+        >
+          <RequestList items={requests.other.map((entry) => ({ entry }))} />
+        </Section>
+      )}
     </div>
   );
 }
