@@ -10,6 +10,7 @@ import { appsDir, type Config } from './config.js';
 import { repoEvents } from './events.js';
 import { serveAppFile } from './files.js';
 import { mcp } from './mcp.js';
+import { appPreview, defaultImage, type Preview, withPreview } from './preview.js';
 
 export interface AppOptions {
   config: Config;
@@ -84,11 +85,46 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
         },
       }),
     );
-    // The page itself: `/`, and `/apps/<path>` for each Data App. Anything else is not here.
-    const shell = (c: Context) => c.html(index, 200, { 'Cache-Control': 'no-cache' });
+    app.get(defaultImage, serveStatic({ root: pageDir }));
+
+    // Each Data App's preview, for links shared to Slack and the like. Read once, in production,
+    // for the definitions the tree holds; per request otherwise.
+    const previews = new Map<string, Preview>();
+    if (tree) {
+      const walk = (entries: Entry[]) => {
+        for (const e of entries) {
+          if (e.kind === 'folder') walk(e.children);
+          else {
+            const preview = appPreview(apps, e.path);
+            if (preview) previews.set(e.path, preview);
+          }
+        }
+      };
+      walk(tree);
+    }
+    const previewOf = (rel: string) => (tree ? previews.get(rel) : appPreview(apps, rel));
+
+    // The page itself: `/`, and `/apps/<path>` for each Data App, with its preview. Anything else
+    // is not here.
+    const shell = (c: Context) => {
+      const rel = definitionOf(c.req.path);
+      const preview = rel ? previewOf(rel) : undefined;
+      return c.html(withPreview(index, c, config, preview, rel), 200, { 'Cache-Control': 'no-cache' });
+    };
     app.get('/', shell);
     app.get('/apps/*', shell);
   }
 
   return app;
+}
+
+/** The definition a page names, `/apps/<path>` for `<path>.html`, as the page reads it (src/lib/host.ts). */
+function definitionOf(pathname: string): string | undefined {
+  const rest = pathname.slice('/apps/'.length).replace(/\/+$/, '');
+  if (!pathname.startsWith('/apps/') || !rest) return undefined;
+  try {
+    return `${rest.split('/').map(decodeURIComponent).join('/')}.html`;
+  } catch {
+    return undefined;
+  }
 }

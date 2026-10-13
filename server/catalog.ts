@@ -10,12 +10,24 @@ const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
 
 const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'" };
 
+/** Text from HTML, as one line: whitespace collapsed, the common entities decoded. */
+export function textOf(html: string): string {
+  return html
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, name: string) => entities[name] ?? '');
+}
+
+/** A definition's `<title>`, as text, or none. */
+export function titleOf(html: string): string | undefined {
+  const raw = titleRe.exec(html)?.[1];
+  return raw ? textOf(raw) || undefined : undefined;
+}
+
 /** A definition's `<title>`, or its file name. */
 function labelOf(file: string): string {
-  const html = readFileSync(file, 'utf8');
-  const title = titleRe.exec(html)?.[1]?.split(/\s+/).filter(Boolean).join(' ');
-  if (!title) return path.basename(file);
-  return title.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, name: string) => entities[name] ?? '');
+  return titleOf(readFileSync(file, 'utf8')) ?? path.basename(file);
 }
 
 function scan(root: string, rel: string): Entry[] {
