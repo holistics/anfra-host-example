@@ -7,8 +7,16 @@ export function SelectionCard({ label, selection }: { label: string; selection: 
     <div className="rounded-md bg-muted/50 px-2 py-1.5">
       <p className="text-sm font-medium">
         {label}
-        {selection.lossy && <span className="ml-1.5 text-xs font-normal text-amber-600">lossy</span>}
+        {selection.lossy && (
+          <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">lossy</span>
+        )}
       </p>
+      {selection.lossy && (
+        <p className="mb-1 text-xs text-amber-700 dark:text-amber-300">
+          Some selected values can't be expressed as a filter, so the queries it filters see less than was
+          selected.
+        </p>
+      )}
       <Fields>
         <Field label="From">{selection.source}</Field>
         <Field label="Rows">{selection.rowCount}</Field>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { queryCounts } from '../model/issues';
+import type { DataFilter } from '../model/types';
 import { copyText } from './shared/copy-button';
 import { stateDot } from './shared/tone';
 
@@ -11,8 +12,8 @@ interface Props {
   title: string;
   /** Undefined until the frame has reported. */
   counts: ReturnType<typeof queryCounts> | undefined;
-  /** Open the Data tab, where the queries counted are. */
-  onShowQueries: () => void;
+  /** Open the Data tab on the queries counted, filtered to them. */
+  onShowQueries: (filter: DataFilter['filter']) => void;
   /** The report, as JSON, built when asked for. */
   report: () => string;
   onClose: () => void;
@@ -40,30 +41,37 @@ export function InspectorHeader({ title, counts, onShowQueries, report, onClose 
   );
 }
 
-/** Query counts by state, and dirty ones. A zero count is left out. */
-function StatusBar({ counts, onClick }: { counts: ReturnType<typeof queryCounts>; onClick: () => void }) {
+/** Query counts by state, and dirty ones; each opens Data on them. A zero count is left out. */
+function StatusBar({
+  counts,
+  onClick,
+}: {
+  counts: ReturnType<typeof queryCounts>;
+  onClick: (filter: DataFilter['filter']) => void;
+}) {
   const items = [
-    { n: counts.success, label: 'ok', dot: stateDot.success },
-    { n: counts.error, label: 'error', dot: stateDot.error },
-    { n: counts.executing, label: 'running', dot: stateDot.executing },
-    { n: counts.idle, label: 'idle', dot: stateDot.idle },
-    { n: counts.dirty, label: 'dirty', dot: 'bg-amber-500' },
-  ].filter((item) => item.n > 0);
+    { n: counts.success, label: 'ok', dot: stateDot.success, filter: 'all' },
+    { n: counts.error, label: 'error', dot: stateDot.error, filter: 'errors' },
+    { n: counts.executing, label: 'running', dot: stateDot.executing, filter: 'all' },
+    { n: counts.idle, label: 'idle', dot: stateDot.idle, filter: 'all' },
+    { n: counts.dirty, label: 'dirty', dot: 'bg-amber-500', filter: 'dirty' },
+  ] as const;
+  const shown = items.filter((item) => item.n > 0);
   return (
-    <button
-      type="button"
-      className="flex w-full flex-wrap items-center gap-x-3 gap-y-0.5 rounded px-1 text-xs text-muted-foreground hover:text-foreground"
-      onClick={onClick}
-      aria-label="Show the queries"
-    >
-      {items.length === 0 && 'No queries'}
-      {items.map((item) => (
-        <span key={item.label} className="inline-flex items-center gap-1 tabular-nums">
+    <div className="flex flex-wrap items-center gap-x-1 px-0.5 text-xs text-muted-foreground">
+      {shown.length === 0 && <span className="px-1">No queries</span>}
+      {shown.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          className="inline-flex items-center gap-1 rounded px-1 tabular-nums hover:bg-accent hover:text-foreground"
+          onClick={() => onClick(item.filter)}
+        >
           <span className={cn('size-1.5 rounded-full', item.dot)} />
           {item.n} {item.label}
-        </span>
+        </button>
       ))}
-    </button>
+    </div>
   );
 }
 

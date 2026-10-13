@@ -4,8 +4,7 @@ A devtool over a running Data App: what it declared, what state it is in, how it
 and what it asked the backend. This spec comes before the code. When the two disagree, fix one of
 them on purpose.
 
-Status: **agreed, being built**. Sections marked _(new)_ describe behavior not built yet. The rest
-writes down what the host does today.
+Status: **built**, except what is marked _(not built yet)_.
 
 ---
 
@@ -70,14 +69,14 @@ The inspector state also resets when the path changes or the repo revision chang
 └───────────────────────────────────────────────┘
 ```
 
-- **Title** _(new)_: the app's `title`. With several apps it reads "N apps", and the status bar
+- **Title**: the app's `title`. With several apps it reads "N apps", and the status bar
   totals across them.
-- **Status bar** _(new)_: counts by query state, plus dirty queries. A count of zero is hidden.
+- **Status bar**: counts by query state, plus dirty queries. A count of zero is hidden.
   Each count links to Data with the matching filter.
 - **Tabs**: Overview · Structure · Data · Wiring, in that order. A tab shows a badge with its issue
   count, if any. Structure counts structure problems. Wiring counts checks at warn or error level.
   Data counts failed queries.
-- **Default tab**: Overview _(new; today it is Structure)_. Pick always switches to Structure.
+- **Default tab**: Overview. Pick always switches to Structure.
   Opening the panel again keeps the tab it was closed on.
 - **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
   or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is
@@ -98,7 +97,7 @@ When the frame has more than one app, Data and Wiring group by app under a heade
 "App 2 · Sales · Europe/Paris · unapplied changes". Overview shows one trust card per app. With a
 single app there is no app header.
 
-### 4.3 Overview _(new)_
+### 4.3 Overview
 
 The landing tab. It answers "is this app healthy, and where do I look?"
 
@@ -141,7 +140,7 @@ The page's marked elements as a tree, the same as today:
 - Collapsed nodes stay collapsed across snapshots.
 - **Empty**: "Nothing is marked yet. Add data-anfra-container, … and they show up here."
 
-_(new)_ A filter box at the top narrows the tree to matching nodes and their ancestors. A
+_(not built yet)_ A filter box at the top narrows the tree to matching nodes and their ancestors. A
 "Problems only" toggle shows only nodes that have problems.
 
 ### 4.5 Data
@@ -149,36 +148,37 @@ _(new)_ A filter box at the top narrows the tree to matching nodes and their anc
 Every app's queries, controls and selection. Each item is one line until opened. Which items and
 sections are open, and the code tab chosen, survive new snapshots.
 
-**Toolbar** _(new)_: a search box (matches name, dataset or label) and a segmented filter,
+**Toolbar**: a search box (matches name, dataset or label) and a segmented filter,
 **All · Errors (n) · Dirty (n)**. The filter applies to queries and controls; selection always
 shows. When nothing matches: "No queries match '…'."
 
 **Query row**
-- Summary line: a state dot (it pulses while executing), the name, the dataset _(new)_, a "dirty"
-  tag, and on the right the row count or "—". A ⟲ "cache" tag shows when the last result was
-  cached _(new)_.
+- Summary line: a state dot (it pulses while executing), the name, a "dirty" tag, a "cache" tag
+  when the last result came from the cache, and on the right the row count or "—".
 - An error shows under the line, opened or not: `ErrorName: message`, plus the HTTP status if
-  there is one _(new)_.
+  there is one.
 - Locate button: scrolls the frame to where the query is drawn. It is disabled, with a reason, when
   nothing is marked for it.
 - Opened, it shows:
   - **Fields**:
+    - Dataset, as declared
     - Drawn: "In N places: blocks …" plus copy handle
     - Selected rows
-    - Page and "more available" _(new)_
-    - Source: cache or fresh run, at time
-    - Duration: from the request log _(new)_
-  - **Inputs** _(new)_: one row per mapping and cross-filter that feeds this query. Columns are
-    source (control or query, a link that reveals it), field, and current value. A cross-filter
+    - Page and "more available"
+    - Source: cache or database, at time
+    - Duration: from the request log
+  - **Inputs**: one row per mapping and cross-filter that feeds this query: its source (control
+    or query, a link that reveals it) with the field under it, and its current value. The field
+    sits under the source so the value keeps its width in a narrow panel. A cross-filter
     from the query itself reads "itself".
-  - **Columns** _(new)_: name, label, measure or dimension, aggregation, and an ad hoc tag.
-  - **Code**: the tabs **Declared AQL** _(new)_ · Executed AQL · SQL · Signature, with copy. It
-    opens on the first tab that has content. The chosen tab is per query _(changed: today it is
-    shared by all queries)_. Empty tabs say why:
+  - **Columns**: name, label, measure or dimension, aggregation, and an ad hoc tag.
+  - **Code**: the tabs **Declared AQL** · Executed AQL · SQL · Signature, with copy. It
+    opens on Executed AQL, or the first tab that has content. Each query keeps its own tab.
+    Empty tabs say why:
     - "Not run yet"
     - "Needs canViewGeneratedSql" (no SQL while the reader lacks that permission)
     - "Not returned"
-  - **Requests** _(new)_: this query's recent requests from the log, newest first. Each line shows
+  - **Requests**: this query's recent requests from the log, newest first. Each line shows
     the time, the duration, cache or database, page, and the row count or error. Opening a request
     shows its `input` (filters, conditions, sorts, date drills) as JSON, and a **row preview**: the
     first 20 rows in a scrolling table, plus a note when there are more.
@@ -188,19 +188,19 @@ shows. When nothing matches: "No queries match '…'."
 - Opened, it shows:
   - Kind (filter or date drill)
   - Set to and Applied
-  - Default, from the declaration _(new)_
+  - Default, from the declaration
   - Options: fixed, loaded, or not loaded
-  - **Maps to** _(new)_: links to the queries it maps to, with field and aggregation
+  - **Maps to**: links to the queries it maps to, with field and aggregation
   - Drawn
 
 **Selection**: Current and Applied, each showing the source query, row count, conditions,
 expression, and a "lossy" warning that explains that some selected values can't be expressed as a
 filter.
 
-**Unattributed requests** _(new)_: requests that matched no query (§5.3) appear in an
+**Unattributed requests**: requests that matched no query (§5.3) appear in an
 "Other requests" section at the end, so nothing is hidden.
 
-### 4.6 Wiring _(new)_
+### 4.6 Wiring
 
 How the app is put together, from `declaration`. One group per app.
 
@@ -221,7 +221,7 @@ How the app is put together, from `declaration`. One group per app.
    `createDateDrill`, `mapControl`, `mapCrossFilter`), syntax-highlighted and copyable. It is meant
    for pasting to an agent or diffing against the source.
 
-### 4.7 Copy report _(new)_
+### 4.7 Copy report
 
 One JSON document, enough to debug from with no screen:
 
@@ -255,8 +255,8 @@ of this.
 ### 4.9 Keyboard and accessibility
 
 - Tabs are a WAI-ARIA tablist (from shadcn Tabs): arrow keys, Home and End move between tabs.
-- The tree uses `role="tree"` and `treeitem`. Enter locates the node _(new: ←/→ collapse and
-  expand)_.
+- The tree uses `role="tree"` and `treeitem`. Enter locates the node. _(not built yet: ←/→
+  collapse and expand)_.
 - Row toggles are buttons with `aria-expanded`. Errors use `role="alert"`.
 - Escape in the panel's search box clears it. Escape is not used to close the panel, because the
   frame uses it for pick.

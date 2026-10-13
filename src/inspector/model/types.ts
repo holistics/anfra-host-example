@@ -4,6 +4,12 @@ import type { DatasetDescriptor, User } from '@holistics/anfra-sdk/common';
 
 export type InspectorTab = 'overview' | 'structure' | 'data' | 'wiring';
 
+/** What the Data tab shows: a search over names, datasets and labels, and a filter. */
+export interface DataFilter {
+  search: string;
+  filter: 'all' | 'errors' | 'dirty';
+}
+
 /** Where a link in the panel goes. Every link resolves to one of these; see SPEC.md §4.8. */
 export type RevealTarget =
   | { tab: InspectorTab }
