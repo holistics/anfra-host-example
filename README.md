@@ -31,7 +31,7 @@ browser                          this host (Node, Hono)                 anfra se
   - `/host/apps` (the Data App tree, labelled by each file's `<title>`), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
   - With `MCP=1`, `/mcp`: anfra's MCP endpoint, passed through. See [MCP](#mcp).
-  - In production, the built page.
+  - In production, the built page, with each Data App's [link preview](#link-previews).
 - **The page** (`src/`): every call into the SDK is in [`src/data-app.ts`](src/data-app.ts). That file is the part to copy into a host of your own; the rest is UI.
 
 ## Run it
@@ -84,6 +84,23 @@ Run anfra with `ANFRA_SITE_URL` at this host's public origin (`https://data.exam
 | `EXPORT_RATE_LIMIT` | `10` | `core.query.export` requests a minute per client. Each runs its query to the last row. |
 | `MCP` | | `1` passes anfra's MCP endpoint through at `/mcp`. See [MCP](#mcp). |
 | `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`: the last entry, which the one proxy in front of this server appends. |
+| `ANFRA_SITE_URL` | | This host's public origin, for the absolute links in [link previews](#link-previews). Without it, each request's origin (with `X-Forwarded-Proto` under `TRUST_PROXY=1`). |
+
+## Link previews
+
+A link to a Data App shared in Slack, a chat app or a social site shows the app's title, a description and an image. Their crawlers run no script, so in production the server writes the tags (`og:*`, `twitter:card`) into the page it sends for `/apps/<path>`, from the definition's own head:
+
+- the title: `og:title`, else `<title>`, else the file name;
+- the description: `og:description`, else `<meta name="description">`, else a line about Data Apps;
+- the image: `og:image`, a URL or a path relative to the definition, else [`public/og-image.png`](public/og-image.png).
+
+```html
+<title>Funnel Analysis</title>
+<meta name="description" content="A customer funnel over ecommerce orders, with breakdowns and drill-downs.">
+<meta property="og:image" content="funnel-analysis.png">
+```
+
+Set `ANFRA_SITE_URL` to this host's public origin, as for anfra, so the links in the tags point there.
 
 ## MCP
 

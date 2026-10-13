@@ -19,6 +19,8 @@ export interface Config {
   trustProxy: boolean;
   /** Pass anfra's MCP endpoint through at `/mcp`. */
   mcp: boolean;
+  /** Where readers reach this host, for the absolute links in a page's preview; else each request's origin. */
+  siteUrl?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -33,6 +35,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     exportRateLimit: Number(env.EXPORT_RATE_LIMIT ?? 10),
     trustProxy: env.TRUST_PROXY === '1',
     mcp: env.MCP === '1',
+    siteUrl: env.ANFRA_SITE_URL?.replace(/\/+$/, '') || undefined,
   };
 }
 
