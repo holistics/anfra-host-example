@@ -1,21 +1,16 @@
 import { Crosshair, PanelRight, RotateCw } from 'lucide-react';
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
-import { InspectPanel, type InspectTab } from '@/components/inspect-panel';
 import { storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  type DatasetDescriptor,
-  type InspectedApp,
-  type InspectedStructure,
-  datasets as loadDatasets,
-} from '@/data-app';
+import { type DatasetDescriptor, datasets as loadDatasets } from '@/data-app';
+import { createInspectorStore, Inspector, type InspectorTab } from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
 
@@ -32,9 +27,7 @@ export function App() {
   const [revision, setRevision] = useState(0);
   const [inspecting, setInspecting] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [structure, setStructure] = useState<InspectedStructure>();
-  const [inspectedApps, setInspectedApps] = useState<InspectedApp[]>();
-  const [tab, setTab] = useState<InspectTab>('structure');
+  const [tab, setTab] = useState<InspectorTab>('structure');
   const [picked, setPicked] = useState<string>();
   const stage = useRef<StageHandle>(null);
 
@@ -68,11 +61,18 @@ export function App() {
     setPath(next);
   };
 
-  // A new Data App starts with nothing inspected.
+  // A new Data App starts with nothing inspected: one inspector store per mounted frame.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new store whenever the app or its revision changes
+  const inspector = useMemo(
+    () =>
+      createInspectorStore({
+        highlight: (node) => stage.current?.highlight(node),
+        locate: (target) => stage.current?.locate(target),
+      }),
+    [path, revision],
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
   useEffect(() => {
-    setStructure(undefined);
-    setInspectedApps(undefined);
     setPicked(undefined);
     setPicking(false);
   }, [path, revision]);
@@ -137,10 +137,7 @@ export function App() {
         datasets={datasets}
         inspecting={inspecting}
         picking={picking}
-        onInspect={(apps, next) => {
-          setInspectedApps(apps);
-          setStructure(next);
-        }}
+        onInspect={inspector.publish}
         onPick={onPick}
       />
     );
@@ -188,14 +185,11 @@ export function App() {
               <>
                 <ResizableHandle />
                 <ResizablePanel id="inspect" defaultSize="320px" minSize="220px" maxSize="60%">
-                  <InspectPanel
-                    apps={inspectedApps}
-                    structure={structure}
+                  <Inspector
+                    source={inspector.source}
                     tab={tab}
                     onTab={setTab}
                     picked={picked}
-                    onHighlight={(node) => stage.current?.highlight(node)}
-                    onLocate={(target) => stage.current?.locate(target)}
                     onClose={toggleInspecting}
                   />
                 </ResizablePanel>

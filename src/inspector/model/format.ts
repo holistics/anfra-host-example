@@ -1,4 +1,4 @@
-// Formatting for the inspect panel. What it shows is what the frame posts while it is inspected:
+// Formatting for the inspector. What it shows is what the frame posts while it is inspected:
 // every app's state and the page's structure, as the SDK types them. Rows are never part of it.
 import type {
   Condition,
@@ -6,15 +6,6 @@ import type {
   InspectedStructure,
   LocateKind,
   StructureNode,
-} from '@holistics/anfra-sdk/common';
-
-export type {
-  EntityUsage,
-  InspectedApp,
-  InspectedControl,
-  InspectedQuery,
-  InspectedSelection,
-  LocateKind,
 } from '@holistics/anfra-sdk/common';
 
 export function formatCondition(condition: Condition | undefined): string {
@@ -28,6 +19,18 @@ export function formatTime(value: Date | string | undefined): string {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleTimeString();
 }
+
+/** JSON indented for reading; anything else as it is. */
+export function prettyJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+/** An entity's key, as the structure's usage names it: `query:<app>/<name>`. */
+export const entityKey = (kind: LocateKind, app: number, name: string) => `${kind}:${app}/${name}`;
 
 /** The attribute a marked element carries for an entity, as the definition writes it. */
 export function entityAttribute(kind: LocateKind, app: number, name: string): string {
@@ -54,19 +57,9 @@ export function usageOf(
   app: number,
   name: string,
 ): EntityUsage | undefined {
-  return structure?.usage[`${kind}:${app}/${name}`];
+  return structure?.usage[entityKey(kind, app, name)];
 }
 
 export function countProblems(nodes: StructureNode[]): number {
   return nodes.reduce((n, node) => n + node.problems.length + countProblems(node.children), 0);
-}
-
-/** Copy text, reporting whether the clipboard took it. */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
 }

@@ -1,0 +1,20 @@
+import type { ReactNode } from 'react';
+
+/** Label / value pairs, two columns. */
+export function Fields({ children }: { children: ReactNode }) {
+  return <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">{children}</dl>;
+}
+
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words">{children}</dd>
+    </>
+  );
+}
+
+/** A line saying what is missing, and why. */
+export function Note({ children }: { children: ReactNode }) {
+  return <p className="p-1 text-sm text-muted-foreground">{children}</p>;
+}

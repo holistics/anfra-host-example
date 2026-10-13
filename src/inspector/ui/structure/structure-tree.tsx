@@ -1,10 +1,10 @@
+import type { InspectedStructure, StructureNode } from '@holistics/anfra-sdk/common';
 import { ArrowRight, ChevronRight, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
-import type { InspectedStructure, StructureNode } from '@/data-app';
-import { handleFor } from '@/lib/inspect';
 import { cn } from '@/lib/utils';
+import { handleFor } from '../../model/format';
+import { CopyButton } from '../shared/copy-button';
 
 interface Props {
   structure: InspectedStructure;
