@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 /** Label / value pairs, two columns. */
 export function Fields({ children }: { children: ReactNode }) {
@@ -11,6 +12,20 @@ export function Field({ label, children }: { label: string; children: ReactNode 
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </>
+  );
+}
+
+/** A section's small uppercase title. */
+export function SectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'block px-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase',
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
