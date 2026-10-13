@@ -37,8 +37,9 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
           Data Apps
         </a>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
+      {/* On desktop, reach over the inset padding, so the scrollbar sits on the edge and the gap is inside it. */}
+      <SidebarContent className="md:-mr-2">
+        <SidebarGroup className="md:pr-4">
           <SidebarGroupLabel>Apps</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
