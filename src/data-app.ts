@@ -9,6 +9,8 @@ import type {
   InspectedApp,
   InspectedStructure,
   LocateTarget,
+  Rendering,
+  RenderRequest,
   User,
 } from '@holistics/anfra-sdk/common';
 import { mountDataApp } from '@holistics/anfra-sdk/host';
@@ -18,6 +20,9 @@ export type {
   InspectedApp,
   InspectedStructure,
   LocateTarget,
+  RenderFormat,
+  Rendering,
+  RenderRequest,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
 
@@ -36,8 +41,8 @@ export async function datasets(): Promise<Record<string, DatasetDescriptor>> {
 
 /**
  * Who reads the Data Apps. A real host takes this from its own session: who is signed in, their
- * time zone, and what they may do. The permissions are rendering hints for the app (whether it
- * offers SQL or an export); what a reader may actually query is decided on the server.
+ * time zone, and what they may do. The permissions are display hints for the app (whether it
+ * offers SQL, an export or a picture); what a reader may actually query is decided on the server.
  */
 export const reader: User = {
   id: 1,
@@ -75,6 +80,12 @@ export interface DataApp {
   setPicking: (on: boolean) => void;
   highlight: (node: string | null) => void;
   locate: (target: LocateTarget) => void;
+  /**
+   * Save a PNG or PDF of the app, or of one block or container, once its running queries settle.
+   * Resolves with what was saved; `omitted` lists the images left blank, since their servers send
+   * no CORS headers.
+   */
+  render: (request: RenderRequest) => Promise<Rendering>;
   unmount: () => void;
 }
 
@@ -83,6 +94,11 @@ export interface DataApp {
  * datasets provisioned ahead of it. Its queries come back to this page over the bridge, and are
  * answered by `core.query` through this host's server. Its exports too, by `core.query.export`: the
  * SDK saves the file from this page, by following the link anfra made at this host's origin.
+ *
+ * Rendering (a PNG or PDF of the app, `Anfra.render()` in the app, `render()` here) is off unless
+ * turned on: the frame draws the picture and this page saves it, so the app's own code chooses a
+ * file this host's origin downloads. The SDK lets through only a PNG or a PDF; turn it on only for
+ * apps you trust with that, as this host does for its own repo.
  */
 export async function mount(options: MountOptions): Promise<DataApp> {
   const { html, baseHref } = await definition(options.path);
@@ -95,6 +111,7 @@ export async function mount(options: MountOptions): Promise<DataApp> {
     backend: coreApiBackend(api, { datasets: options.datasets }),
     onInspect: options.onInspect,
     onPick: options.onPick,
+    render: true,
     title: options.path,
   });
 }

@@ -1,8 +1,14 @@
-import { ArrowRight, ChevronRight, TriangleAlert } from 'lucide-react';
+import { ArrowRight, ChevronRight, Download, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
-import type { InspectedStructure, StructureNode } from '@/data-app';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { InspectedStructure, RenderFormat, StructureNode } from '@/data-app';
 import { handleFor } from '@/lib/inspect';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +20,8 @@ interface Props {
   onLocate: (node: string) => void;
   /** Open a query's or control's row in the Data tab. */
   onShowInData: (node: StructureNode) => void;
+  /** Save a picture of a container or block. */
+  onDownload: (node: StructureNode, format: RenderFormat) => void;
 }
 
 /** Each kind's pill, colored so a glance tells containers, blocks, queries and controls apart. */
@@ -44,7 +52,7 @@ function ancestorsOf(nodes: StructureNode[], key: string, trail: string[] = []):
  * The page's structure as a tree: hover a node to highlight it on the page, click it to scroll it
  * into view, and copy its handle (the attribute that marks it) to point an agent at it.
  */
-export function StructureTree({ structure, picked, onHighlight, onLocate, onShowInData }: Props) {
+export function StructureTree({ structure, picked, onHighlight, onLocate, onShowInData, onDownload }: Props) {
   const [selected, setSelected] = useState<string>();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -135,6 +143,26 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
             >
               <ArrowRight className="size-3.5" />
             </Button>
+          )}
+          {(node.kind === 'container' || node.kind === 'block') && node.id && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                  title="Download a picture"
+                  aria-label="Download a picture"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Download className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                <DropdownMenuItem onSelect={() => onDownload(node, 'png')}>PNG</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onDownload(node, 'pdf')}>PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <CopyButton
             text={handleFor(node)}
