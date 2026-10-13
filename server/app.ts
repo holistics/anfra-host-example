@@ -4,7 +4,7 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { type Context, Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { coreApi, health } from './anfra.js';
+import { coreApi, exportDownload, health } from './anfra.js';
 import { catalog, type Entry } from './catalog.js';
 import { appsDir, type Config } from './config.js';
 import { repoEvents } from './events.js';
@@ -36,6 +36,9 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
 
   app.route('/api', coreApi(config, clientOf));
   if (config.mcp) app.route('/', mcp(config));
+
+  // An export's file, at the link anfra made for this host's origin.
+  app.on(['GET', 'HEAD'], '/exports/download/*', (c) => exportDownload(c, config));
 
   // The Data App tree. A deployed repo does not change, so production reads it once.
   const tree: Entry[] | undefined = production ? catalog(apps) : undefined;

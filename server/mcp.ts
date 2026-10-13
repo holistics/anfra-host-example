@@ -83,8 +83,9 @@ async function forward(c: Context, config: Config, body?: ArrayBuffer): Promise<
 }
 
 /**
- * `/mcp` and `/exports/download/*`: anfra's MCP endpoint, passed through, and the export files its
- * `core.query.export` links to. Served only with `MCP=1`.
+ * `/mcp`: anfra's MCP endpoint, passed through. Served only with `MCP=1`. The export files its
+ * `core.query.export` links to download through `/exports/download/*`, served for Data Apps anyway
+ * (`exportDownload` in anfra.ts).
  *
  * Unlike `/api`, this skips the host's allowlist and rate limit: every core op anfra serves as a
  * tool is reachable, except the blocked ones above, and nobody is asked who they are. Put your auth
@@ -101,6 +102,5 @@ export function mcp(config: Config): Hono {
   });
   // GET opens a session's stream of server messages; DELETE ends the session.
   app.on(['GET', 'DELETE'], '/mcp', (c) => forward(c, config));
-  app.on(['GET', 'HEAD'], '/exports/download/*', (c) => forward(c, config));
   return app;
 }
