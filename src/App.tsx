@@ -20,6 +20,8 @@ import {
   datasets as loadDatasets,
   type RenderFormat,
   type RenderRequest,
+  reader,
+  sdkVersion,
   type StructureNode,
 } from '@/data-app';
 import { createInspectorStore, Inspector, type InspectorTab } from '@/inspector';
@@ -39,7 +41,7 @@ export function App() {
   const [revision, setRevision] = useState(0);
   const [inspecting, setInspecting] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [tab, setTab] = useState<InspectorTab>('structure');
+  const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<string>();
   const [toast, setToast] = useState<Toast>();
   const stage = useRef<StageHandle>(null);
@@ -78,12 +80,15 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new store whenever the app or its revision changes
   const inspector = useMemo(
     () =>
-      createInspectorStore({
-        highlight: (node) => stage.current?.highlight(node),
-        locate: (target) => stage.current?.locate(target),
-        download: (node, format) => downloadNode(node, format),
-      }),
-    [path, revision],
+      createInspectorStore(
+        { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
+        {
+          highlight: (node) => stage.current?.highlight(node),
+          locate: (target) => stage.current?.locate(target),
+          download: (node, format) => downloadNode(node, format),
+        },
+      ),
+    [path, revision, datasets],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
   useEffect(() => {

@@ -1,0 +1,297 @@
+import type { InspectedApp } from '@holistics/anfra-sdk/common';
+import {
+  ChevronRight,
+  CircleAlert,
+  Clock,
+  Database,
+  Info,
+  SlidersHorizontal,
+  TriangleAlert,
+} from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { formatTime } from '../../model/format';
+import { type Issue, issuesOf, queryCounts } from '../../model/issues';
+import { appTrust, TRUST_LEVELS, type TrustLevel } from '../../model/trust';
+import type { InspectorEnv, RevealTarget } from '../../model/types';
+import type { InspectorSnapshot } from '../../source';
+import { Field, Fields, Note } from '../shared/fields';
+import { toneFill, toneText } from '../shared/tone';
+
+interface Props {
+  snapshot: InspectorSnapshot | undefined;
+  env: InspectorEnv;
+  onReveal: (target: RevealTarget) => void;
+}
+
+/** How many issues the list shows before "Show all". */
+const FIRST_ISSUES = 5;
+
+/** The landing tab: is this app healthy, and where to look. See SPEC.md §4.3. */
+export function OverviewTab({ snapshot, env, onReveal }: Props) {
+  if (!snapshot) return <Note>Waiting for the Data App…</Note>;
+  const { apps } = snapshot;
+  const issues = issuesOf(snapshot);
+
+  return (
+    <div className="space-y-4 p-2">
+      {apps.length === 0 ? (
+        <Note>This Data App hasn't created an SDK app.</Note>
+      ) : (
+        apps.map((app, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
+          <TrustCard key={index} app={app} label={apps.length > 1 ? `App ${index + 1}` : undefined} />
+        ))
+      )}
+      <Stats apps={apps} issues={issues} onReveal={onReveal} />
+      <Issues issues={issues} onReveal={onReveal} />
+      <Environment apps={apps} env={env} />
+    </div>
+  );
+}
+
+function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
+  const trust = appTrust(app);
+  const levels = Object.keys(TRUST_LEVELS).map(Number) as TrustLevel[];
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-muted-foreground">
+          {label && <span className="font-medium text-foreground">{label} · </span>}
+          Trust level
+        </p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="About trust levels"
+            >
+              <Info className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
+            {levels.map((level) => (
+              <p key={level}>
+                <span className="font-medium">
+                  {level}. {TRUST_LEVELS[level].name}
+                </span>
+                : {TRUST_LEVELS[level].hint}
+              </p>
+            ))}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="mt-1.5 flex items-center gap-2.5">
+        <div className="flex gap-0.5" aria-hidden>
+          {levels.map((level) => (
+            <span
+              key={level}
+              className={cn(
+                'h-3.5 w-1.5 rounded-sm',
+                level <= trust.level ? toneFill[trust.tone] : 'bg-muted',
+              )}
+            />
+          ))}
+        </div>
+        <p className={cn('text-sm font-medium', toneText[trust.tone])}>
+          {trust.level} · {TRUST_LEVELS[trust.level].name}
+        </p>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">{trust.text}</p>
+    </div>
+  );
+}
+
+function Stats({
+  apps,
+  issues,
+  onReveal,
+}: {
+  apps: InspectedApp[];
+  issues: Issue[];
+  onReveal: (target: RevealTarget) => void;
+}) {
+  const counts = queryCounts(apps);
+  const errors = issues.filter((i) => i.level === 'error').length;
+  const warnings = issues.length - errors;
+  const controls = apps.flatMap((app) => Object.values(app.controls));
+  const unapplied = controls.filter((c) => c.isDirty).length;
+  const last = lastRun(apps);
+  const firstIssue = issues[0];
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Stat
+        icon={<CircleAlert />}
+        title="Issues"
+        value={issues.length}
+        tone={errors ? 'error' : warnings ? 'warn' : undefined}
+        detail={issues.length ? `${errors} errors · ${warnings} warnings` : 'None found'}
+        onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
+      />
+      <Stat
+        icon={<Database />}
+        title="Queries"
+        value={counts.total}
+        tone={counts.error ? 'error' : undefined}
+        detail={[
+          `${counts.success} ok`,
+          counts.error && `${counts.error} failed`,
+          counts.executing && `${counts.executing} running`,
+          counts.idle && `${counts.idle} idle`,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onClick={() => onReveal({ tab: 'data' })}
+      />
+      <Stat
+        icon={<SlidersHorizontal />}
+        title="Controls"
+        value={controls.length}
+        tone={unapplied ? 'warn' : undefined}
+        detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
+        onClick={() => onReveal({ tab: 'data' })}
+      />
+      <Stat
+        icon={<Clock />}
+        title="Last run"
+        value={last ? formatTime(last.at) : '—'}
+        detail={last ? `${last.name} · ${last.fromCache ? 'cache' : 'database'}` : 'Nothing has run yet'}
+        onClick={last ? () => onReveal({ entity: 'query', app: last.app, name: last.name }) : undefined}
+      />
+    </div>
+  );
+}
+
+/** The query that ran last, from each result's `executedAt`. */
+function lastRun(apps: InspectedApp[]) {
+  let last: { app: number; name: string; at: Date; fromCache: boolean } | undefined;
+  apps.forEach((app, index) => {
+    for (const [name, query] of Object.entries(app.queries)) {
+      const at = query.debug?.executedAt && new Date(query.debug.executedAt);
+      if (at && (!last || at > last.at))
+        last = { app: index, name, at, fromCache: query.debug?.fromCache ?? false };
+    }
+  });
+  return last;
+}
+
+function Stat(props: {
+  icon: ReactNode;
+  title: string;
+  value: ReactNode;
+  detail: string;
+  tone?: 'warn' | 'error';
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!props.onClick}
+      onClick={props.onClick}
+      className="flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none"
+    >
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground [&_svg]:size-3.5">
+        {props.icon}
+        {props.title}
+      </span>
+      <span className={cn('text-lg font-semibold tabular-nums', props.tone && toneText[props.tone])}>
+        {props.value}
+      </span>
+      <span className="w-full truncate text-xs text-muted-foreground">{props.detail}</span>
+    </button>
+  );
+}
+
+function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: RevealTarget) => void }) {
+  const [all, setAll] = useState(false);
+  if (issues.length === 0) return null;
+  const shown = all ? issues : issues.slice(0, FIRST_ISSUES);
+  return (
+    <div>
+      <SectionTitle>Issues</SectionTitle>
+      <ul className="mt-1 space-y-px">
+        {shown.map((issue, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: issues have no identity of their own
+          <li key={i}>
+            <button
+              type="button"
+              onClick={() => onReveal(issue.target)}
+              className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent"
+            >
+              {issue.level === 'error' ? (
+                <CircleAlert className="mt-px size-3.5 shrink-0 text-destructive" />
+              ) : (
+                <TriangleAlert className="mt-px size-3.5 shrink-0 text-amber-500" />
+              )}
+              <span className="min-w-0 break-words">{issue.message}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {issues.length > FIRST_ISSUES && (
+        <button
+          type="button"
+          className="mt-1 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setAll(!all)}
+        >
+          {all ? 'Show fewer' : `Show all ${issues.length}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Environment({ apps, env }: { apps: InspectedApp[]; env: InspectorEnv }) {
+  const { reader } = env;
+  const datasets = Object.values(env.datasets).map((d) => d.label || d.name);
+  // An app without a timezone of its own runs in the tenant's, which the host doesn't know.
+  const mismatched = apps.filter((app) => app.timezone && app.timezone !== reader.timezone);
+  return (
+    <Collapsible>
+      <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded px-1 py-0.5 hover:text-foreground">
+        <ChevronRight className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <SectionTitle>Environment</SectionTitle>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2 px-1 pt-1.5">
+        {mismatched.length > 0 && (
+          <p className="flex gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
+            <TriangleAlert className="mt-px size-3.5 shrink-0" />
+            The reader is in {reader.timezone}, but {mismatched.map((a) => a.title || 'an app').join(', ')}{' '}
+            runs in {mismatched[0]?.timezone}: dates are computed in the app's timezone.
+          </p>
+        )}
+        <Fields>
+          <Field label="Host">{env.hostName}</Field>
+          {env.sdkVersion && <Field label="SDK">{env.sdkVersion}</Field>}
+          <Field label="Reader">
+            {reader.name} · {reader.email} · {reader.role}
+          </Field>
+          <Field label="Reader timezone">{reader.timezone}</Field>
+          {apps.map((app, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
+            <Field key={index} label={apps.length > 1 ? `App ${index + 1} timezone` : 'App timezone'}>
+              {app.timezone || 'tenant default'}
+            </Field>
+          ))}
+          <Field label="Generated SQL">
+            {reader.permissions.canViewGeneratedSql ? 'can view' : 'hidden'}
+          </Field>
+          <Field label="Export">{reader.permissions.canExportData ? 'allowed' : 'not allowed'}</Field>
+          <Field label={`Datasets (${datasets.length})`}>{datasets.join(', ') || 'none'}</Field>
+        </Fields>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <span className="px-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      {children}
+    </span>
+  );
+}
