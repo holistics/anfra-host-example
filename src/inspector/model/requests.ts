@@ -1,0 +1,175 @@
+// The request log: every call the frame's queries make to the host's backend, recorded host-side
+// with what the snapshots leave out, how long it took and a few of its rows. See SPEC.md §5.3.
+import type { Backend, BackendQueryRequest, InspectedApp, QueryInput } from '@holistics/anfra-sdk/common';
+
+export interface RequestEntry {
+  id: number;
+  method: 'submitQuery' | 'fieldSuggestions';
+  /** When it was sent, as an ISO time. */
+  at: string;
+  /** Absent while pending. */
+  durationMs?: number;
+  status: 'pending' | 'ok' | 'error' | 'aborted';
+  dataset: string;
+  /** The query's declared AQL; filters, sorts and drills are in `input`. */
+  aql?: string;
+  input?: QueryInput;
+  page?: number;
+  pageSize?: number;
+  bustCache?: boolean;
+  /** For a field suggestion: `model.field` and what was typed. */
+  field?: string;
+  q?: string;
+  fromCache?: boolean;
+  numRows?: number;
+  columns?: string[];
+  /** The first rows, as the backend returned them, positional by `columns`. */
+  preview?: unknown[][];
+  error?: string;
+}
+
+export interface RequestLog {
+  /** Oldest first. The same array until the log changes. */
+  entries(): readonly RequestEntry[];
+  subscribe(listener: () => void): () => void;
+}
+
+export interface RecordOptions {
+  /** How many requests to keep; the oldest go first. */
+  limit?: number;
+  /** How many rows of each result to keep. */
+  previewRows?: number;
+}
+
+/** A log, and what fills it. */
+export interface RequestRecorder {
+  log: RequestLog;
+  /**
+   * `backend`, recording every call it answers. Pass the result to the frame in place of the one
+   * wrapped; the log fills whether or not anyone is inspecting.
+   */
+  record(backend: Backend): Backend;
+}
+
+/** A log for one mounted frame. Make it before the frame, so its first requests are in it. */
+export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOptions = {}): RequestRecorder {
+  let entries: readonly RequestEntry[] = [];
+  let nextId = 1;
+  const listeners = new Set<() => void>();
+  const changed = () => {
+    for (const listener of listeners) listener();
+  };
+  const add = (entry: RequestEntry) => {
+    entries = [...entries.slice(Math.max(0, entries.length - limit + 1)), entry];
+    changed();
+  };
+  const settle = (id: number, patch: Partial<RequestEntry>) => {
+    entries = entries.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+    changed();
+  };
+
+  async function track<T>(
+    entry: Omit<RequestEntry, 'id' | 'at' | 'status'>,
+    signal: AbortSignal,
+    call: () => Promise<T>,
+    summary: (result: T) => Partial<RequestEntry>,
+  ): Promise<T> {
+    const id = nextId++;
+    const started = performance.now();
+    add({ ...entry, id, at: new Date().toISOString(), status: 'pending' });
+    const durationMs = () => Math.round(performance.now() - started);
+    try {
+      const result = await call();
+      settle(id, { status: 'ok', durationMs: durationMs(), ...summary(result) });
+      return result;
+    } catch (err) {
+      settle(id, {
+        status: signal.aborted ? 'aborted' : 'error',
+        durationMs: durationMs(),
+        error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      });
+      throw err;
+    }
+  }
+
+  return {
+    record: (backend) => ({
+      submitQuery: (request, signal) =>
+        track(
+          {
+            method: 'submitQuery',
+            dataset: request.dataset,
+            aql: request.aql,
+            input: request.input,
+            page: request.page,
+            pageSize: request.pageSize,
+            bustCache: request.bustCache,
+          },
+          signal,
+          () => backend.submitQuery(request, signal),
+          (result) => ({
+            fromCache: result.debug?.fromCache,
+            numRows: result.meta?.numRows ?? result.values.length,
+            columns: result.columns.map((column) => column.name),
+            preview: result.values.slice(0, previewRows),
+          }),
+        ),
+      fieldSuggestions: (request, signal) =>
+        track(
+          {
+            method: 'fieldSuggestions',
+            dataset: request.dataset,
+            field: `${request.model}.${request.field}`,
+            q: request.q,
+          },
+          signal,
+          () => backend.fieldSuggestions(request, signal),
+          (values) => ({ numRows: values.length }),
+        ),
+    }),
+    log: {
+      entries: () => entries,
+      subscribe(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    },
+  };
+}
+
+/** A query a request is attributed to. */
+export interface QueryRef {
+  app: number;
+  name: string;
+}
+
+/**
+ * The queries a request may belong to: those that declare its dataset and AQL. A request carries
+ * the declared AQL, not the executed one, so this is exact unless two queries declare the same.
+ */
+export function queriesOf(
+  entry: Pick<BackendQueryRequest, 'dataset' | 'aql'> & { method: RequestEntry['method'] },
+  apps: InspectedApp[],
+): QueryRef[] {
+  if (entry.method !== 'submitQuery') return [];
+  return apps.flatMap((app, index) =>
+    Object.entries(app.declaration.queries)
+      .filter(([, q]) => q.dataset === entry.dataset && q.aql === entry.aql)
+      .map(([name]) => ({ app: index, name })),
+  );
+}
+
+/** Each query's requests, newest first, keyed `<app>/<name>`; and the requests no query claims. */
+export function attributeRequests(entries: readonly RequestEntry[], apps: InspectedApp[]) {
+  const byQuery = new Map<string, { entry: RequestEntry; shared: boolean }[]>();
+  const other: RequestEntry[] = [];
+  for (const entry of [...entries].reverse()) {
+    const refs = entry.aql ? queriesOf({ ...entry, aql: entry.aql }, apps) : [];
+    if (refs.length === 0) other.push(entry);
+    for (const ref of refs) {
+      const key = `${ref.app}/${ref.name}`;
+      byQuery.set(key, [...(byQuery.get(key) ?? []), { entry, shared: refs.length > 1 }]);
+    }
+  }
+  return { byQuery, other };
+}

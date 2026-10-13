@@ -6,6 +6,7 @@ import type {
   RenderFormat,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
+import type { RequestLog } from './model/requests';
 import type { InspectorEnv } from './model/types';
 
 /** One inspection snapshot the frame posted: its apps, and the structure its markup declares. */
@@ -18,6 +19,8 @@ export interface InspectorSnapshot {
 export interface InspectorSource {
   /** What the host knows about the frame: who reads it, its datasets, the SDK version. */
   env: InspectorEnv;
+  /** The frame's requests to the backend, recorded by `createRequestLog`. */
+  requests: RequestLog;
   /** The latest snapshot, or undefined until the frame reports. The same object until it changes. */
   getSnapshot(): InspectorSnapshot | undefined;
   /** Called whenever the snapshot changes; returns an unsubscribe. */
@@ -41,14 +44,14 @@ export interface InspectorStore {
  * inspected. `highlight` and `locate` go to the frame, which the host owns.
  */
 export function createInspectorStore(
-  env: InspectorEnv,
-  frame: Pick<InspectorSource, 'highlight' | 'locate' | 'download'>,
+  frame: Pick<InspectorSource, 'env' | 'requests' | 'highlight' | 'locate' | 'download'>,
 ): InspectorStore {
   let snapshot: InspectorSnapshot | undefined;
   const listeners = new Set<() => void>();
   return {
     source: {
-      env,
+      env: frame.env,
+      requests: frame.requests,
       getSnapshot: () => snapshot,
       subscribe(listener) {
         listeners.add(listener);
