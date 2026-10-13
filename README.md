@@ -131,7 +131,8 @@ server/
 src/
   data-app.ts  every SDK call: datasets, the reader, mounting a Data App
   App.tsx      layout, routing, live reload
-  components/  sidebar, stage, inspect panel; ui/ is shadcn/ui
+  components/  sidebar, home, stage; ui/ is shadcn/ui
+  inspector/   the inspect panel, self-contained to carry to another host; SPEC.md says how
   lib/host.ts  what the page asks the server, apart from the core API
 ```
 

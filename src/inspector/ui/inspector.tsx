@@ -1,45 +1,34 @@
+import type { StructureNode } from '@holistics/anfra-sdk/common';
 import { X } from 'lucide-react';
-import { useState } from 'react';
-import { DataTab, entityKey } from '@/components/data-tab';
-import { StructureTree } from '@/components/structure-tree';
+import { useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { InspectedApp, InspectedStructure, LocateTarget, RenderFormat, StructureNode } from '@/data-app';
-import { countProblems } from '@/lib/inspect';
+import { countProblems, entityKey } from '../model/format';
+import type { InspectorSource } from '../source';
+import { DataTab } from './data/data-tab';
+import { Note } from './shared/fields';
+import { StructureTree } from './structure/structure-tree';
 
-export type InspectTab = 'structure' | 'data';
+export type InspectorTab = 'structure' | 'data';
 
 interface Props {
-  /** Undefined until the frame has reported. */
-  apps: InspectedApp[] | undefined;
-  structure: InspectedStructure | undefined;
-  tab: InspectTab;
-  onTab: (tab: InspectTab) => void;
-  /** The node picked on the page, to select and reveal in the tree. */
+  /** The mounted frame to inspect. */
+  source: InspectorSource;
+  tab: InspectorTab;
+  onTab: (tab: InspectorTab) => void;
+  /** The node picked on the page, to select and reveal in the tree. The host owns pick mode. */
   picked: string | undefined;
-  onHighlight: (node: string | null) => void;
-  onLocate: (target: LocateTarget) => void;
-  /** Save a picture of a container or block. */
-  onDownload: (node: StructureNode, format: RenderFormat) => void;
   onClose: () => void;
 }
 
 /**
  * A devtool over the running Data App. Structure shows the page's parts as its markup declares
- * them; Data shows every app's queries, controls and selection.
+ * them; Data shows every app's queries, controls and selection. See SPEC.md.
  */
-export function InspectPanel({
-  apps,
-  structure,
-  tab,
-  onTab,
-  picked,
-  onHighlight,
-  onLocate,
-  onDownload,
-  onClose,
-}: Props) {
+export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
+  const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot);
+  const structure = snapshot?.structure;
   const problems = structure ? countProblems(structure.nodes) : 0;
   // A query or control asked for from the Structure tab: Data opens on it.
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
@@ -50,7 +39,11 @@ export function InspectPanel({
   };
 
   return (
-    <Tabs value={tab} onValueChange={(value) => onTab(value as InspectTab)} className="h-full gap-0 border-l">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => onTab(value as InspectorTab)}
+      className="h-full gap-0 border-l"
+    >
       <div className="flex h-12 shrink-0 items-center justify-between border-b px-2">
         <TabsList className="h-8">
           <TabsTrigger value="structure" className="px-2.5 text-xs">
@@ -91,10 +84,10 @@ export function InspectPanel({
               <StructureTree
                 structure={structure}
                 picked={picked}
-                onHighlight={onHighlight}
-                onLocate={(node) => onLocate({ node })}
+                onHighlight={source.highlight}
+                onLocate={(node) => source.locate({ node })}
                 onShowInData={showInData}
-                onDownload={onDownload}
+                onDownload={source.download}
               />
             )}
           </div>
@@ -103,13 +96,9 @@ export function InspectPanel({
 
       <TabsContent value="data" className="min-h-0">
         <div className="h-full overflow-y-auto">
-          <DataTab apps={apps} structure={structure} focus={focus} onLocate={onLocate} />
+          <DataTab apps={snapshot?.apps} structure={structure} focus={focus} onLocate={source.locate} />
         </div>
       </TabsContent>
     </Tabs>
   );
-}
-
-function Note({ children }: { children: React.ReactNode }) {
-  return <p className="p-1 text-sm text-muted-foreground">{children}</p>;
 }
