@@ -3,16 +3,10 @@ import { cn } from '@/lib/utils';
 import { formatTime, prettyJson } from '../../model/format';
 import { CodeBlock } from '../shared/code-block';
 import { Field, Fields } from '../shared/fields';
+import { stateDot } from '../shared/tone';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
 
 export type CodeTab = 'aql' | 'sql' | 'signature';
-
-const stateDot: Record<string, string> = {
-  success: 'bg-emerald-500',
-  error: 'bg-destructive',
-  executing: 'bg-sky-500 animate-pulse',
-  idle: 'bg-muted-foreground/40',
-};
 
 export function QueryRow({
   query,

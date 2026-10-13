@@ -9,7 +9,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { type DatasetDescriptor, datasets as loadDatasets } from '@/data-app';
+import { type DatasetDescriptor, datasets as loadDatasets, reader, sdkVersion } from '@/data-app';
 import { createInspectorStore, Inspector, type InspectorTab } from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ export function App() {
   const [revision, setRevision] = useState(0);
   const [inspecting, setInspecting] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [tab, setTab] = useState<InspectorTab>('structure');
+  const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<string>();
   const stage = useRef<StageHandle>(null);
 
@@ -65,11 +65,14 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new store whenever the app or its revision changes
   const inspector = useMemo(
     () =>
-      createInspectorStore({
-        highlight: (node) => stage.current?.highlight(node),
-        locate: (target) => stage.current?.locate(target),
-      }),
-    [path, revision],
+      createInspectorStore(
+        { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
+        {
+          highlight: (node) => stage.current?.highlight(node),
+          locate: (target) => stage.current?.locate(target),
+        },
+      ),
+    [path, revision, datasets],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
   useEffect(() => {

@@ -12,6 +12,7 @@ import type {
   User,
 } from '@holistics/anfra-sdk/common';
 import { mountDataApp } from '@holistics/anfra-sdk/host';
+import host from '../package.json';
 
 export type {
   DatasetDescriptor,
@@ -20,6 +21,12 @@ export type {
   LocateTarget,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
+
+/**
+ * The SDK version frames are mounted with: the one this host pins. The SDK exports its own only from
+ * the in-frame bundle, which the page has no other reason to load.
+ */
+export const sdkVersion: string = host.dependencies['@holistics/anfra-sdk'];
 
 /** The core API, as this host's server lets it through (server/anfra.ts): `core.show` and `core.query`. */
 const api = coreClient('/api');

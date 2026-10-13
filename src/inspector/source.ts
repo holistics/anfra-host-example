@@ -1,5 +1,6 @@
 // What the inspector needs from a host, and a small store a host can use to provide it.
 import type { InspectedApp, InspectedStructure, LocateTarget } from '@holistics/anfra-sdk/common';
+import type { InspectorEnv } from './model/types';
 
 /** One inspection snapshot the frame posted: its apps, and the structure its markup declares. */
 export interface InspectorSnapshot {
@@ -9,6 +10,8 @@ export interface InspectorSnapshot {
 
 /** Everything the inspector needs from a host, for one mounted frame. See SPEC.md §5.2. */
 export interface InspectorSource {
+  /** What the host knows about the frame: who reads it, its datasets, the SDK version. */
+  env: InspectorEnv;
   /** The latest snapshot, or undefined until the frame reports. The same object until it changes. */
   getSnapshot(): InspectorSnapshot | undefined;
   /** Called whenever the snapshot changes; returns an unsubscribe. */
@@ -29,11 +32,15 @@ export interface InspectorStore {
  * A store for one mounted frame. Make a new one per mount, so a remounted frame starts with nothing
  * inspected. `highlight` and `locate` go to the frame, which the host owns.
  */
-export function createInspectorStore(frame: Pick<InspectorSource, 'highlight' | 'locate'>): InspectorStore {
+export function createInspectorStore(
+  env: InspectorEnv,
+  frame: Pick<InspectorSource, 'highlight' | 'locate'>,
+): InspectorStore {
   let snapshot: InspectorSnapshot | undefined;
   const listeners = new Set<() => void>();
   return {
     source: {
+      env,
       getSnapshot: () => snapshot,
       subscribe(listener) {
         listeners.add(listener);
