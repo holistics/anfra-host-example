@@ -1,8 +1,9 @@
 import { Crosshair, PanelRight, RotateCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { InspectPanel, type InspectTab } from '@/components/inspect-panel';
+import { storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +17,10 @@ import {
 } from '@/data-app';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
+
+// Read once: while dragging, the resizer sets the width on the wrapper itself.
+const sidebarWidth = storedSidebarWidth();
+const sidebarStyle = (sidebarWidth ? { '--sidebar-width': sidebarWidth } : {}) as CSSProperties;
 
 export function App() {
   const [entries, setEntries] = useState<Entry[]>();
@@ -142,7 +147,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <SidebarProvider className="h-full">
+      <SidebarProvider className="h-full" style={sidebarStyle}>
         <AppSidebar entries={entries} selected={path} onSelect={select} />
         <SidebarInset className="min-w-0 overflow-hidden md:peer-data-[variant=inset]:border">
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">

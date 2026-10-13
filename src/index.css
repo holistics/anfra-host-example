@@ -110,3 +110,8 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+[data-resizing] [data-slot="sidebar-gap"],
+[data-resizing] [data-slot="sidebar-container"] {
+  transition: none;
+}

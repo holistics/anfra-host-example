@@ -1,6 +1,7 @@
 import { ChevronRight, FileChartColumn, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
+import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -15,7 +16,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
-  SidebarRail,
 } from '@/components/ui/sidebar';
 import { type Entry, urlOf } from '@/lib/host';
 
@@ -39,7 +39,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       </SidebarHeader>
       {/* On desktop, reach over the inset padding, so the scrollbar sits on the edge and the gap is inside it. */}
       <SidebarContent className="md:-mr-2">
-        <SidebarGroup className="md:pr-4">
+        <SidebarGroup className="md:pr-3">
           <SidebarGroupLabel>Apps</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -57,7 +57,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
         <AnfraStatus />
         <ThemeToggle />
       </SidebarFooter>
-      <SidebarRail />
+      <SidebarResizer />
     </Sidebar>
   );
 }
