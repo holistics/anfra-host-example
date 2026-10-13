@@ -2,6 +2,7 @@ import { Crosshair, PanelRight, RotateCw } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
+import { Home } from '@/components/home';
 import { InspectPanel, type InspectTab } from '@/components/inspect-panel';
 import { storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
@@ -93,7 +94,7 @@ export function App() {
   }, [refreshCatalog, refreshDatasets]);
 
   const app = entries && path ? findApp(entries, path) : undefined;
-  if (app) document.title = `${app.label} · Data Apps`;
+  if (app) document.title = `${app.label} · anfra demo`;
 
   // Pick works on the structure, which the frame reads only while it is inspected: picking opens
   // the panel, and closing the panel ends picking.
@@ -122,7 +123,7 @@ export function App() {
   if (error) {
     content = <Message>{error}</Message>;
   } else if (!path) {
-    content = <Message>Pick a Data App from the sidebar.</Message>;
+    content = entries ? <Home entries={entries} onSelect={select} /> : <Message>Loading…</Message>;
   } else if (entries && !app) {
     content = <Message>No Data App at {path}.</Message>;
   } else if (!datasets) {
@@ -153,7 +154,7 @@ export function App() {
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
             <SidebarTrigger />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
-            <h1 className="truncate text-sm font-medium">{app?.label ?? 'Data Apps'}</h1>
+            <h1 className="truncate text-sm font-medium">{app?.label ?? 'anfra demo'}</h1>
             {app && (
               <span className="hidden truncate text-xs text-muted-foreground md:inline">{app.path}</span>
             )}

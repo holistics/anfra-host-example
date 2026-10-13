@@ -1,4 +1,5 @@
-import { ChevronRight, FileChartColumn, Folder } from 'lucide-react';
+import { ChevronRight, AppWindowMac, Folder } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { MouseEvent } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { SidebarResizer } from '@/components/sidebar-resizer';
@@ -31,10 +32,9 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
     <Sidebar variant="inset">
       <SidebarHeader>
         <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
-          <span className="grid size-6 place-items-center rounded-md bg-primary text-xs text-primary-foreground">
-            a
-          </span>
-          Data Apps
+          <img src="/logo.svg" alt="" className="size-6 object-contain" />
+          anfra
+          <Badge variant="secondary" className="mt-1">demo</Badge>
         </a>
       </SidebarHeader>
       {/* On desktop, reach over the inset padding, so the scrollbar sits on the edge and the gap is inside it. */}
@@ -74,7 +74,7 @@ function Item({ entry, selected, onSelect }: { entry: Entry } & Omit<Props, 'ent
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <FileChartColumn />
+            <AppWindowMac />
             <span>{entry.label}</span>
           </a>
         </SidebarMenuButton>
