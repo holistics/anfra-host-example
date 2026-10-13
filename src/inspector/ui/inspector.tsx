@@ -13,6 +13,7 @@ import { InspectorHeader } from './header';
 import { OverviewTab } from './overview/overview-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
+import { WiringTab } from './wiring/wiring-tab';
 
 interface Props {
   /** The mounted frame to inspect. */
@@ -34,10 +35,12 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
   const structure = snapshot?.structure;
   const problems = structure ? countProblems(structure.nodes) : 0;
   const counts = apps && queryCounts(apps);
+  const warnings = (apps ?? []).flatMap(wiringChecks).filter((c) => c.level !== 'info').length;
 
   // An entity to open in Data, or a node to select in Structure; the nonce repeats a request.
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
   const [node, setNode] = useState<string>();
+  const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   useEffect(() => setNode(picked), [picked]);
 
   const reveal = (target: RevealTarget) => {
@@ -47,9 +50,8 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });
       onTab('data');
     } else if ('check' in target) {
-      const app = apps?.[target.app];
-      const check = app && wiringChecks(app)[target.check];
-      if (check) reveal({ entity: check.about.entity, app: target.app, name: check.about.name });
+      setCheck({ ...target, nonce: Date.now() });
+      onTab('wiring');
     } else {
       setNode(target.node);
       onTab('structure');
@@ -89,6 +91,10 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
             <TabsTrigger value="data" className="px-2.5 text-xs">
               Data
               <Count n={counts?.error ?? 0} />
+            </TabsTrigger>
+            <TabsTrigger value="wiring" className="px-2.5 text-xs">
+              Wiring
+              <Count n={warnings} />
             </TabsTrigger>
           </TabsList>
         </div>
@@ -130,6 +136,12 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
         <TabsContent value="data" className="min-h-0">
           <div className="h-full overflow-y-auto">
             <DataTab apps={apps} structure={structure} focus={focus} onLocate={source.locate} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="wiring" className="min-h-0">
+          <div className="h-full overflow-y-auto">
+            <WiringTab apps={apps} focus={check} onReveal={reveal} />
           </div>
         </TabsContent>
       </Tabs>

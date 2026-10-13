@@ -50,8 +50,8 @@ export function QueryRow({
         tab={codeTab}
         onTab={onCodeTab}
         sources={{
-          aql: { label: 'AQL', code: query.debug?.executedAql, empty: 'Not run yet.' },
-          sql: { label: 'SQL', code: query.debug?.executedSql, empty: 'Not run yet.' },
+          aql: { label: 'AQL', code: query.debug?.executedAql, lang: 'aql', empty: 'Not run yet.' },
+          sql: { label: 'SQL', code: query.debug?.executedSql, lang: 'sql', empty: 'Not run yet.' },
           signature: { label: 'Signature', code: prettyJson(query.signature), empty: 'No signature.' },
         }}
       />
