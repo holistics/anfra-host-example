@@ -79,8 +79,9 @@ The inspector state also resets when the path changes or the repo revision chang
   Data counts failed queries.
 - **Default tab**: Overview _(new; today it is Structure)_. Pick always switches to Structure.
   Opening the panel again keeps the tab it was closed on.
-- **Copy report** _(new)_: copies the report (§4.7) as JSON. A toast says "Report copied", or
-  "Couldn't copy: logged to the console" if the copy fails, in which case the report is logged.
+- **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
+  or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is
+  logged.
 - **Close**: the same as the toolbar's Inspect.
 
 **States**, shared by every tab:
@@ -114,7 +115,9 @@ The landing tab. It answers "is this app healthy, and where do I look?"
      the Errors filter, then Wiring checks, then Structure.
    - **Queries** (ok / error / running / idle): goes to Data › Queries.
    - **Controls** (count, and how many are unapplied): goes to Data › Controls.
-   - **Last request** (time, duration, cache or database): goes to that query's row in Data.
+   - **Last run** (time, query, cache or database, from each result's `executedAt`): goes to that
+     query's row in Data. Once the request log lands it becomes **Last request** and adds the
+     duration.
 3. **Issues list**: the five most severe issues, each a link to where it is (a query row, a check
    or a structure node). "Show all" appears when there are more.
 4. **Environment** (collapsible, closed by default):
