@@ -1,6 +1,6 @@
+import type { InspectedStructure, RenderFormat, StructureNode } from '@holistics/anfra-sdk/common';
 import { ArrowRight, ChevronRight, Download, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,9 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { InspectedStructure, RenderFormat, StructureNode } from '@/data-app';
-import { handleFor } from '@/lib/inspect';
 import { cn } from '@/lib/utils';
+import { handleFor } from '../../model/format';
+import { CopyButton } from '../shared/copy-button';
 
 interface Props {
   structure: InspectedStructure;
@@ -20,8 +20,8 @@ interface Props {
   onLocate: (node: string) => void;
   /** Open a query's or control's row in the Data tab. */
   onShowInData: (node: StructureNode) => void;
-  /** Save a picture of a container or block. */
-  onDownload: (node: StructureNode, format: RenderFormat) => void;
+  /** Save a picture of a container or block. The download menu shows only when the host provides it. */
+  onDownload?: (node: StructureNode, format: RenderFormat) => void;
 }
 
 /** Each kind's pill, colored so a glance tells containers, blocks, queries and controls apart. */
@@ -144,7 +144,7 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
               <ArrowRight className="size-3.5" />
             </Button>
           )}
-          {(node.kind === 'container' || node.kind === 'block') && node.id && (
+          {onDownload && (node.kind === 'container' || node.kind === 'block') && node.id && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

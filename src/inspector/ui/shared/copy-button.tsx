@@ -1,8 +1,17 @@
 import { Check, Copy } from 'lucide-react';
 import { type MouseEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { copyText } from '@/lib/inspect';
 import { cn } from '@/lib/utils';
+
+/** Copy text, reporting whether the clipboard took it. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** A small button that copies `text`, and says so for a moment. */
 export function CopyButton({ text, label, className }: { text: string; label: string; className?: string }) {
