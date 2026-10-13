@@ -15,6 +15,8 @@ export interface Config {
   queryRateLimit: number;
   /** Take the client's address from `X-Forwarded-For`, as the one proxy in front of this server appends it. */
   trustProxy: boolean;
+  /** Pass anfra's MCP endpoint through at `/mcp`, with the export files it links to. */
+  mcp: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -27,6 +29,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     repoDir,
     queryRateLimit: Number(env.QUERY_RATE_LIMIT ?? 120),
     trustProxy: env.TRUST_PROXY === '1',
+    mcp: env.MCP === '1',
   };
 }
 

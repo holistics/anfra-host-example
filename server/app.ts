@@ -9,6 +9,7 @@ import { catalog, type Entry } from './catalog.js';
 import { appsDir, type Config } from './config.js';
 import { repoEvents } from './events.js';
 import { serveAppFile } from './files.js';
+import { mcp } from './mcp.js';
 
 export interface AppOptions {
   config: Config;
@@ -19,7 +20,7 @@ export interface AppOptions {
 
 /**
  * The host's server: the core API (only what Data Apps need), the Data Apps themselves, read from
- * the repo's apps folder, and, in production, the page.
+ * the repo's apps folder, anfra's MCP when asked for, and, in production, the page.
  */
 export function createApp({ config, hostVersion, pageDir }: AppOptions) {
   const app = new Hono();
@@ -34,6 +35,7 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
     'unknown';
 
   app.route('/api', coreApi(config, clientOf));
+  if (config.mcp) app.route('/', mcp(config));
 
   // The Data App tree. A deployed repo does not change, so production reads it once.
   const tree: Entry[] | undefined = production ? catalog(apps) : undefined;

@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { '/api': server, '/host': server, '/health': server },
+    proxy: { '/api': server, '/host': server, '/health': server, '/mcp': server, '/exports': server },
   },
   build: { outDir: 'dist/page', emptyOutDir: true },
 });

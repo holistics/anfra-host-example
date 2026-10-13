@@ -28,6 +28,7 @@ browser                          this host (Node, Hono)                 anfra se
   - `/api/core.show` and `/api/core.query`, passed to anfra, and nothing else of the core API. Queries are rate-limited per client. The spot to check your own session is marked in `server/anfra.ts`.
   - `/host/apps` (the Data App tree, labelled by each file's `<title>`), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
+  - With `MCP=1`, `/mcp`: anfra's MCP endpoint, passed through. See [MCP](#mcp).
   - In production, the built page.
 - **The page** (`src/`): every call into the SDK is in [`src/data-app.ts`](src/data-app.ts). That file is the part to copy into a host of your own; the rest is UI.
 
@@ -76,7 +77,15 @@ One process serves the page, the API and the Data Apps. It reads the app tree on
 | `PORT`, `HOSTNAME` | `8787`, `127.0.0.1` | Where this server listens. |
 | `NODE_ENV` | | `production` serves the built page, without live reload. |
 | `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client. |
+| `MCP` | | `1` passes anfra's MCP endpoint through at `/mcp`. See [MCP](#mcp). |
 | `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`: the last entry, which the one proxy in front of this server appends. |
+
+## MCP
+
+With `MCP=1`, the server passes anfra's MCP endpoint (streamable HTTP) through at `/mcp`, so an agent can connect to `https://<this host>/mcp`. It is a plain passthrough, for demos: unlike `/api`, it has no allowlist, no rate limit and no auth spot. Every op anfra serves as a tool is reachable, except `core.ingest`, which rebuilds the search catalog and is refused here.
+
+- Run anfra without `--no-mcp`: `anfra serve --no-apps` serves `/mcp`.
+- `core.query.export` answers with a link to the file. The server passes `/exports/download/*` to anfra, so for the link to name this host, start anfra with `ANFRA_SITE_URL` set to this host's public URL, such as `https://demo.anfra.ai`.
 
 ## Checks
 
@@ -93,6 +102,7 @@ server/
   main.ts      start: config, listen
   app.ts       the routes
   anfra.ts     /api: the allowlist, rate limit, auth spot; /health
+  mcp.ts       /mcp and export downloads, passed to anfra (MCP=1)
   catalog.ts   the Data App tree
   files.ts     a file under apps/, confined and sandboxed
   events.ts    live reload: the repo watched, changes debounced
