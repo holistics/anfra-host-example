@@ -1,5 +1,5 @@
 import { ChevronRight, Folder } from 'lucide-react';
-import { type MouseEvent, useEffect, useState } from 'react';
+import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { AppIcon } from '@/components/app-icon';
 import { SidebarResizer } from '@/components/sidebar-resizer';
@@ -19,7 +19,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
+  useSidebar,
 } from '@/components/ui/sidebar';
+import { focusFilterMessage } from '@/data-app';
 import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
@@ -41,6 +43,44 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   // own, dropped when the query changes, so browsing comes back as it was left.
   const [browsed, setBrowsed] = useState<Toggled>({});
   const [searched, setSearched] = useState<Toggled>({});
+
+  // `/` or Cmd/Ctrl+K jumps to the filter, opening the sidebar first if it's hidden. The focus waits
+  // for a render, as a hidden sidebar (or the mobile sheet) has no input to focus yet.
+  const { isMobile, setOpen, setOpenMobile } = useSidebar();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '');
+      const chord = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k';
+      const slash = event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !typing;
+      if (!chord && !slash) return;
+      event.preventDefault();
+      (isMobile ? setOpenMobile : setOpen)(true);
+      setFocusRequest((n) => n + 1);
+    };
+    // The same shortcuts pressed inside a Data App's frame, which it forwards.
+    const onMessage = (event: MessageEvent) => {
+      if (event.data !== focusFilterMessage) return;
+      (isMobile ? setOpenMobile : setOpen)(true);
+      setFocusRequest((n) => n + 1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('message', onMessage);
+    };
+  }, [isMobile, setOpen, setOpenMobile]);
+  useEffect(() => {
+    if (focusRequest === 0) return;
+    const frame = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusRequest]);
 
   // The open app's folders open when it changes, even ones closed by hand: what was set by hand is
   // dropped, so they follow isOpen, and a folder the repo collapses closes again once left.
@@ -78,6 +118,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
           <SidebarGroupLabel>Apps</SidebarGroupLabel>
           <SidebarGroupContent>
             <Input
+              ref={inputRef}
               type="search"
               value={query}
               onChange={(event) => {
@@ -85,7 +126,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
                 // A folder closed for one query would hide what the next one matches.
                 setSearched({});
               }}
-              placeholder="Filter by name or tag"
+              placeholder="Filter by name or tag (⌘K)"
               aria-label="Filter Data Apps"
               className="mb-2 h-8"
             />
