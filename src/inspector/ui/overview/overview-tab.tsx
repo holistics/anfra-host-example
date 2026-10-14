@@ -40,7 +40,7 @@ interface Props {
 const gap = 'gap-3';
 
 /** The soft, borderless tile every Overview widget sits in. */
-const tile = 'rounded-xl bg-muted/50 p-3';
+const tile = 'rounded-xl bg-muted/50 p-4';
 
 /** How many issues the list shows before "Show all". */
 const FIRST_ISSUES = 5;
@@ -102,11 +102,12 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
             </TooltipContent>
           </Tooltip>
         </div>
-        <div className="mt-1.5 flex items-center gap-2.5">
-          <TrustBars trust={trust} />
+        <div className="mt-2 flex items-center gap-3">
+          <TrustBars trust={trust} size="lg" />
           <div>
-            <p className={cn('text-sm font-medium', toneText[trust.tone])}>
-              Level {trust.level} · {TRUST_LEVELS[trust.level].name}
+            <p className={cn('text-xl leading-tight font-semibold', toneText[trust.tone])}>
+              Level {trust.level}
+              <span className="block text-sm font-medium">{TRUST_LEVELS[trust.level].name}</span>
             </p>
             <p className="text-xs text-muted-foreground">{trust.text}</p>
           </div>
@@ -228,7 +229,7 @@ function Stat(props: {
       </span>
       <span className="w-full truncate text-xs text-muted-foreground">{props.detail}</span>
       {props.onClick && (
-        <ArrowUpRight className="absolute top-2.5 right-2.5 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+        <ArrowUpRight className="absolute top-3.5 right-3.5 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
       )}
     </button>
   );
