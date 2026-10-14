@@ -39,7 +39,16 @@ import {
   type InspectorTab,
   type NodeRequest,
 } from '@/inspector';
-import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
+import {
+  catalog,
+  type Entry,
+  findApp,
+  movedTo,
+  onRepoEvent,
+  pathOf,
+  type Redirects,
+  urlOf,
+} from '@/lib/host';
 import { altKey, modKey, shiftKey } from '@/lib/shortcut';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +62,7 @@ let mounts = 0;
 
 export function App() {
   const [entries, setEntries] = useState<Entry[]>();
+  const [redirects, setRedirects] = useState<Redirects>({});
   const [datasets, setDatasets] = useState<Record<string, DatasetDescriptor>>();
   const [error, setError] = useState<string>();
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
@@ -71,7 +81,14 @@ export function App() {
   const stage = useRef<StageHandle>(null);
 
   const refreshCatalog = useCallback(
-    () => catalog().then(setEntries, (err: Error) => setError(`Couldn't list the Data Apps: ${err.message}`)),
+    () =>
+      catalog().then(
+        (read) => {
+          setEntries(read.entries);
+          setRedirects(read.redirects);
+        },
+        (err: Error) => setError(`Couldn't list the Data Apps: ${err.message}`),
+      ),
     [],
   );
   const refreshDatasets = useCallback(
@@ -146,6 +163,15 @@ export function App() {
 
   const app = entries && path ? findApp(entries, path) : undefined;
   if (app) document.title = `${app.label} · anfra demo`;
+
+  // An old link to a Data App since moved, renamed or removed: the address is replaced with where it
+  // went, as the server would have sent it (the server does, in production, for links it sees).
+  const moved = entries && path && !app ? movedTo(entries, redirects, path) : undefined;
+  useEffect(() => {
+    if (!moved) return;
+    window.history.replaceState(null, '', urlOf(moved) + window.location.search + window.location.hash);
+    setPath(moved);
+  }, [moved]);
 
   // Pick works on the structure, which the frame reads only while it is inspected: picking opens
   // the panel, and closing the panel ends picking.
@@ -246,7 +272,7 @@ export function App() {
   } else if (!path) {
     content = entries ? <Home entries={entries} onSelect={select} /> : <Message>Loading…</Message>;
   } else if (entries && !app) {
-    content = <Message>No Data App at {path}.</Message>;
+    content = moved ? <Message>Loading…</Message> : <Message>No Data App at {path}.</Message>;
   } else if (!datasets) {
     content = <Message>Loading…</Message>;
   } else {

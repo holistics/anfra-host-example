@@ -1,8 +1,9 @@
 // What the page asks this host's own server (server/app.ts), apart from the core API.
 
-import type { AppPrompt, Entry } from '../../server/entry';
+import type { AppPrompt, Catalog, Entry } from '../../server/entry';
+import { type Redirects, redirectOf } from '../../server/redirect';
 
-export type { AppPrompt, Entry };
+export type { AppPrompt, Catalog, Entry, Redirects };
 
 export type AppEntry = Extract<Entry, { kind: 'app' }>;
 export type FolderEntry = Extract<Entry, { kind: 'folder' }>;
@@ -33,10 +34,21 @@ export function foldersOf(path: string): string[] {
   return parts.map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
-export async function catalog(): Promise<Entry[]> {
+export async function catalog(): Promise<Catalog> {
   const response = await fetch('/host/apps');
   if (!response.ok) throw new Error(`The server answered ${response.status}.`);
   return response.json();
+}
+
+/**
+ * Where an old link to a Data App goes, as the repo's redirects say (`apps/_meta.yaml`): a Data App
+ * there, or none. Paths as the tree has them, with their `.html`. The server sends such a link on
+ * before the page loads; this is for those it doesn't see: in development, where Vite serves the
+ * page, and back or forward to a page since moved.
+ */
+export function movedTo(entries: Entry[], redirects: Redirects, path: string): string | undefined {
+  const to = redirectOf(redirects, path.replace(/\.html$/i, ''), (p) => !!findApp(entries, `${p}.html`));
+  return to && `${to}.html`;
 }
 
 /** What changed in the repo, in development: Data Apps (their paths), or the AML. */

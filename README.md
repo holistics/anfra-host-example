@@ -28,10 +28,10 @@ browser                          this host (Node, Hono)                 anfra se
 - **The server** (`server/`) is the one origin the browser talks to:
   - `/api/core.show`, `/api/core.query` and `/api/core.query.export`, passed to anfra, and nothing else of the core API. Queries and exports are rate-limited per client, each with its own limit. The spot to check your own session is marked in `server/anfra.ts`.
   - `/exports/download/<token>/<name>`: an export's file, streamed from anfra. anfra makes its export links at this server's origin (`ANFRA_SITE_URL`, below), so the browser downloads through here, never from anfra directly. A link works for whoever has it until it expires; a host whose readers sign in checks the session here too (marked in `server/anfra.ts`).
-  - `/host/apps` (the Data App tree, labelled by each file's `<title>`), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
+  - `/host/apps` (the Data App tree, labelled by each file's `<title>`, and the [redirects](#redirects)), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
   - With `MCP=1`, `/mcp`: anfra's MCP endpoint, passed through. See [MCP](#mcp).
-  - In production, the built page, with each Data App's [link preview](#link-previews).
+  - In production, the built page, with each Data App's [link preview](#link-previews), and a 301 for an old link to a Data App since moved ([redirects](#redirects)).
 - **The page** (`src/`): every call into the SDK is in [`src/data-app.ts`](src/data-app.ts). That file is the part to copy into a host of your own; the rest is UI.
 
 ## Run it
@@ -106,7 +106,7 @@ Set `ANFRA_SITE_URL` to this host's public origin, as for anfra, so the links in
 
 ## Folder and app metadata
 
-A repo can say how its folders and Data Apps are shown in an optional `apps/_meta.yaml` (or `_meta.yml`). Keys are paths relative to `apps/` (a Data App's with its `.html`), so renaming something here never changes a URL. Every field is optional; without the file, folders are named by their directory, apps by their `<title>`, and everything is open and alphabetical.
+A repo can say how its folders and Data Apps are shown in an optional `apps/_meta.yaml` (or `_meta.yml`). Keys are paths relative to `apps/` (a Data App's with its `.html`), so renaming something here never changes a URL. Every field is optional; without the file, folders are named by their directory, apps by their `<title>`, and everything is open and alphabetical. The same file lists where moved Data Apps went: see [Redirects](#redirects).
 
 ```yaml
 folders:
@@ -134,6 +134,26 @@ apps:
 - A Data App's link preview takes its own `og:title` first, then `name`, then its `<title>`.
 - The server logs each problem once while it lasts: unknown fields, a field on the wrong kind (`endorsed` on a folder), a key written twice (`sales` and `sales/`), a key under the wrong section, and keys that match nothing.
 
+## Redirects
+
+Links to a Data App get shared (Slack, READMEs, other sites), and break when it is moved, renamed or deleted. List where the old paths went under `redirects` in the same `apps/_meta.yaml`, as the repo that moves the apps owns their URLs:
+
+```yaml
+redirects:
+  reports/: dashboards/                  # a folder: everything in it moved
+  reports/cashflow: archive/cashflow     # one Data App; wins over its folder's rule
+  "Fancy Demos/": playground/            # names as they are, spaces and all
+  sales-overview: dashboards/ecommerce   # a deleted app: send its readers to the nearest one
+```
+
+- Paths are as the page's URL has them under `/apps/`: relative to `apps/`, decoded, without `.html`. A key ending in `/` is a folder, and its value must end in `/` too; any other key is one Data App.
+- A Data App's own rule wins over a folder's; of two folders, the longer.
+- Chains are followed: after `a: b` and `b: c`, `a` goes to `c`. So moving an app again needs one more rule, not an edit of every old one.
+- Only a path that names no Data App is redirected: an app at that path again is served, and its rule is idle. A rule that ends nowhere, or loops, is idle too.
+- In production, the server answers `/apps/<old>?<query>` with a 301 to `/apps/<new>?<query>` before it sends the page, so link previews and browsers both land on the app. `/host/files/<old>.<ext>` (the definition, its preview image) goes to the file of the same name where the app went, when that file is there. A 301 is cached for an hour, not for good, as a path moved away may come back.
+- The page follows the same rules (`server/redirect.ts`, shared) for an old address it meets without the server: in development, where Vite serves the page, and on back or forward to a page since moved. It replaces the address in place.
+- The server logs, once while it lasts: an old path that is still there, a new one that names no Data App (or folder) after any chain, a loop, a folder rule whose value is no folder, a key written with `.html`.
+
 ## MCP
 
 With `MCP=1`, the server passes anfra's MCP endpoint (streamable HTTP) through at `/mcp`, so an agent can connect to `https://<this host>/mcp`. It is a plain passthrough, for demos: unlike `/api`, it has no allowlist, no rate limit and no auth spot. Every op anfra serves as a tool is reachable, except `core.ingest`, which rebuilds the search catalog and is refused here.
@@ -145,6 +165,7 @@ With `MCP=1`, the server passes anfra's MCP endpoint (streamable HTTP) through a
 
 ```sh
 pnpm typecheck
+pnpm test      # node:test, through tsx: server/*.test.ts
 pnpm lint      # Biome; pnpm format to fix
 pnpm build
 ```
@@ -158,6 +179,8 @@ server/
   anfra.ts     /api: the allowlist, rate limits, auth spot; export downloads; /health
   mcp.ts       /mcp, passed to anfra (MCP=1)
   catalog.ts   the Data App tree
+  meta.ts      apps/_meta.yaml: names, icons, order, redirects
+  redirect.ts  following redirects, shared with the page
   files.ts     a file under apps/, confined and sandboxed
   events.ts    live reload: the repo watched, changes debounced
 src/
