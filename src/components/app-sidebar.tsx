@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
   Sidebar,
   SidebarContent,
@@ -21,9 +22,10 @@ import {
   SidebarMenuSub,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { focusFilterMessage } from '@/data-app';
+import { focusFilterMessage, toggleSidebarMessage } from '@/data-app';
 import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
+import { modKey } from '@/lib/shortcut';
 
 interface Props {
   entries: Entry[] | undefined;
@@ -46,7 +48,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
 
   // `/` or Cmd/Ctrl+K jumps to the filter, opening the sidebar first if it's hidden. The focus waits
   // for a render, as a hidden sidebar (or the mobile sheet) has no input to focus yet.
-  const { isMobile, setOpen, setOpenMobile } = useSidebar();
+  const { isMobile, setOpen, setOpenMobile, toggleSidebar } = useSidebar();
   const inputRef = useRef<HTMLInputElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   useEffect(() => {
@@ -60,8 +62,10 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       (isMobile ? setOpenMobile : setOpen)(true);
       setFocusRequest((n) => n + 1);
     };
-    // The same shortcuts pressed inside a Data App's frame, which it forwards.
+    // The same shortcuts pressed inside a Data App's frame, which it forwards. Cmd/Ctrl+B is the
+    // sidebar's own, on the page.
     const onMessage = (event: MessageEvent) => {
+      if (event.data === toggleSidebarMessage) return toggleSidebar();
       if (event.data !== focusFilterMessage) return;
       (isMobile ? setOpenMobile : setOpen)(true);
       setFocusRequest((n) => n + 1);
@@ -72,7 +76,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('message', onMessage);
     };
-  }, [isMobile, setOpen, setOpenMobile]);
+  }, [isMobile, setOpen, setOpenMobile, toggleSidebar]);
   useEffect(() => {
     if (focusRequest === 0) return;
     const frame = requestAnimationFrame(() => {
@@ -117,19 +121,28 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
         <SidebarGroup className="md:pr-3">
           <SidebarGroupLabel>Apps</SidebarGroupLabel>
           <SidebarGroupContent>
-            <Input
-              ref={inputRef}
-              type="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                // A folder closed for one query would hide what the next one matches.
-                setSearched({});
-              }}
-              placeholder="Filter by name or tag (⌘K)"
-              aria-label="Filter Data Apps"
-              className="mb-2 h-8"
-            />
+            <div className="relative mb-2">
+              <Input
+                ref={inputRef}
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  // A folder closed for one query would hide what the next one matches.
+                  setSearched({});
+                }}
+                placeholder="Filter by name or tag"
+                aria-label="Filter Data Apps"
+                aria-keyshortcuts="Control+K Meta+K"
+                className="h-8 pr-14"
+              />
+              {!searching && (
+                <KbdGroup className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
+                  <Kbd>{modKey}</Kbd>
+                  <Kbd>K</Kbd>
+                </KbdGroup>
+              )}
+            </div>
             <SidebarMenu>
               {shown?.map((entry) => (
                 <Item
