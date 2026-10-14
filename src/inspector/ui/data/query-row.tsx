@@ -263,21 +263,33 @@ export function QueryRow({
                         </div>
                       )}
                     </div>,
-                    <div key="from" className="flex min-w-0 items-start gap-2.5">
-                      <TypeIcon icon={Icon} label={from} />
-                      {input.kind === 'declared' ? (
-                        <span className="text-muted-foreground">query</span>
-                      ) : input.self ? (
-                        <span className="text-muted-foreground">itself</span>
-                      ) : (
-                        <EntityLink
-                          entity={input.kind === 'control' ? 'control' : 'query'}
-                          app={props.app}
-                          name={input.source}
-                          onReveal={onReveal}
-                        />
-                      )}
-                    </div>,
+                    // The tooltip covers the icon and the source's name, so hovering either shows it.
+                    <Tooltip key="from">
+                      <TooltipTrigger asChild>
+                        <div className="flex min-w-0 items-start gap-2.5">
+                          <span
+                            role="img"
+                            aria-label={from}
+                            className="inline-flex h-5 items-center text-muted-foreground"
+                          >
+                            <Icon className="size-3.5 shrink-0" />
+                          </span>
+                          {input.kind === 'declared' ? (
+                            <span className="text-muted-foreground">query</span>
+                          ) : input.self ? (
+                            <span className="text-muted-foreground">itself</span>
+                          ) : (
+                            <EntityLink
+                              entity={input.kind === 'control' ? 'control' : 'query'}
+                              app={props.app}
+                              name={input.source}
+                              onReveal={onReveal}
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{from}</TooltipContent>
+                    </Tooltip>,
                   ],
                 };
               })}
