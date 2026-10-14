@@ -35,8 +35,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     exportRateLimit: Number(env.EXPORT_RATE_LIMIT ?? 10),
     trustProxy: env.TRUST_PROXY === '1',
     mcp: env.MCP === '1',
-    siteUrl: env.ANFRA_SITE_URL?.replace(/\/+$/, '') || undefined,
+    siteUrl: siteUrlOf(env.ANFRA_SITE_URL),
   };
+}
+
+/** ANFRA_SITE_URL as an origin, checked here so a bad one stops the server rather than its pages. */
+function siteUrlOf(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const url = URL.canParse(value) ? new URL(value) : undefined;
+  if (url?.protocol !== 'http:' && url?.protocol !== 'https:')
+    throw new Error(`ANFRA_SITE_URL must be an http(s) URL, as https://data.example.com: got ${value}`);
+  return value.replace(/\/+$/, '');
 }
 
 export const appsDir = (config: Config) => path.join(config.repoDir, 'apps');

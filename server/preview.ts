@@ -60,7 +60,19 @@ function originOf(c: Context, config: Config): string {
   if (config.siteUrl) return config.siteUrl;
   const url = new URL(c.req.url);
   const proto = config.trustProxy && c.req.header('x-forwarded-proto')?.split(',').at(-1)?.trim();
-  return proto ? `${proto}://${url.host}` : url.origin;
+  return proto === 'http' || proto === 'https' ? `${proto}://${url.host}` : url.origin;
+}
+
+const encodePath = (rel: string) => rel.split('/').map(encodeURIComponent).join('/');
+
+/** An author's image as an absolute URL, relative to their definition; none if it is no URL at all. */
+function imageOf(image: string | undefined, definitionUrl: string): string | undefined {
+  if (!image) return undefined;
+  try {
+    return new URL(image, definitionUrl).href;
+  } catch {
+    return undefined;
+  }
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
@@ -77,12 +89,8 @@ export function withPreview(
   rel?: string,
 ): string {
   const origin = originOf(c, config);
-  const image = preview?.image
-    ? new URL(
-        preview.image,
-        `${origin}/host/files/${(rel ?? '').split('/').map(encodeURIComponent).join('/')}`,
-      ).href
-    : origin + defaultImage;
+  const image =
+    imageOf(preview?.image, `${origin}/host/files/${encodePath(rel ?? '')}`) ?? origin + defaultImage;
   const title = preview?.title ?? site;
   const tags: [string, string, string][] = [
     ['name', 'description', preview?.description ?? siteDescription],
@@ -90,7 +98,8 @@ export function withPreview(
     ['property', 'og:site_name', site],
     ['property', 'og:title', title],
     ['property', 'og:description', preview?.description ?? siteDescription],
-    ['property', 'og:url', origin + c.req.path],
+    // The path as requested: `c.req.path` is decoded, and a space would break the link.
+    ['property', 'og:url', origin + new URL(c.req.url).pathname],
     ['property', 'og:image', image],
     ['name', 'twitter:card', 'summary_large_image'],
   ];
