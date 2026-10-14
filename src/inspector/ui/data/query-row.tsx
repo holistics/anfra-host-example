@@ -10,6 +10,7 @@ import {
   Hash,
   Info,
   type LucideIcon,
+  Sigma,
   SlidersHorizontal,
   ToggleLeft,
   Type,
@@ -147,58 +148,49 @@ export function QueryRow({
         )}
       </Fields>
 
-      <Definition>
+      <Section title="Definition" info="The metrics and dimensions the query returns.">
         {query.columns.length === 0 ? (
           <p className="px-1 text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
         ) : (
           <MiniTable
-            caption={`Fields (${query.columns.length})`}
-            head={['name', 'label', 'kind']}
+            head={['', 'name', 'label']}
             rows={query.columns.map((column) => {
-              const Icon = typeIcon[column.semantic_type] ?? CircleHelp;
+              const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+              const title = column.isMeasure
+                ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
+                : `dimension · ${column.semantic_type}`;
               return {
                 key: column.name,
                 cells: [
-                  <span key="name" className="inline-flex items-center gap-1.5 font-mono text-xs">
-                    <Icon
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-label={column.semantic_type}
-                    >
-                      <title>{column.semantic_type}</title>
-                    </Icon>
+                  <TypeIcon key="type" icon={Icon} label={title} />,
+                  <span key="name" className="font-mono text-xs leading-5">
                     {column.name}
-                  </span>,
-                  column.label,
-                  <span key="kind" className="whitespace-nowrap text-muted-foreground">
-                    {column.isMeasure
-                      ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
-                      : 'dimension'}
                     {column.adhoc && <span className="ml-1 text-amber-600 dark:text-amber-400">ad hoc</span>}
                   </span>,
+                  column.label,
                 ],
               };
             })}
           />
         )}
+      </Section>
 
-        {inputs.length > 0 && (
+      {inputs.length > 0 && (
+        <Section title="Inputs" info="The controls and cross-filters that filter the query.">
           <MiniTable
-            caption={`Inputs (${inputs.length})`}
-            head={['from · on', 'applied']}
+            head={['', 'from · on', 'applied']}
             rows={inputs.map((input) => {
               const Icon = input.kind === 'control' ? SlidersHorizontal : ChartColumn;
               const from = input.kind === 'control' ? 'From a control' : 'Cross-filter from a chart';
               return {
                 key: `${input.kind}:${input.source}`,
                 cells: [
+                  <TypeIcon key="type" icon={Icon} label={from} />,
                   // The field goes under its source, so the value keeps the width a narrow panel has.
                   <div key="from" className="min-w-0">
-                    <span className="inline-flex items-center gap-1.5 text-xs">
-                      <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-label={from}>
-                        <title>{from}</title>
-                      </Icon>
+                    <span className="text-xs leading-5">
                       {input.self ? (
                         <span className="text-muted-foreground">itself</span>
                       ) : (
@@ -210,9 +202,7 @@ export function QueryRow({
                         />
                       )}
                     </span>
-                    <div className="pl-5 font-mono text-xs break-all text-muted-foreground">
-                      {input.field}
-                    </div>
+                    <div className="font-mono text-xs break-all text-muted-foreground">{input.field}</div>
                   </div>,
                   <div key="applied" className="min-w-0">
                     <span
@@ -234,8 +224,8 @@ export function QueryRow({
               };
             })}
           />
-        )}
-      </Definition>
+        </Section>
+      )}
 
       <CodeBlock
         tab={codeTab}
@@ -268,25 +258,38 @@ export function QueryRow({
   );
 }
 
-/** How the query is defined: its fields, then what filters it. */
-function Definition({ children }: { children: ReactNode }) {
+/** A titled part of an opened query, with a hint on what it holds. */
+function Section({ title, info, children }: { title: string; info: string; children: ReactNode }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center gap-1 px-1 text-sm font-medium">
-        Definition
+        {title}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-xs" aria-label="About the definition">
+            <Button variant="ghost" size="icon-xs" aria-label={`About ${title.toLowerCase()}`}>
               <Info />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-64">
-            How the query is defined: the metrics and dimensions it returns, and the controls and
-            cross-filters that filter it.
+            {info}
           </TooltipContent>
         </Tooltip>
       </div>
       {children}
     </div>
+  );
+}
+
+/** An icon that says what it stands for on hover. */
+function TypeIcon({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} className="inline-flex h-5 items-center text-muted-foreground">
+          <Icon className="size-3.5 shrink-0" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
