@@ -8,6 +8,7 @@ import { type Check, type CheckLevel, controlMappings, crossFilters } from '../.
 import { declarationCode } from '../../model/declaration-code';
 import type { RevealTarget } from '../../model/types';
 import { CodeBlock } from '../shared/code-block';
+import { EntityLink } from '../shared/entity-link';
 import { Note, SectionTitle } from '../shared/fields';
 import { scrollToAndFlash } from '../shared/reveal';
 
@@ -17,13 +18,18 @@ interface Props {
   checks: Check[][];
   /** A check to scroll to, asked for from elsewhere in the panel; the nonce repeats a request. */
   focus: { app: number; check: number; nonce: number } | undefined;
+  /** Called once `focus` is handled, so the tab mounting again doesn't repeat it. */
+  onFocused: () => void;
   onReveal: (target: RevealTarget) => void;
 }
 
 /** How every app is put together, from its declaration. See SPEC.md §4.6. */
-export function WiringTab({ apps, checks, focus, onReveal }: Props) {
+export function WiringTab({ apps, checks, focus, onFocused, onReveal }: Props) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per render
   useEffect(() => {
-    if (focus) scrollToAndFlash(`[data-check="${focus.app}:${focus.check}"]`);
+    if (!focus) return;
+    scrollToAndFlash(`[data-check="${focus.app}:${focus.check}"]`);
+    onFocused();
   }, [focus]);
 
   if (!apps) return <Note>Waiting for the Data App…</Note>;
@@ -85,13 +91,7 @@ function Matrix({
   if (queries.length === 0) return null;
 
   const link = (entity: 'query' | 'control', name: string) => (
-    <button
-      type="button"
-      className="font-mono hover:underline"
-      onClick={() => onReveal({ entity, app: index, name })}
-    >
-      {name}
-    </button>
+    <EntityLink entity={entity} app={index} name={name} onReveal={onReveal} />
   );
 
   return (

@@ -22,8 +22,8 @@ export const TRUST_LEVELS: Record<TrustLevel, { tone: Tone; name: string; hint: 
   },
   2: {
     tone: 'warn',
-    name: 'Verified, with failures',
-    hint: 'Every query goes through the semantic layer, but some failed, so what the app shows may be incomplete.',
+    name: 'Verified, incomplete',
+    hint: "Every query goes through the semantic layer, but some failed or haven't returned yet, so what the app shows may be incomplete.",
   },
   3: {
     tone: 'ok',
@@ -50,6 +50,8 @@ const isEndorsed = (_query: InspectedQuery) => false;
 export function queryTrust(declaration: QueryDeclaration | undefined, query: InspectedQuery): Trust {
   if (!declaration?.dataset) return at(1, 'Not on the semantic layer: declares no dataset');
   if (query.state === 'error') return at(2, 'On the semantic layer, but failed');
+  // Verified means it came back: a query that hasn't yet can't be counted as verified.
+  if (query.state !== 'success') return at(2, "On the semantic layer, but hasn't returned yet");
   const adhoc = adhocCount(query);
   if (isEndorsed(query)) return at(4, 'Endorsed');
   return at(3, `Semantic layer verified · ${plural(adhoc, 'ad hoc field')}`);
@@ -64,7 +66,15 @@ export function appTrust(app: InspectedApp): Trust {
   const n = levels.filter((l) => l === level).length;
   const total = queries.length;
   if (level === 1) return at(1, `${n} of ${total} queries aren't on the semantic layer`);
-  if (level === 2) return at(2, `${n} of ${total} queries failed`);
+  if (level === 2) {
+    const failed = queries.filter(([, query]) => query.state === 'error').length;
+    const waiting = n - failed;
+    const parts = [
+      failed && `${failed} of ${total} queries failed`,
+      waiting && `${waiting} of ${total} haven't returned yet`,
+    ];
+    return at(2, parts.filter(Boolean).join(' · '));
+  }
   if (level === 4) return at(4, 'All queries are endorsed');
   const adhoc = queries.filter(([, query]) => adhocCount(query) > 0).length;
   return at(3, `All queries are semantic layer verified · ${adhoc} with ad hoc fields`);

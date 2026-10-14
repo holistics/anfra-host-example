@@ -23,6 +23,7 @@ import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { RevealTarget } from '../../model/types';
 import { CodeBlock } from '../shared/code-block';
+import { EntityLink } from '../shared/entity-link';
 import { Field, Fields } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
 import { stateDot, toneText } from '../shared/tone';
@@ -64,7 +65,7 @@ export function QueryRow({
 }) {
   // Opens on what ran; each query keeps its own tab.
   const [codeTab, setCodeTab] = useState<CodeTab>('aql');
-  const latest = requests.find(({ entry }) => entry.status === 'ok')?.entry;
+  const latest = requests.find(({ entry }) => entry.method === 'submitQuery' && entry.status === 'ok')?.entry;
   const rows = query.state === 'success' ? `${query.rowCount} row${query.rowCount === 1 ? '' : 's'}` : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
@@ -95,18 +96,8 @@ export function QueryRow({
   const below = query.error && (
     <p className="px-2 pb-1.5 pl-6 text-xs break-words text-destructive" role="alert">
       {query.error.name}
-      {query.error.status && ` (${query.error.status})`}: {query.error.message}
+      {query.error.status !== undefined && ` (${query.error.status})`}: {query.error.message}
     </p>
-  );
-
-  const link = (name: string, entity: 'query' | 'control') => (
-    <button
-      type="button"
-      className="font-mono hover:underline"
-      onClick={() => onReveal({ entity, app: props.app, name })}
-    >
-      {name}
-    </button>
   );
 
   return (
@@ -193,7 +184,12 @@ export function QueryRow({
                       {input.self ? (
                         <span className="text-muted-foreground">itself</span>
                       ) : (
-                        link(input.source, input.kind === 'control' ? 'control' : 'query')
+                        <EntityLink
+                          entity={input.kind === 'control' ? 'control' : 'query'}
+                          app={props.app}
+                          name={input.source}
+                          onReveal={onReveal}
+                        />
                       )}
                     </span>
                     <div className="pl-5 font-mono text-[11px] break-all text-muted-foreground">

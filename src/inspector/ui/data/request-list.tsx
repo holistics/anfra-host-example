@@ -83,6 +83,12 @@ function summaryOf(entry: RequestEntry): string {
   if (entry.method === 'fieldSuggestions') {
     return `suggestions for ${entry.field}${entry.q ? ` "${entry.q}"` : ''}${entry.numRows === undefined ? '' : ` · ${entry.numRows}`}`;
   }
+  if (entry.method === 'exportQuery') {
+    const parts = [`export${entry.format ? ` ${entry.format}` : ''}`];
+    if (entry.status === 'ok') parts.push(`${entry.numRows ?? 0} rows`);
+    else if (entry.status !== 'pending') parts.push(entry.status);
+    return parts.join(' · ');
+  }
   const parts = [entry.fromCache === undefined ? undefined : entry.fromCache ? 'cache' : 'database'];
   if (entry.page && entry.page > 1) parts.push(`page ${entry.page}`);
   if (entry.status === 'ok') parts.push(`${entry.numRows ?? 0} rows`);
@@ -91,9 +97,13 @@ function summaryOf(entry: RequestEntry): string {
 }
 
 function inputOf(entry: RequestEntry): string | undefined {
-  const { input, page, pageSize, bustCache, dataset, aql, field, q } = entry;
+  const { input, page, pageSize, bustCache, dataset, aql, field, q, format } = entry;
   const shown =
-    entry.method === 'submitQuery' ? { dataset, page, pageSize, bustCache, ...input } : { dataset, field, q };
+    entry.method === 'submitQuery'
+      ? { dataset, page, pageSize, bustCache, ...input }
+      : entry.method === 'exportQuery'
+        ? { dataset, format, ...input }
+        : { dataset, field, q };
   // Without the declared AQL, which the query shows already, and empty lists.
   const kept = Object.entries(shown).filter(
     ([, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0),

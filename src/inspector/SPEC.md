@@ -104,7 +104,8 @@ The landing tab. It answers "is this app healthy, and where do I look?"
 1. **Trust card**: a 3-bar meter, a level name and a sentence of why. An (i) tooltip lists all the
    levels. One query's level is the first rule that matches:
    1. *Unverified*: the query declares no dataset.
-   2. *Verified, with failures*: the query is in the `error` state.
+   2. *Verified, incomplete*: the query is in the `error` state, or hasn't returned yet (`idle` or
+      `executing`).
    3. *Semantic layer verified*. If some result columns are `adhoc`, it adds "· N ad hoc fields".
 
    The app's level is its lowest query's level. An app with no queries is level 1 ("No queries

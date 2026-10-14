@@ -4,7 +4,7 @@ import type { Backend, BackendQueryRequest, InspectedApp, QueryInput } from '@ho
 
 export interface RequestEntry {
   id: number;
-  method: 'submitQuery' | 'fieldSuggestions';
+  method: 'submitQuery' | 'fieldSuggestions' | 'exportQuery';
   /** When it was sent, as an ISO time. */
   at: string;
   /** Absent while pending. */
@@ -17,6 +17,8 @@ export interface RequestEntry {
   page?: number;
   pageSize?: number;
   bustCache?: boolean;
+  /** For an export: the file format asked for. */
+  format?: string;
   /** For a field suggestion: `model.field` and what was typed. */
   field?: string;
   q?: string;
@@ -109,6 +111,23 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
 
   return {
     record: (backend) => ({
+      // Only when the wrapped backend can export: without it, the SDK tells the app it can't.
+      ...(backend.exportQuery && {
+        exportQuery: (request, signal) =>
+          track(
+            {
+              method: 'exportQuery',
+              dataset: request.dataset,
+              aql: request.aql,
+              input: request.input,
+              format: request.format,
+            },
+            signal,
+            // biome-ignore lint/style/noNonNullAssertion: checked above
+            () => backend.exportQuery!(request, signal),
+            (result) => ({ numRows: result.rowCount }),
+          ),
+      }),
       submitQuery: (request, signal) =>
         track(
           {
@@ -166,7 +185,7 @@ export function queriesOf(
   entry: Pick<BackendQueryRequest, 'dataset' | 'aql'> & { method: RequestEntry['method'] },
   apps: InspectedApp[],
 ): QueryRef[] {
-  if (entry.method !== 'submitQuery') return [];
+  if (entry.method === 'fieldSuggestions') return [];
   return apps.flatMap((app, index) =>
     Object.entries(app.declaration.queries)
       .filter(([, q]) => q.dataset === entry.dataset && q.aql === entry.aql)

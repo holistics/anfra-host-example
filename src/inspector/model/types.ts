@@ -16,6 +16,15 @@ export interface DataFilter {
   filter: 'all' | 'errors' | 'dirty';
 }
 
+/**
+ * Which Data rows are open and which sections are closed. The panel keeps it, so it survives
+ * switching tabs, which unmounts the Data tab.
+ */
+export interface DataExpansion {
+  open: Set<string>;
+  closedSections: Set<string>;
+}
+
 /** Where a link in the panel goes. Every link resolves to one of these; see SPEC.md §4.8. */
 export type RevealTarget =
   | { tab: InspectorTab }

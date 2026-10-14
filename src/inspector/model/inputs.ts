@@ -16,6 +16,10 @@ export interface QueryInput {
   value: string;
 }
 
+/** The field a mapping filters on, with its aggregation. */
+const mappingField = (m: ReturnType<typeof controlMappings>[number]) =>
+  m.aggregation ? `${m.aggregation}(${m.field})` : m.field;
+
 export function queryInputs(app: InspectedApp, query: string): QueryInput[] {
   const controls: QueryInput[] = controlMappings(app)
     .filter((m) => m.to.name === query)
@@ -26,7 +30,7 @@ export function queryInputs(app: InspectedApp, query: string): QueryInput[] {
         kind: 'control',
         source: m.from.name,
         self: false,
-        field: m.aggregation ? `${m.aggregation}(${m.field})` : m.field,
+        field: mappingField(m),
         value: set,
       };
     });
@@ -55,5 +59,5 @@ export function queryInputs(app: InspectedApp, query: string): QueryInput[] {
 export function controlTargets(app: InspectedApp, control: string) {
   return controlMappings(app)
     .filter((m) => m.from.name === control)
-    .map((m) => ({ query: m.to.name, field: m.aggregation ? `${m.aggregation}(${m.field})` : m.field }));
+    .map((m) => ({ query: m.to.name, field: mappingField(m) }));
 }
