@@ -1,5 +1,6 @@
 import type { InspectedApp } from '@holistics/anfra-sdk/common';
 import {
+  ArrowUpRight,
   ChevronRight,
   Clock,
   Info,
@@ -11,9 +12,8 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Check } from '../../model/checks';
@@ -36,6 +36,12 @@ interface Props {
   onReveal: (target: RevealTarget) => void;
 }
 
+/** The space between widgets, at every level of the tab. */
+const gap = 'gap-3';
+
+/** The soft, borderless tile every Overview widget sits in. */
+const tile = 'rounded-xl bg-muted/50 p-3';
+
 /** How many issues the list shows before "Show all". */
 const FIRST_ISSUES = 5;
 
@@ -46,7 +52,7 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
   const issues = issuesOf(snapshot, checks);
 
   return (
-    <div className="space-y-4 p-2">
+    <div className={cn('flex flex-col p-2', gap)}>
       {apps.length === 0 ? (
         <Note>This Data App hasn't created an SDK app.</Note>
       ) : (
@@ -65,8 +71,8 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
 function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
   const trust = appTrust(app);
   return (
-    <Card className="py-3">
-      <CardContent className="px-3">
+    <div className={tile}>
+      <div>
         <div className="flex items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {label && <span className="font-medium text-foreground">{label} · </span>}
@@ -105,8 +111,8 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
             <p className="text-xs text-muted-foreground">{trust.text}</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -131,8 +137,8 @@ function Stats({
   const firstIssue = issues[0];
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2">
+    <div className={cn('flex flex-col', gap)}>
+      <div className={cn('grid grid-cols-3', gap)}>
         <Stat
           icon={<OctagonAlert />}
           title="Issues"
@@ -167,7 +173,7 @@ function Stats({
           onClick={() => onReveal({ tab: 'data' })}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={cn('grid grid-cols-2', gap)}>
         <Stat
           icon={<Clock />}
           title="Last request"
@@ -204,23 +210,27 @@ function Stat(props: {
   onClick?: () => void;
 }) {
   return (
-    <Item
-      asChild
-      variant="outline"
-      size="sm"
-      className="min-w-0 flex-col items-start gap-0.5 text-left hover:bg-accent"
+    <button
+      type="button"
+      disabled={!props.onClick}
+      onClick={props.onClick}
+      className={cn(
+        tile,
+        'group relative flex min-w-0 flex-col items-start gap-1 text-left enabled:hover:bg-muted',
+      )}
     >
-      <button type="button" disabled={!props.onClick} onClick={props.onClick}>
-        <ItemDescription className="flex items-center gap-1.5 [&_svg]:size-3.5">
-          {props.icon}
-          {props.title}
-        </ItemDescription>
-        <ItemTitle className={cn('text-lg tabular-nums', props.tone && toneText[props.tone])}>
-          {props.value}
-        </ItemTitle>
-        <ItemDescription className="w-full truncate">{props.detail}</ItemDescription>
-      </button>
-    </Item>
+      <span className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
+        {props.icon}
+        {props.title}
+      </span>
+      <span className={cn('text-xl font-semibold tabular-nums', props.tone && toneText[props.tone])}>
+        {props.value}
+      </span>
+      <span className="w-full truncate text-xs text-muted-foreground">{props.detail}</span>
+      {props.onClick && (
+        <ArrowUpRight className="absolute top-2.5 right-2.5 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+      )}
+    </button>
   );
 }
 
