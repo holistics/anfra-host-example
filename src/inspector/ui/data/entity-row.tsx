@@ -58,7 +58,7 @@ export function EntityRow({
         </Button>
       </div>
       {below}
-      {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3 pl-7">{children}</div>}
+      {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3">{children}</div>}
     </div>
   );
 }

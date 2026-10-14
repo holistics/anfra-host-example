@@ -98,7 +98,7 @@ export function QueryRow({
   );
   // An error shows open or not: it is what a failing app is inspected for.
   const below = query.error && (
-    <p className="px-2 pb-1.5 pl-6 text-xs break-words text-destructive" role="alert">
+    <p className="px-3 pb-1.5 text-xs break-words text-destructive" role="alert">
       {query.error.name}
       {query.error.status !== undefined && ` (${query.error.status})`}: {query.error.message}
     </p>
