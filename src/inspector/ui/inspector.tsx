@@ -56,6 +56,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
 
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
+      if (target.filter) setView({ search: '', filter: target.filter });
       onTab(target.tab);
     } else if ('entity' in target) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });

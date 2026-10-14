@@ -148,7 +148,14 @@ function Stats({
           detail={
             issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'
           }
-          onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
+          onClick={
+            // Failed queries are what the Data tab's Errors filter lists; warnings have no such list.
+            counts.error
+              ? () => onReveal({ tab: 'data', filter: 'errors' })
+              : firstIssue
+                ? () => onReveal(firstIssue.target)
+                : undefined
+          }
         />
         <Stat
           icon={<Table2 />}
