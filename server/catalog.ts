@@ -50,6 +50,17 @@ export function titleOf(html: string): string | undefined {
   return raw ? textOf(raw) || undefined : undefined;
 }
 
+/** A definition's `<meta name="description">`, as text, or none. */
+export function descriptionOf(html: string): string | undefined {
+  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
+    if (!/\bname\s*=\s*["']?description["'\s>/]/i.test(tag)) continue;
+    const content = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
+    const text = content ? textOf(content[1] ?? content[2] ?? '') : '';
+    if (text) return text;
+  }
+  return undefined;
+}
+
 /** The prompt that made a definition, from its `data-app-metadata` script, or none. */
 export function promptOf(html: string, rel: string): AppPrompt | undefined {
   const raw = metadataRe.exec(html)?.[1];
@@ -147,6 +158,7 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
           kind: 'app',
           path: childRel,
           label,
+          description: descriptionOf(html),
           icon: meta.icon,
           tags: meta.tags,
           endorsed: meta.endorsed ?? false,

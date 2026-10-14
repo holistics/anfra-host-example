@@ -7,6 +7,8 @@ export type Entry =
       kind: 'app';
       path: string;
       label: string;
+      /** The definition's `<meta name="description">`. */
+      description?: string;
       icon?: string;
       tags: string[];
       endorsed: boolean;
