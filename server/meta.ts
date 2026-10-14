@@ -12,6 +12,8 @@ export interface Meta {
   /** A name the page knows (src/lib/icons.ts). */
   icon?: string;
   tags: string[];
+  /** A Data App vouched for: it shows a check on its icon. */
+  endorsed?: boolean;
   /** A folder starts closed. */
   collapsed?: boolean;
   /** Sorts before the unordered, lowest first. */
@@ -54,6 +56,9 @@ function entryMeta(key: string, value: unknown): Meta {
       if (Array.isArray(v) && v.every((t) => typeof t === 'string'))
         meta.tags = v.map((t) => t.trim()).filter(Boolean);
       else warnOnce(`"${key}": tags should be a list of strings.`);
+    } else if (field === 'endorsed') {
+      if (typeof v === 'boolean') meta.endorsed = v;
+      else warnOnce(`"${key}": endorsed should be true or false.`);
     } else if (field === 'collapsed') {
       if (typeof v === 'boolean') meta.collapsed = v;
       else warnOnce(`"${key}": collapsed should be true or false.`);

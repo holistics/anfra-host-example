@@ -2,7 +2,7 @@
 
 /** One node of the Data App tree. Paths are relative to the apps folder, with their `.html`. */
 export type Entry =
-  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[] }
+  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[]; endorsed: boolean }
   | {
       kind: 'folder';
       path: string;
