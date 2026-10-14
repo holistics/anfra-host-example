@@ -25,12 +25,10 @@ export function titleOf(html: string): string | undefined {
   return raw ? textOf(raw) || undefined : undefined;
 }
 
-/** A definition's `<title>`, or its file name. */
-function labelOf(file: string): string {
-  return titleOf(readFileSync(file, 'utf8')) ?? path.basename(file);
-}
+/** Called with each definition as the tree is read, so a caller needing its HTML reads it once. */
+type OnApp = (rel: string, html: string) => void;
 
-function scan(root: string, rel: string): Entry[] {
+function scan(root: string, rel: string, onApp?: OnApp): Entry[] {
   let dirents: Dirent[];
   try {
     dirents = readdirSync(path.join(root, rel), { withFileTypes: true });
@@ -45,10 +43,13 @@ function scan(root: string, rel: string): Entry[] {
     const childRel = rel ? `${rel}/${d.name}` : d.name;
     if (d.isDirectory()) {
       // A folder holding no Data App, at any depth, is left out.
-      const children = scan(root, childRel);
+      const children = scan(root, childRel, onApp);
       if (children.length > 0) folders.push({ kind: 'folder', path: childRel, name: d.name, children });
     } else if (d.isFile() && d.name.toLowerCase().endsWith('.html')) {
-      apps.push({ kind: 'app', path: childRel, label: labelOf(path.join(root, childRel)) });
+      const html = readFileSync(path.join(root, childRel), 'utf8');
+      onApp?.(childRel, html);
+      // A definition's `<title>`, or its file name.
+      apps.push({ kind: 'app', path: childRel, label: titleOf(html) ?? d.name });
     }
   }
   // Folders first, then Data Apps, each alphabetical, as a file tree reads.
@@ -56,6 +57,6 @@ function scan(root: string, rel: string): Entry[] {
 }
 
 /** Every Data App definition under the apps folder, as a tree. Paths are relative to it, with their `.html`. */
-export function catalog(appsDir: string): Entry[] {
-  return scan(appsDir, '');
+export function catalog(appsDir: string, onApp?: OnApp): Entry[] {
+  return scan(appsDir, '', onApp);
 }
