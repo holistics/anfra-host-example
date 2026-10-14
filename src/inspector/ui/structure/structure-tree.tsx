@@ -1,7 +1,17 @@
 import type { InspectedStructure, StructureNode } from '@holistics/anfra-sdk/common';
-import { ArrowRight, ChevronRight, TriangleAlert } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronRight,
+  Database,
+  LayoutPanelTop,
+  type LucideIcon,
+  Shapes,
+  SlidersHorizontal,
+  TriangleAlert,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { handleFor } from '../../model/format';
 import { CopyButton } from '../shared/copy-button';
@@ -22,6 +32,14 @@ const pills: Record<StructureNode['kind'], string> = {
   block: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
   query: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
   control: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+};
+
+/** Each kind's icon, shown in its colored badge. */
+const icons: Record<StructureNode['kind'], LucideIcon> = {
+  container: LayoutPanelTop,
+  block: Shapes,
+  query: Database,
+  control: SlidersHorizontal,
 };
 
 /** What the markup names a node by: its id (a container or block) or name (a query or control). */
@@ -68,6 +86,7 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
   const renderNode = (node: StructureNode) => {
     const open = !collapsed.has(node.key);
     const id = idOf(node);
+    const Icon = icons[node.kind];
     const select = () => {
       setSelected(node.key);
       onLocate(node.key);
@@ -103,14 +122,20 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
           ) : (
             <span className="size-4 shrink-0" />
           )}
-          <span
-            className={cn(
-              'shrink-0 rounded px-2 py-px text-[11px] font-medium tracking-wide uppercase',
-              pills[node.kind],
-            )}
-          >
-            {node.kind}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn('grid size-5 shrink-0 place-items-center rounded', pills[node.kind])}
+                role="img"
+                aria-label={node.kind}
+              >
+                <Icon className="size-3.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="capitalize">
+              {node.kind}
+            </TooltipContent>
+          </Tooltip>
           {id && <span className="shrink truncate font-semibold">{id}</span>}
           {node.label && node.label !== id && (
             <span className="min-w-0 flex-1 truncate text-muted-foreground">{node.label}</span>

@@ -6,7 +6,15 @@ import type {
   LocateKind,
   LocateTarget,
 } from '@holistics/anfra-sdk/common';
-import { ChevronRight, Search } from 'lucide-react';
+import {
+  ChevronRight,
+  Database,
+  type LucideIcon,
+  MousePointerClick,
+  Network,
+  Search,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -159,6 +167,7 @@ export function DataTab({
 
               <Section
                 title="Queries"
+                icon={Database}
                 count={queries.length}
                 shown={filtering ? shownQueries.length : undefined}
                 empty={filtering ? none('queries') : 'None.'}
@@ -180,6 +189,7 @@ export function DataTab({
 
               <Section
                 title="Controls"
+                icon={SlidersHorizontal}
                 count={controls.length}
                 shown={filtering ? shownControls.length : undefined}
                 empty={
@@ -206,6 +216,7 @@ export function DataTab({
               {(app.selection || app.appliedSelection) && (
                 <Section
                   title="Selection"
+                  icon={MousePointerClick}
                   count={[app.selection, app.appliedSelection].filter(Boolean).length}
                   empty="None."
                   {...section('selection')}
@@ -221,6 +232,7 @@ export function DataTab({
         {requests.other.length > 0 && (
           <Section
             title="Other requests"
+            icon={Network}
             count={requests.other.length}
             empty="None."
             open={!closedSections.has('other')}
@@ -283,6 +295,7 @@ function Toolbar({
 
 function Section(props: {
   title: string;
+  icon: LucideIcon;
   count: number;
   /** How many show, when a search or filter hides some. */
   shown?: number;
@@ -301,6 +314,7 @@ function Section(props: {
         aria-expanded={props.open}
       >
         <ChevronRight className={cn('size-3 transition-transform', props.open && 'rotate-90')} />
+        <props.icon className="size-3.5" />
         {props.title}
         <span className="font-normal">
           {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
