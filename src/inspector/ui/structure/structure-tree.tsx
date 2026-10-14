@@ -119,7 +119,7 @@ export function StructureTree({
         <div
           data-node={node.key}
           className={cn(
-            'group flex h-7 cursor-pointer items-center gap-1.5 rounded-md pr-1 text-sm hover:bg-accent',
+            'group flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-1 text-sm hover:bg-accent',
             node.key === selected && 'bg-accent',
           )}
           onMouseEnter={() => onHighlight(node.key)}
@@ -212,7 +212,7 @@ export function StructureTree({
         </div>
         {open && node.children.length > 0 && (
           // The guide runs down from under the parent's chevron, one per level.
-          <ul className="ml-2 border-l pl-5">{node.children.map(renderNode)}</ul>
+          <ul className="ml-2 space-y-0.5 border-l pl-5">{node.children.map(renderNode)}</ul>
         )}
       </li>
     );
@@ -220,7 +220,7 @@ export function StructureTree({
 
   return (
     <div role="tree" onMouseLeave={() => onHighlight(null)}>
-      <ul>{structure.nodes.map(renderNode)}</ul>
+      <ul className="space-y-0.5">{structure.nodes.map(renderNode)}</ul>
     </div>
   );
 }
