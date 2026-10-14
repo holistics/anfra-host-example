@@ -20,6 +20,7 @@ export function AppInfo({ app }: { app: App }) {
         </button>
       </PopoverTrigger>
       <PopoverContent className="space-y-2 text-sm">
+        {app.description && <p>{app.description}</p>}
         <Row label="Path">
           <code className="break-all text-xs">{app.path}</code>
         </Row>
@@ -31,7 +32,6 @@ export function AppInfo({ app }: { app: App }) {
           </Row>
         )}
         {app.tags.length > 0 && <Row label="Tags">{app.tags.join(', ')}</Row>}
-        {prompt?.model && <Row label="Model">{prompt.model}</Row>}
         {prompt?.effort && <Row label="Effort">{prompt.effort}</Row>}
         {prompt?.createdAt && <Row label="Created">{formatTime(prompt.createdAt)}</Row>}
         {prompt?.updatedAt && prompt.updatedAt !== prompt.createdAt && (
