@@ -228,14 +228,14 @@ export function QueryRow({
         onTab={setCodeTab}
         sources={{
           declared: {
-            label: 'Declared',
+            label: 'Declared AQL',
             code: declaration?.aql && dedent(declaration.aql),
             lang: 'aql',
             empty: 'Not declared.',
           },
-          aql: { label: 'AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
+          aql: { label: 'Executed AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
           sql: {
-            label: 'SQL',
+            label: 'Executed SQL',
             code: query.debug?.executedSql,
             lang: 'sql',
             empty: canViewSql ? notRun : 'Needs canViewGeneratedSql.',
