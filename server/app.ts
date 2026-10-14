@@ -89,6 +89,8 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
         },
       }),
     );
+    // The rest of public/: the favicon and sidebar logo, and the default preview image.
+    app.get('/logo.svg', serveStatic({ root: pageDir }));
     app.get(defaultImage, serveStatic({ root: pageDir }));
 
     // The page itself: `/`, and `/apps/<path>` for each Data App, with its preview. Anything else
