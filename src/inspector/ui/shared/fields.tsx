@@ -33,8 +33,8 @@ export function SectionTitle({ children, className }: { children: ReactNode; cla
 /** A line saying what is missing, and why. */
 export function Note({ children }: { children: ReactNode }) {
   return (
-    <Empty>
-      <EmptyDescription>{children}</EmptyDescription>
+    <Empty className="flex-none gap-0 border bg-muted/30 p-4 md:p-4">
+      <EmptyDescription className="text-xs">{children}</EmptyDescription>
     </Empty>
   );
 }

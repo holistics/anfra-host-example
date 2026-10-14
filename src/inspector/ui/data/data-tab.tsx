@@ -246,7 +246,7 @@ export function DataTab({
             open={!closedSections.has('other')}
             onToggle={() => setClosedSections((prev) => toggleIn(prev, 'other'))}
           >
-            <RequestList items={requests.other.map((entry) => ({ entry }))} />
+            <RequestList cards items={requests.other.map((entry) => ({ entry }))} />
           </Section>
         )}
       </div>

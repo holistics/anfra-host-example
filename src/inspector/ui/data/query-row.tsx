@@ -10,6 +10,7 @@ import {
   Hash,
   Info,
   type LucideIcon,
+  Rows3,
   Sigma,
   SlidersHorizontal,
   ToggleLeft,
@@ -72,23 +73,43 @@ export function QueryRow({
   const latest = requests.find(
     ({ entry, shared }) => !shared && entry.method === 'submitQuery' && entry.status !== 'pending',
   )?.entry;
-  const rows = query.state === 'success' ? plural(query.rowCount, 'row') : '—';
+  const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
 
   const summary = (
     <>
-      <span className="truncate font-medium">{props.name}</span>
-      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-        <span className={cn('size-1.5 rounded-full', stateDot[query.state])} />
+      <span className="min-w-0 flex-1 truncate font-medium">{props.name}</span>
+      {/* Fixed-width columns, so flags, state, rows and trust line up from row to row. */}
+      <span className="w-10 shrink-0 text-xs text-muted-foreground">
+        {query.isDirty ? (
+          <span className="text-amber-600 dark:text-amber-400">dirty</span>
+        ) : (
+          query.debug?.fromCache && 'cache'
+        )}
+      </span>
+      <span className="flex w-16 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className={cn('size-1.5 shrink-0 rounded-full', stateDot[query.state])} />
         {query.state}
       </span>
-      {query.isDirty && <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>}
-      {query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>}
-      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span role="img" className="flex h-3 shrink-0 items-end" aria-label={`Trust level ${trust.level}`}>
+          <span className="flex w-16 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
+            {rows}
+            <Rows3 className="size-3.5 shrink-0" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {query.state === 'success' ? plural(query.rowCount, 'row') : 'No rows yet'}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            className="flex h-3 w-6 shrink-0 items-end justify-end"
+            aria-label={`Trust level ${trust.level}`}
+          >
             <TrustBars trust={trust} size="sm" />
           </span>
         </TooltipTrigger>

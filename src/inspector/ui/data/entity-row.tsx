@@ -29,7 +29,6 @@ export function EntityRow({
   children,
   ...props
 }: RowProps & { kind: LocateKind; summary: ReactNode; below?: ReactNode; children: ReactNode }) {
-  const attribute = entityAttribute(kind, props.app, props.name);
   return (
     <div
       data-entity={props.entityKey}
@@ -44,27 +43,6 @@ export function EntityRow({
         >
           {summary}
         </button>
-        {kind === 'control' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
-              <span className="inline-flex">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  disabled={!props.usage}
-                  aria-label="Locate"
-                  onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
-                >
-                  <Locate />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
-            </TooltipContent>
-          </Tooltip>
-        )}
         {/* The row button already carries the expanded state; this one is the same click, closer to hand. */}
         <Button variant="ghost" size="icon-xs" tabIndex={-1} aria-hidden onClick={props.onToggle}>
           <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />

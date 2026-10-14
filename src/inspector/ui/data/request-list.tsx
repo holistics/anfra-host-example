@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { formatTime, plural } from '../../model/format';
 import type { RequestEntry } from '../../model/requests';
 import { CodeBlock } from '../shared/code-block';
+import { Field, Fields } from '../shared/fields';
 import { stateDot } from '../shared/tone';
 
 /** How many of a query's requests show before "Show all". */
@@ -20,15 +21,26 @@ const statusColor: Record<RequestEntry['status'], string | undefined> = {
 };
 
 /** Requests, newest first: one line each, opened to their input and first rows. */
-export function RequestList({ items }: { items: { entry: RequestEntry; shared?: boolean }[] }) {
+export function RequestList({
+  items,
+  cards,
+}: {
+  items: { entry: RequestEntry; shared?: boolean }[];
+  /** Draw each request as a card like a query or control row, for requests listed on their own. */
+  cards?: boolean;
+}) {
   const [all, setAll] = useState(false);
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <div>
-      <ul className="space-y-0.5">
-        {shown.map(({ entry, shared }) => (
-          <RequestItem key={entry.id} entry={entry} shared={shared} />
-        ))}
+      <ul className={cards ? 'space-y-2' : 'space-y-0.5'}>
+        {shown.map(({ entry, shared }) =>
+          cards ? (
+            <RequestCard key={entry.id} entry={entry} />
+          ) : (
+            <RequestItem key={entry.id} entry={entry} shared={shared} />
+          ),
+        )}
       </ul>
       {items.length > FIRST && (
         <Button variant="link" size="xs" onClick={() => setAll(!all)}>
@@ -36,6 +48,63 @@ export function RequestList({ items }: { items: { entry: RequestEntry; shared?: 
         </Button>
       )}
     </div>
+  );
+}
+
+const methodLabel: Record<RequestEntry['method'], string> = {
+  submitQuery: 'Query',
+  exportQuery: 'Export',
+  fieldSuggestions: 'Suggestions',
+};
+
+/** A request as a card, laid out like a query row: what it is, how it ended, then its details. */
+function RequestCard({ entry }: { entry: RequestEntry }) {
+  const [open, setOpen] = useState(false);
+  const title = entry.method === 'fieldSuggestions' ? entry.field : entry.dataset;
+  return (
+    <li className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}>
+      <button
+        type="button"
+        className="flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-left text-sm hover:bg-accent"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <span className="truncate font-medium">{title || methodLabel[entry.method]}</span>
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <span className={cn('size-1.5 rounded-full', statusColor[entry.status])} />
+          {entry.status}
+        </span>
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{summaryOf(entry)}</span>
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+          {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
+        </span>
+        <ChevronRight
+          className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')}
+        />
+      </button>
+      {entry.error && (
+        <p className="px-3 pb-1.5 text-xs break-words text-destructive" role="alert">
+          {entry.error}
+        </p>
+      )}
+      {open && (
+        <div className="space-y-3 px-3 pt-1.5 pb-3">
+          <Fields>
+            <Field label="Type">{methodLabel[entry.method]}</Field>
+            <Field label="Dataset">{entry.dataset || 'none'}</Field>
+            <Field label="Sent at">{formatTime(entry.at)}</Field>
+          </Fields>
+          {entry.preview && entry.columns && (
+            <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />
+          )}
+          <CodeBlock
+            tab="input"
+            onTab={() => {}}
+            sources={{ input: { label: 'Input', code: inputOf(entry), lang: 'js', empty: 'No input.' } }}
+          />
+        </div>
+      )}
+    </li>
   );
 }
 
