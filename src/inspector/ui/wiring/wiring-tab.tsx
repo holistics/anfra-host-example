@@ -4,7 +4,7 @@ import { type ReactNode, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { type CheckLevel, controlMappings, crossFilters, wiringChecks } from '../../model/checks';
+import { type Check, type CheckLevel, controlMappings, crossFilters } from '../../model/checks';
 import { declarationCode } from '../../model/declaration-code';
 import type { RevealTarget } from '../../model/types';
 import { CodeBlock } from '../shared/code-block';
@@ -13,13 +13,15 @@ import { scrollToAndFlash } from '../shared/reveal';
 
 interface Props {
   apps: InspectedApp[] | undefined;
+  /** Each app's wiring checks, by index. */
+  checks: Check[][];
   /** A check to scroll to, asked for from elsewhere in the panel; the nonce repeats a request. */
   focus: { app: number; check: number; nonce: number } | undefined;
   onReveal: (target: RevealTarget) => void;
 }
 
 /** How every app is put together, from its declaration. See SPEC.md §4.6. */
-export function WiringTab({ apps, focus, onReveal }: Props) {
+export function WiringTab({ apps, checks, focus, onReveal }: Props) {
   useEffect(() => {
     if (focus) scrollToAndFlash(`[data-check="${focus.app}:${focus.check}"]`);
   }, [focus]);
@@ -39,7 +41,7 @@ export function WiringTab({ apps, focus, onReveal }: Props) {
           )}
           <Counts app={app} />
           <Matrix app={app} index={index} onReveal={onReveal} />
-          <Checks app={app} index={index} onReveal={onReveal} />
+          <Checks checks={checks[index] ?? []} index={index} onReveal={onReveal} />
           <Declaration app={app} />
         </section>
       ))}
@@ -156,15 +158,14 @@ const checkIcon: Record<CheckLevel, ReactNode> = {
 };
 
 function Checks({
-  app,
+  checks,
   index,
   onReveal,
 }: {
-  app: InspectedApp;
+  checks: Check[];
   index: number;
   onReveal: (target: RevealTarget) => void;
 }) {
-  const checks = wiringChecks(app);
   return (
     <div>
       <SectionTitle>Checks</SectionTitle>

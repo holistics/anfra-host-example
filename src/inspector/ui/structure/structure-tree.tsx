@@ -21,12 +21,13 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { handleFor } from '../../model/format';
+import type { NodeRequest } from '../../model/types';
 import { CopyButton } from '../shared/copy-button';
 
 interface Props {
   structure: InspectedStructure;
-  /** The node picked on the page, to select and reveal. */
-  picked: string | undefined;
+  /** A node to select and reveal: picked on the page, or asked for from elsewhere in the panel. */
+  picked: NodeRequest | undefined;
   onHighlight: (node: string | null) => void;
   onLocate: (node: string) => void;
   /** Open a query's or control's row in the Data tab. */
@@ -75,15 +76,16 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
   const [selected, setSelected] = useState<string>();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per snapshot
   useEffect(() => {
     if (!picked) return;
-    setSelected(picked);
-    const ancestors = ancestorsOf(structure.nodes, picked) ?? [];
+    setSelected(picked.key);
+    const ancestors = ancestorsOf(structure.nodes, picked.key) ?? [];
     setCollapsed((prev) => new Set([...prev].filter((key) => !ancestors.includes(key))));
     requestAnimationFrame(() =>
-      document.querySelector(`[data-node="${CSS.escape(picked)}"]`)?.scrollIntoView({ block: 'nearest' }),
+      document.querySelector(`[data-node="${CSS.escape(picked.key)}"]`)?.scrollIntoView({ block: 'nearest' }),
     );
-  }, [picked, structure]);
+  }, [picked]);
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {

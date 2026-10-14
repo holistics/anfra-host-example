@@ -4,6 +4,12 @@ import type { DatasetDescriptor, User } from '@holistics/anfra-sdk/common';
 
 export type InspectorTab = 'overview' | 'structure' | 'data' | 'wiring';
 
+/** A structure node to select and reveal; a new nonce repeats a request for the same node. */
+export interface NodeRequest {
+  key: string;
+  nonce: number;
+}
+
 /** What the Data tab shows: a search over names, datasets and labels, and a filter. */
 export interface DataFilter {
   search: string;

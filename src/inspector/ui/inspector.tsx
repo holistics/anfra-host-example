@@ -7,7 +7,7 @@ import { countProblems, entityKey } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
-import type { DataFilter, InspectorTab, RevealTarget } from '../model/types';
+import type { DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
@@ -21,8 +21,11 @@ interface Props {
   source: InspectorSource;
   tab: InspectorTab;
   onTab: (tab: InspectorTab) => void;
-  /** The node picked on the page, to select and reveal in the tree. The host owns pick mode. */
-  picked: string | undefined;
+  /**
+   * The node picked on the page, to select and reveal in the tree; a new nonce repeats a pick of
+   * the same node. The host owns pick mode.
+   */
+  picked: NodeRequest | undefined;
   onClose: () => void;
 }
 
@@ -38,11 +41,12 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
   const attributed = useMemo(() => attributeRequests(requests, apps ?? []), [requests, apps]);
   const problems = structure ? countProblems(structure.nodes) : 0;
   const counts = apps && queryCounts(apps);
-  const warnings = (apps ?? []).flatMap(wiringChecks).filter((c) => c.level !== 'info').length;
+  const checks = useMemo(() => (apps ?? []).map(wiringChecks), [apps]);
+  const warnings = checks.flat().filter((c) => c.level !== 'info').length;
 
   // An entity to open in Data, or a node to select in Structure; the nonce repeats a request.
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
-  const [node, setNode] = useState<string>();
+  const [node, setNode] = useState<NodeRequest>();
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   useEffect(() => setNode(picked), [picked]);
@@ -57,7 +61,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
       setCheck({ ...target, nonce: Date.now() });
       onTab('wiring');
     } else {
-      setNode(target.node);
+      setNode({ key: target.node, nonce: Date.now() });
       onTab('structure');
     }
   };
@@ -108,7 +112,13 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
 
         <TabsContent value="overview" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <OverviewTab snapshot={snapshot} env={source.env} requests={requests} onReveal={reveal} />
+            <OverviewTab
+              snapshot={snapshot}
+              env={source.env}
+              requests={requests}
+              checks={checks}
+              onReveal={reveal}
+            />
           </div>
         </TabsContent>
 
@@ -129,6 +139,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
                   picked={node}
                   onHighlight={source.highlight}
                   onLocate={(key) => source.locate({ node: key })}
+                  onDownload={source.download}
                   onShowInData={(n) => {
                     if (n.kind === 'query' || n.kind === 'control') {
                       reveal({ entity: n.kind, app: n.app ?? 0, name: n.name ?? '' });
@@ -158,7 +169,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
 
         <TabsContent value="wiring" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <WiringTab apps={apps} focus={check} onReveal={reveal} />
+            <WiringTab apps={apps} checks={checks} focus={check} onReveal={reveal} />
           </div>
         </TabsContent>
       </Tabs>
