@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -25,6 +26,8 @@ import {
   reader,
   type StructureNode,
   sdkVersion,
+  toggleInspectMessage,
+  togglePromptMessage,
 } from '@/data-app';
 import {
   createInspectorStore,
@@ -34,6 +37,7 @@ import {
   type NodeRequest,
 } from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
+import { altKey, modKey, shiftKey } from '@/lib/shortcut';
 import { cn } from '@/lib/utils';
 
 // Read once: while dragging, the resizer sets the width on the wrapper itself.
@@ -157,6 +161,35 @@ export function App() {
     setPanel(prompting ? undefined : 'prompt');
   };
 
+  // Alt+Shift+P and Alt+Shift+I, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
+  // a ref, so the listeners don't change with every render.
+  const shortcuts = useRef({ togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt });
+  shortcuts.current = { togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt };
+  useEffect(() => {
+    const run = (shortcut: 'prompt' | 'inspect') => {
+      const { togglePrompt, toggleInspecting, hasApp, hasPrompt } = shortcuts.current;
+      if (shortcut === 'prompt' && hasPrompt) togglePrompt();
+      if (shortcut === 'inspect' && hasApp) toggleInspecting();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
+      const shortcut = event.code === 'KeyP' ? 'prompt' : event.code === 'KeyI' ? 'inspect' : undefined;
+      if (!shortcut) return;
+      event.preventDefault();
+      run(shortcut);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.data === togglePromptMessage) run('prompt');
+      if (event.data === toggleInspectMessage) run('inspect');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('message', onMessage);
+    };
+  }, []);
+
   const onPick = (node: string | null) => {
     if (node) {
       setPicked({ key: node, nonce: Date.now() });
@@ -215,7 +248,18 @@ export function App() {
         <AppSidebar entries={entries} selected={path} onSelect={select} />
         <SidebarInset className="min-w-0 overflow-hidden md:peer-data-[variant=inset]:border">
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-            <SidebarTrigger />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarTrigger />
+              </TooltipTrigger>
+              <TooltipContent>
+                Toggle the app browser{' '}
+                <KbdGroup>
+                  <Kbd>{modKey}</Kbd>
+                  <Kbd>B</Kbd>
+                </KbdGroup>
+              </TooltipContent>
+            </Tooltip>
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
             <h1 className="truncate text-sm font-medium">{app?.label ?? 'anfra demo'}</h1>
             {app && <AppInfo app={app} />}
@@ -246,6 +290,7 @@ export function App() {
                 active={prompting}
                 onClick={togglePrompt}
                 text="Prompt"
+                shortcut="P"
               >
                 <ScrollText />
               </ToolbarButton>
@@ -255,6 +300,7 @@ export function App() {
                 active={inspecting}
                 onClick={toggleInspecting}
                 text="Inspect"
+                shortcut="I"
               >
                 <ScanSearch />
               </ToolbarButton>
@@ -327,14 +373,17 @@ function Message({ children }: { children: React.ReactNode }) {
   return <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">{children}</div>;
 }
 
-/** An icon button; with `text` it carries a visible label beside the icon. */
+/** An icon button; with `text` it carries a visible label beside the icon, and with `shortcut` its tooltip shows the Alt+Shift keys to press. */
 function ToolbarButton({
   label,
   active,
   text,
+  shortcut,
   children,
   ...props
-}: { label: string; active?: boolean; text?: string } & React.ComponentProps<typeof Button>) {
+}: { label: string; active?: boolean; text?: string; shortcut?: string } & React.ComponentProps<
+  typeof Button
+>) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -350,7 +399,19 @@ function ToolbarButton({
           {text}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>
+        {label}
+        {shortcut && (
+          <>
+            {' '}
+            <KbdGroup>
+              <Kbd>{altKey}</Kbd>
+              <Kbd>{shiftKey}</Kbd>
+              <Kbd>{shortcut}</Kbd>
+            </KbdGroup>
+          </>
+        )}
+      </TooltipContent>
     </Tooltip>
   );
 }

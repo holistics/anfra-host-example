@@ -61,14 +61,19 @@ export const reader: User = {
   permissions: { canViewGeneratedSql: true, canExportData: true },
 };
 
-/** Posted to the host by a frame when the reader presses the shortcut for the filter, as keys in a frame never reach the host. */
+/** Posted to the host by a frame when the reader presses a shortcut, as keys in a frame never reach the host. */
 export const focusFilterMessage = 'anfra-host:focus-filter';
+export const toggleSidebarMessage = 'anfra-host:toggle-sidebar';
+export const togglePromptMessage = 'anfra-host:toggle-prompt';
+export const toggleInspectMessage = 'anfra-host:toggle-inspect';
 
 /**
  * Appended to each definition: the frame is sandboxed, so the host can't listen for keys in it. It
- * forwards the filter's shortcuts, which the host answers.
+ * forwards the host's shortcuts (Cmd/Ctrl+K and `/` for the filter, Cmd/Ctrl+B for the sidebar,
+ * Alt+Shift+P for the prompt, Alt+Shift+I for inspect),
+ * which the host answers.
  */
-const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=e.metaKey||e.ctrlKey;if(m&&!e.altKey&&e.key.toLowerCase()==='k'||e.key==='/'&&!m&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))){e.preventDefault();parent.postMessage('${focusFilterMessage}','*')}},true)</script>`;
+const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'||e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true)</script>`;
 
 /** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
 export async function definition(path: string): Promise<{ html: string; baseHref: string }> {
