@@ -2,8 +2,41 @@
 
 /** One node of the Data App tree. Paths are relative to the apps folder, with their `.html`. */
 export type Entry =
-  | { kind: 'app'; path: string; label: string }
-  | { kind: 'folder'; path: string; name: string; children: Entry[] };
+  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[] }
+  | {
+      kind: 'folder';
+      path: string;
+      name: string;
+      icon?: string;
+      tags: string[];
+      collapsed: boolean;
+      children: Entry[];
+    };
+
+/** The tree cut to what matches a search: a name or a tag. A folder that matches keeps all it holds. */
+export function filterEntries(entries: Entry[], query: string): Entry[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return entries;
+  const matches = (text: string, tags: string[]) =>
+    text.toLowerCase().includes(q) || tags.some((tag) => tag.toLowerCase().includes(q));
+  const result: Entry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === 'app') {
+      if (matches(entry.label, entry.tags)) result.push(entry);
+    } else if (matches(entry.name, entry.tags)) {
+      result.push(entry);
+    } else {
+      const children = filterEntries(entry.children, query);
+      if (children.length > 0) result.push({ ...entry, children });
+    }
+  }
+  return result;
+}
+
+/** Whether a folder holds the Data App at a path, at any depth. */
+export function holds(entry: Entry, path: string | undefined): boolean {
+  return entry.kind === 'folder' && !!path && entry.children.some((c) => c.path === path || holds(c, path));
+}
 
 export async function catalog(): Promise<Entry[]> {
   const response = await fetch('/host/apps');

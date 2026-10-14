@@ -1,10 +1,11 @@
 import { AppWindowMac, ChevronRight, Folder } from 'lucide-react';
-import type { MouseEvent } from 'react';
+import { type MouseEvent, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +19,8 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
 } from '@/components/ui/sidebar';
-import { type Entry, urlOf } from '@/lib/host';
+import { type Entry, filterEntries, holds, urlOf } from '@/lib/host';
+import { iconOf } from '@/lib/icons';
 
 interface Props {
   entries: Entry[] | undefined;
@@ -28,6 +30,9 @@ interface Props {
 
 /** The Data Apps in the repo, as a tree of folders. */
 export function AppSidebar({ entries, selected, onSelect }: Props) {
+  const [query, setQuery] = useState('');
+  const searching = query.trim() !== '';
+  const shown = entries && filterEntries(entries, query);
   return (
     <Sidebar variant="inset">
       <SidebarHeader>
@@ -44,12 +49,29 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
         <SidebarGroup className="md:pr-3">
           <SidebarGroupLabel>Apps</SidebarGroupLabel>
           <SidebarGroupContent>
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Filter by name or tag"
+              aria-label="Filter Data Apps"
+              className="mb-2 h-8"
+            />
             <SidebarMenu>
-              {entries?.map((entry) => (
-                <Item key={entry.path} entry={entry} selected={selected} onSelect={onSelect} />
+              {shown?.map((entry) => (
+                <Item
+                  key={entry.path}
+                  entry={entry}
+                  selected={selected}
+                  onSelect={onSelect}
+                  searching={searching}
+                />
               ))}
               {entries?.length === 0 && (
                 <p className="px-2 text-sm text-muted-foreground">No Data Apps in the repo's apps folder.</p>
+              )}
+              {entries && entries.length > 0 && shown?.length === 0 && (
+                <p className="px-2 text-sm text-muted-foreground">Nothing matches.</p>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -64,8 +86,14 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   );
 }
 
-function Item({ entry, selected, onSelect }: { entry: Entry } & Omit<Props, 'entries'>) {
+function Item({
+  entry,
+  selected,
+  onSelect,
+  searching,
+}: { entry: Entry; searching: boolean } & Omit<Props, 'entries'>) {
   if (entry.kind === 'app') {
+    const Icon = iconOf(entry.icon, AppWindowMac);
     // A real link, so it opens in a new tab too; a plain click stays in the page.
     const onClick = (event: MouseEvent) => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
@@ -76,27 +104,39 @@ function Item({ entry, selected, onSelect }: { entry: Entry } & Omit<Props, 'ent
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <AppWindowMac />
+            <Icon />
             <span>{entry.label}</span>
           </a>
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
   }
+  const FolderIcon = iconOf(entry.icon, Folder);
   return (
     <SidebarMenuItem>
-      <Collapsible defaultOpen className="group/folder">
+      {/* Open while searching, so what matched shows; else closed when the repo says so, unless it holds the open app. */}
+      <Collapsible
+        key={searching ? 'search' : 'browse'}
+        defaultOpen={searching || !entry.collapsed || holds(entry, selected)}
+        className="group/folder"
+      >
         <CollapsibleTrigger asChild>
           <SidebarMenuButton>
             <ChevronRight className="transition-transform group-data-[state=open]/folder:rotate-90" />
-            <Folder />
+            <FolderIcon />
             <span>{entry.name}</span>
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub className="mr-0 pr-0">
             {entry.children.map((child) => (
-              <Item key={child.path} entry={child} selected={selected} onSelect={onSelect} />
+              <Item
+                key={child.path}
+                entry={child}
+                selected={selected}
+                onSelect={onSelect}
+                searching={searching}
+              />
             ))}
           </SidebarMenuSub>
         </CollapsibleContent>
