@@ -18,7 +18,8 @@ const siteDescription = 'Interactive Data Apps, built on anfra with coding agent
 /** In public/, so Vite copies it into the built page. 1200x630, as Open Graph sites crop to. */
 export const defaultImage = '/og-image.png';
 
-const metaRe = /<meta\b[^>]*>/gi;
+// A `>` inside a quoted value does not end the tag.
+const metaRe = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
 const attrRe = /([a-z:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
 
 /** A definition's `<meta>` tags, by name or property, each as text; the first of a name wins. */
