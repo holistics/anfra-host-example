@@ -1,6 +1,7 @@
 import type { ColumnMeta, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import {
   Binary,
+  Boxes,
   Braces,
   Calendar,
   CalendarClock,
@@ -113,7 +114,12 @@ export function QueryRow({
           </span>
           <span className="block text-muted-foreground">{trust.text}</span>
         </Field>
-        <Field label="Dataset">{declaration?.dataset || 'none declared'}</Field>
+        <Field label="Dataset">
+          <span className="inline-flex items-center gap-1.5">
+            <Boxes className="size-3.5 shrink-0 text-muted-foreground" />
+            {declaration?.dataset || 'none declared'}
+          </span>
+        </Field>
         <Field label="Drawn">
           <Drawn kind="query" app={props.app} name={props.name} usage={props.usage} />
         </Field>
