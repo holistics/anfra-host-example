@@ -278,14 +278,14 @@ function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: Inspe
     .map((app, index) => ({ app, label: apps.length > 1 ? `App ${index + 1}` : 'the app' }))
     .filter(({ app }) => app.timezone && app.timezone !== reader.timezone);
   return (
-    <Collapsible>
+    <Collapsible className={cn(tile, 'p-2')}>
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="group w-full justify-start">
+        <Button variant="ghost" size="sm" className="group w-full justify-start hover:bg-muted">
           <ChevronRight className="transition-transform group-data-[state=open]:rotate-90" />
           Environment
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2 px-1 pt-1.5">
+      <CollapsibleContent className="space-y-3 px-2 pt-3 pb-2">
         {mismatched.length > 0 && (
           <p className="flex gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
             <TriangleAlert className="mt-px size-3.5 shrink-0" />
