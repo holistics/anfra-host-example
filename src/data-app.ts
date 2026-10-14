@@ -61,6 +61,15 @@ export const reader: User = {
   permissions: { canViewGeneratedSql: true, canExportData: true },
 };
 
+/** Posted to the host by a frame when the reader presses the shortcut for the filter, as keys in a frame never reach the host. */
+export const focusFilterMessage = 'anfra-host:focus-filter';
+
+/**
+ * Appended to each definition: the frame is sandboxed, so the host can't listen for keys in it. It
+ * forwards the filter's shortcuts, which the host answers.
+ */
+const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=e.metaKey||e.ctrlKey;if(m&&!e.altKey&&e.key.toLowerCase()==='k'||e.key==='/'&&!m&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))){e.preventDefault();parent.postMessage('${focusFilterMessage}','*')}},true)</script>`;
+
 /** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
 export async function definition(path: string): Promise<{ html: string; baseHref: string }> {
   const file = path.split('/').map(encodeURIComponent).join('/');
@@ -68,7 +77,10 @@ export async function definition(path: string): Promise<{ html: string; baseHref
   if (!response.ok) throw new Error(`Couldn't read ${path}: the server answered ${response.status}.`);
   const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
   // Absolute: the frame's document is a srcdoc, so a relative base would resolve against nothing useful.
-  return { html: await response.text(), baseHref: `${window.location.origin}/host/files/${dir}` };
+  return {
+    html: (await response.text()) + keyForwarder,
+    baseHref: `${window.location.origin}/host/files/${dir}`,
+  };
 }
 
 export interface MountOptions {
