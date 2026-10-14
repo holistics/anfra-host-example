@@ -1,6 +1,6 @@
 // What feeds a query, and what a control feeds: the mappings and cross-filters of the declaration,
 // with each source's current value from the snapshot.
-import type { InspectedApp } from '@holistics/anfra-sdk/common';
+import type { InspectedApp, SemanticType } from '@holistics/anfra-sdk/common';
 import { controlMappings, crossFilters } from './checks';
 import { formatCondition } from './format';
 
@@ -12,10 +12,32 @@ export interface QueryInput {
   self: boolean;
   /** The field it filters on, with its aggregation; for a cross-filter, the selected fields. */
   field: string;
+  /** What kind of values the field holds, when it can be told; the query's own columns may know better. */
+  type?: SemanticType;
   /** What the query was last run with, in words: the applied value, not the one being edited. */
   value: string;
   /** The changed value not yet applied, in words, when it differs from `value`. */
   pending?: string;
+}
+
+const MANUAL_TYPES: Record<string, SemanticType> = {
+  string: 'text',
+  number: 'number',
+  date: 'date',
+  boolean: 'truefalse',
+};
+
+/** The kind of a control's values: the type its manual filter declares, else that of the value set. */
+function controlType(
+  declared: string | undefined,
+  condition: InspectedApp['controls'][string]['condition'] | undefined,
+): SemanticType | undefined {
+  if (declared && MANUAL_TYPES[declared]) return MANUAL_TYPES[declared];
+  const value: unknown = condition?.values?.[0];
+  if (typeof value === 'number') return 'number';
+  if (typeof value === 'boolean') return 'truefalse';
+  if (value instanceof Date) return 'datetime';
+  return typeof value === 'string' ? 'text' : undefined;
 }
 
 type Selection = NonNullable<InspectedApp['appliedSelection']>;
@@ -48,6 +70,10 @@ export function queryInputs(app: InspectedApp, query: string): QueryInput[] {
         source: m.from.name,
         self: false,
         field: mappingField(m),
+        type: controlType(
+          app.declaration.filters[m.from.name]?.type,
+          control?.appliedCondition ?? control?.condition,
+        ),
         value,
         pending: control?.isDirty && current !== value ? current : undefined,
       };
@@ -121,6 +147,14 @@ function splitEntries(block: string): string[] {
   return entries.map((entry) => entry.trim()).filter(Boolean);
 }
 
+/** The kind of an AQL literal, as far as its spelling says: `'a'`, `3`, `@2024-01-01`, `true`. */
+function literalType(operand: string): SemanticType | undefined {
+  if (/^["'`]/.test(operand)) return 'text';
+  if (/^-?\d/.test(operand)) return 'number';
+  if (operand.startsWith('@')) return 'date';
+  return /^(true|false)\b/.test(operand) ? 'truefalse' : undefined;
+}
+
 const CONDITION = /^(.*?)\s+(==|!=|>=|<=|>|<|not in|in|is not|is|like|not like|matches|not matches)\s+(.+)$/s;
 
 /**
@@ -136,7 +170,9 @@ export function declaredFilters(aql: string | undefined): QueryInput[] {
   return splitEntries(block).map((entry) => {
     const text = entry.replace(/\s+/g, ' ');
     const match = CONDITION.exec(text);
+    const operand = match?.[3]?.replace(/^[[(]\s*/, '');
     return {
+      type: operand ? literalType(operand) : undefined,
       kind: 'declared',
       source: 'query',
       self: true,
