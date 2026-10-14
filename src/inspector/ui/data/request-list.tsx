@@ -2,18 +2,20 @@ import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { formatTime } from '../../model/format';
+import { formatTime, plural } from '../../model/format';
 import type { RequestEntry } from '../../model/requests';
 import { CodeBlock } from '../shared/code-block';
+import { stateDot } from '../shared/tone';
 
 /** How many of a query's requests show before "Show all". */
 const FIRST = 5;
 
-const statusColor: Record<RequestEntry['status'], string> = {
-  ok: 'bg-emerald-500',
-  error: 'bg-destructive',
-  pending: 'bg-sky-500 animate-pulse',
-  aborted: 'bg-muted-foreground/40',
+/** A request's dot, colored as the query state it amounts to. */
+const statusColor: Record<RequestEntry['status'], string | undefined> = {
+  ok: stateDot.success,
+  error: stateDot.error,
+  pending: stateDot.executing,
+  aborted: stateDot.idle,
 };
 
 /** Requests, newest first: one line each, opened to their input and first rows. */
@@ -97,12 +99,25 @@ function summaryOf(entry: RequestEntry): string {
 }
 
 function inputOf(entry: RequestEntry): string | undefined {
-  const { input, page, pageSize, bustCache, dataset, aql, field, q, format } = entry;
+  const {
+    input,
+    page,
+    pageSize,
+    timezone,
+    bustCache,
+    dataset,
+    aql,
+    field,
+    q,
+    format,
+    formatOptions,
+    filename,
+  } = entry;
   const shown =
     entry.method === 'submitQuery'
-      ? { dataset, page, pageSize, bustCache, ...input }
+      ? { dataset, page, pageSize, timezone, bustCache, ...input }
       : entry.method === 'exportQuery'
-        ? { dataset, format, ...input }
+        ? { dataset, timezone, format, formatOptions, filename, ...input }
         : { dataset, field, q };
   // Without the declared AQL, which the query shows already, and empty lists.
   const kept = Object.entries(shown).filter(
@@ -120,7 +135,7 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
           ? 'No rows.'
           : total !== undefined && total > rows.length
             ? `First ${rows.length} of ${total} rows`
-            : `${rows.length} row${rows.length === 1 ? '' : 's'}`}
+            : plural(rows.length, 'row')}
       </p>
       {rows.length > 0 && (
         // The table scrolls within its own container, so the cap goes there for the header to stick.

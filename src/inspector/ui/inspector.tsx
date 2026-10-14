@@ -138,6 +138,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
                 <StructureTree
                   structure={structure}
                   picked={node}
+                  onPicked={() => setNode(undefined)}
                   onHighlight={source.highlight}
                   onLocate={(key) => source.locate({ node: key })}
                   onDownload={source.download}

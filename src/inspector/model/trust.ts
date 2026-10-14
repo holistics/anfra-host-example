@@ -2,6 +2,7 @@
 // level and the app's is its lowest query's. A query that declares a dataset goes through the
 // semantic layer. The fourth level, "Endorsed", is defined but not reached until the SDK reports endorsement.
 import type { InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
+import { plural } from './format';
 
 export type TrustLevel = 1 | 2 | 3 | 4;
 export type Tone = 'error' | 'warn' | 'ok';
@@ -15,6 +16,7 @@ export interface Trust {
 
 /** Name, tone and explanation of each level, for the meter's tooltip. */
 export const TRUST_LEVELS: Record<TrustLevel, { tone: Tone; name: string; hint: string }> = {
+  // Level 4 shows in the meter and its tooltip now, though nothing reaches it yet: see isEndorsed.
   1: {
     tone: 'error',
     name: 'Unverified',
@@ -37,13 +39,17 @@ export const TRUST_LEVELS: Record<TrustLevel, { tone: Tone; name: string; hint: 
   },
 };
 
+/** The levels, lowest first. */
+export const LEVELS = Object.keys(TRUST_LEVELS).map(Number) as TrustLevel[];
+
 const at = (level: TrustLevel, text: string): Trust => ({ level, tone: TRUST_LEVELS[level].tone, text });
 
 const adhocCount = (query: InspectedQuery) => query.columns.filter((column) => column.adhoc).length;
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-/** Placeholder: the SDK doesn't report endorsement yet, so nothing is endorsed and level 3 is the highest reached. */
+/**
+ * Placeholder: the SDK doesn't report endorsement yet, so nothing is endorsed and level 3 is the
+ * highest reached. Wiring it up is this function alone; the level-4 branches below wait on it.
+ */
 const isEndorsed = (_query: InspectedQuery) => false;
 
 /** One query's level, with why. */
@@ -52,9 +58,8 @@ export function queryTrust(declaration: QueryDeclaration | undefined, query: Ins
   if (query.state === 'error') return at(2, 'On the semantic layer, but failed');
   // Verified means it came back: a query that hasn't yet can't be counted as verified.
   if (query.state !== 'success') return at(2, "On the semantic layer, but hasn't returned yet");
-  const adhoc = adhocCount(query);
   if (isEndorsed(query)) return at(4, 'Endorsed');
-  return at(3, `Semantic layer verified · ${plural(adhoc, 'ad hoc field')}`);
+  return at(3, `Semantic layer verified · ${plural(adhocCount(query), 'ad hoc field')}`);
 }
 
 /** The app's level: its lowest query's, or 1 with no queries. */

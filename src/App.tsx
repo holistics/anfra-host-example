@@ -1,5 +1,5 @@
 import { Crosshair, Download, PanelRight, RotateCw } from 'lucide-react';
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
@@ -87,9 +87,16 @@ export function App() {
 
   // A new Data App starts with nothing inspected: one inspector store, request log and panel per
   // mounted frame. The stage and the panel are keyed on `mount`, so a new store always comes with a
-  // new frame recording into it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new mount whenever the app, its revision or the datasets change
-  const inspector = useMemo(() => {
+  // new frame recording into it. A ref, not a memo: React may drop a memo and build it again, which
+  // would split the frame from its store; a ref keeps the mount until the app, its revision or the
+  // datasets change.
+  const mounted = useRef<{ deps: unknown[]; inspector: ReturnType<typeof mountInspector> }>(null);
+  const deps = [path, revision, datasets];
+  if (!mounted.current || deps.some((dep, i) => !Object.is(dep, mounted.current?.deps[i]))) {
+    mounted.current = { deps, inspector: mountInspector() };
+  }
+  const { inspector } = mounted.current;
+  function mountInspector() {
     const requests = createRequestLog();
     const store = createInspectorStore({
       env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
@@ -99,7 +106,7 @@ export function App() {
       download: (node, format) => downloadNode(node, format),
     });
     return { ...store, record: requests.record, mount: ++mounts };
-  }, [path, revision, datasets]);
+  }
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each mount
   useEffect(() => {
     setPicked(undefined);

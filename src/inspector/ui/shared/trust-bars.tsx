@@ -1,8 +1,6 @@
 import { cn } from '@/lib/utils';
-import { TRUST_LEVELS, type Trust, type TrustLevel } from '../../model/trust';
+import { LEVELS, type Trust } from '../../model/trust';
 import { toneFill } from './tone';
-
-const LEVELS = Object.keys(TRUST_LEVELS).map(Number) as TrustLevel[];
 
 /** The trust meter: one rising bar per level, filled up to the one reached. */
 export function TrustBars({ trust, size = 'md' }: { trust: Trust; size?: 'sm' | 'md' }) {

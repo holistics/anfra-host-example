@@ -1,6 +1,12 @@
 // The request log: every call the frame's queries make to the host's backend, recorded host-side
 // with what the snapshots leave out, how long it took and a few of its rows. See SPEC.md §5.3.
-import type { Backend, BackendQueryRequest, InspectedApp, QueryInput } from '@holistics/anfra-sdk/common';
+import type {
+  Backend,
+  BackendQueryRequest,
+  ExportFormatOptions,
+  InspectedApp,
+  QueryInput,
+} from '@holistics/anfra-sdk/common';
 
 export interface RequestEntry {
   id: number;
@@ -17,8 +23,12 @@ export interface RequestEntry {
   page?: number;
   pageSize?: number;
   bustCache?: boolean;
-  /** For an export: the file format asked for. */
+  /** The timezone it ran in; absent when the app declares none, leaving the backend's default. */
+  timezone?: string;
+  /** For an export: the file format asked for, its options and the file's name. */
   format?: string;
+  formatOptions?: ExportFormatOptions;
+  filename?: string;
   /** For a field suggestion: `model.field` and what was typed. */
   field?: string;
   q?: string;
@@ -120,7 +130,10 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
               dataset: request.dataset,
               aql: request.aql,
               input: request.input,
+              timezone: request.timezone,
               format: request.format,
+              formatOptions: request.formatOptions,
+              filename: request.filename,
             },
             signal,
             // biome-ignore lint/style/noNonNullAssertion: checked above
@@ -137,6 +150,7 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
             input: request.input,
             page: request.page,
             pageSize: request.pageSize,
+            timezone: request.timezone,
             bustCache: request.bustCache,
           },
           signal,
@@ -197,12 +211,16 @@ export function queriesOf(
 export function attributeRequests(entries: readonly RequestEntry[], apps: InspectedApp[]) {
   const byQuery = new Map<string, { entry: RequestEntry; shared: boolean }[]>();
   const other: RequestEntry[] = [];
-  for (const entry of [...entries].reverse()) {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i] as RequestEntry;
     const refs = entry.aql ? queriesOf({ ...entry, aql: entry.aql }, apps) : [];
     if (refs.length === 0) other.push(entry);
     for (const ref of refs) {
       const key = `${ref.app}/${ref.name}`;
-      byQuery.set(key, [...(byQuery.get(key) ?? []), { entry, shared: refs.length > 1 }]);
+      const item = { entry, shared: refs.length > 1 };
+      const list = byQuery.get(key);
+      if (list) list.push(item);
+      else byQuery.set(key, [item]);
     }
   }
   return { byQuery, other };

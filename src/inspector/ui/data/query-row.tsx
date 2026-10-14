@@ -17,7 +17,7 @@ import { type ReactNode, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
-import { formatTime, prettyJson } from '../../model/format';
+import { formatTime, plural, prettyJson } from '../../model/format';
 import type { QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
@@ -65,8 +65,11 @@ export function QueryRow({
 }) {
   // Opens on what ran; each query keeps its own tab.
   const [codeTab, setCodeTab] = useState<CodeTab>('aql');
-  const latest = requests.find(({ entry }) => entry.method === 'submitQuery' && entry.status === 'ok')?.entry;
-  const rows = query.state === 'success' ? `${query.rowCount} row${query.rowCount === 1 ? '' : 's'}` : '—';
+  // The newest run that ended, however it did; one another query may have made isn't this one's.
+  const latest = requests.find(
+    ({ entry, shared }) => !shared && entry.method === 'submitQuery' && entry.status !== 'pending',
+  )?.entry;
+  const rows = query.state === 'success' ? plural(query.rowCount, 'row') : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
 

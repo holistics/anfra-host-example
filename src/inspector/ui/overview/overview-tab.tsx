@@ -13,10 +13,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Check } from '../../model/checks';
-import { formatTime } from '../../model/format';
+import { formatTime, plural } from '../../model/format';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
-import { appTrust, TRUST_LEVELS, type TrustLevel } from '../../model/trust';
+import { appTrust, LEVELS, TRUST_LEVELS } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
 import { Field, Fields, Note, SectionTitle } from '../shared/fields';
@@ -60,7 +60,6 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
 
 function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
   const trust = appTrust(app);
-  const levels = Object.keys(TRUST_LEVELS).map(Number) as TrustLevel[];
   return (
     <div className="rounded-lg border p-3">
       <div className="flex items-center gap-2">
@@ -79,7 +78,7 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
-            {levels.map((level) => (
+            {LEVELS.map((level) => (
               <p key={level}>
                 <span className="font-medium">
                   {level}. {TRUST_LEVELS[level].name}
@@ -130,7 +129,7 @@ function Stats({
         title="Issues"
         value={issues.length}
         tone={errors ? 'error' : warnings ? 'warn' : undefined}
-        detail={issues.length ? `${errors} errors · ${warnings} warnings` : 'None found'}
+        detail={issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'}
         onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
       />
       <Stat
@@ -246,7 +245,9 @@ function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: Inspe
   const { reader } = env;
   const datasets = Object.values(env.datasets).map((d) => d.label || d.name);
   // An app without a timezone of its own runs in the tenant's, which the host doesn't know.
-  const mismatched = apps.filter((app) => app.timezone && app.timezone !== reader.timezone);
+  const mismatched = apps
+    .map((app, index) => ({ app, label: apps.length > 1 ? `App ${index + 1}` : 'the app' }))
+    .filter(({ app }) => app.timezone && app.timezone !== reader.timezone);
   return (
     <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded px-1 py-0.5 hover:text-foreground">
@@ -257,8 +258,9 @@ function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: Inspe
         {mismatched.length > 0 && (
           <p className="flex gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
             <TriangleAlert className="mt-px size-3.5 shrink-0" />
-            The reader is in {reader.timezone}, but {mismatched.map((a) => a.title || 'an app').join(', ')}{' '}
-            runs in {mismatched[0]?.timezone}: dates are computed in the app's timezone.
+            The reader is in {reader.timezone}, but{' '}
+            {mismatched.map(({ app, label }) => `${label} runs in ${app.timezone}`).join(', ')}: dates are
+            computed in the app's timezone.
           </p>
         )}
         <Fields>
