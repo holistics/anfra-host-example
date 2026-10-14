@@ -39,13 +39,13 @@ function metaOf(html: string): Map<string, string> {
 }
 
 /**
- * A Data App's preview, from its definition: the manifest's `name` (as the sidebar shows it), else
- * its `og:title` or `<title>`; its `og:description` or `description`; its `og:image`.
+ * A Data App's preview, from its definition: its `og:title`, written for sharing, else the manifest's
+ * `name` (as the sidebar shows it), else its `<title>`; its `og:description` or `description`; its `og:image`.
  */
 export function appPreview(rel: string, html: string, name?: string): Preview {
   const meta = metaOf(html);
   return {
-    title: name ?? meta.get('og:title') ?? titleOf(html) ?? (rel.split('/').at(-1) as string),
+    title: meta.get('og:title') ?? name ?? titleOf(html) ?? (rel.split('/').at(-1) as string),
     description: meta.get('og:description') ?? meta.get('description') ?? siteDescription,
     image: meta.get('og:image'),
   };

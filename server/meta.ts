@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
+import { iconNames } from './entry.js';
 
-/** Where a repo says how its Data Apps are shown, under the apps folder. */
+/** Where a repo says how its Data Apps are shown, under the apps folder; `.yml` is read too. */
 export const metaFile = '_meta.yaml';
+const altMetaFile = '_meta.yml';
 
 /** What the manifest says of one folder or Data App. Every field is optional. */
 export interface Meta {
@@ -27,20 +29,36 @@ export interface MetaFile {
   apps: Map<string, Meta>;
 }
 
-const warned = new Set<string>();
+/** The problems said on the last read of the tree, and on this one. */
+let previous = new Set<string>();
+let current = new Set<string>();
 
-/** Say a problem once, not on every read of the tree. */
+/** A new read of the tree: a problem still there isn't said again; one fixed and made again is. */
+export function startRead() {
+  previous = current;
+  current = new Set();
+}
+
+/** Say a problem once while it lasts, not on every read of the tree. */
 export function warnOnce(message: string) {
-  if (warned.has(message)) return;
-  warned.add(message);
-  console.warn(`${metaFile}: ${message}`);
+  if (current.has(message)) return;
+  current.add(message);
+  if (!previous.has(message)) console.warn(`${metaFile}: ${message}`);
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** A key as a path relative to the apps folder: no `./`, no trailing slash. */
-const normalize = (key: string) => key.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+/** A key as a path relative to the apps folder: no leading `./` or `/`, no trailing slash. */
+const normalize = (key: string) => key.replace(/^(\.?\/)+/, '').replace(/\/+$/, '');
+
+/** A YAML scalar as text: `2024` is read as a number, but meant as a name or tag. */
+const textOf = (value: unknown) =>
+  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? String(value).trim()
+    : '';
+
+const knownIcons: ReadonlySet<string> = new Set(iconNames);
 
 type Section = 'folders' | 'apps';
 
@@ -60,13 +78,19 @@ function entryMeta(key: string, value: unknown, kind: Section): Meta {
     const only = onlyFor.get(field);
     if (only && only !== kind) {
       warnOnce(`"${key}": ${field} applies to ${only === 'apps' ? 'Data Apps' : 'folders'} only; ignored.`);
-    } else if (field === 'name' || field === 'icon') {
-      if (typeof v === 'string' && v.trim()) meta[field] = v.trim();
-      else warnOnce(`"${key}": ${field} should be a non-empty string.`);
+    } else if (field === 'name') {
+      const name = textOf(v);
+      if (name) meta.name = name;
+      else warnOnce(`"${key}": name should be a non-empty string.`);
+    } else if (field === 'icon') {
+      if (typeof v === 'string' && knownIcons.has(v.trim())) meta.icon = v.trim();
+      else warnOnce(`"${key}": icon should be one of ${iconNames.join(', ')}.`);
     } else if (field === 'tags') {
-      if (Array.isArray(v) && v.every((t) => typeof t === 'string'))
-        meta.tags = v.map((t) => t.trim()).filter(Boolean);
-      else warnOnce(`"${key}": tags should be a list of strings.`);
+      // A bad item is dropped alone, so the others still match a search.
+      const list: unknown[] = Array.isArray(v) ? v : [];
+      meta.tags = list.map(textOf).filter(Boolean);
+      if (!Array.isArray(v) || meta.tags.length < list.length)
+        warnOnce(`"${key}": tags should be a list of names.`);
     } else if (field === 'endorsed') {
       if (typeof v === 'boolean') meta.endorsed = v;
       else warnOnce(`"${key}": endorsed should be true or false.`);
@@ -100,15 +124,26 @@ function section(root: Record<string, unknown>, name: Section): Map<string, Meta
   return result;
 }
 
+/** A file's text, or none when it isn't there; one that can't be read is said. */
+function readText(file: string): string | undefined {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+      warnOnce(`can't read ${path.basename(file)}: ${(err as Error).message}`);
+    return undefined;
+  }
+}
+
 /** The manifest under the apps folder, or an empty one when there is none or it can't be read. */
 export function readMeta(appsDir: string): MetaFile {
   const empty: MetaFile = { folders: new Map(), apps: new Map() };
-  let text: string;
-  try {
-    text = readFileSync(path.join(appsDir, metaFile), 'utf8');
-  } catch {
-    return empty;
-  }
+  const yaml = readText(path.join(appsDir, metaFile));
+  const yml = readText(path.join(appsDir, altMetaFile));
+  if (yaml !== undefined && yml !== undefined)
+    warnOnce(`${altMetaFile} is ignored, as ${metaFile} is there.`);
+  const text = yaml ?? yml;
+  if (text === undefined) return empty;
   let root: unknown;
   try {
     root = parse(text);

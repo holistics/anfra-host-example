@@ -104,7 +104,7 @@ Set `ANFRA_SITE_URL` to this host's public origin, as for anfra, so the links in
 
 ## Folder and app metadata
 
-A repo can say how its folders and Data Apps are shown in an optional `apps/_meta.yaml`. Keys are paths relative to `apps/` (a Data App's with its `.html`), so renaming something here never changes a URL. Every field is optional; without the file, folders are named by their directory, apps by their `<title>`, and everything is open and alphabetical.
+A repo can say how its folders and Data Apps are shown in an optional `apps/_meta.yaml` (or `_meta.yml`). Keys are paths relative to `apps/` (a Data App's with its `.html`), so renaming something here never changes a URL. Every field is optional; without the file, folders are named by their directory, apps by their `<title>`, and everything is open and alphabetical.
 
 ```yaml
 folders:
@@ -123,11 +123,12 @@ apps:
     order: 1
 ```
 
-- `icon` is one of the names in `src/lib/icons.ts` (lucide, kebab-case); an unknown one falls back to the default.
+- `icon` is one of the names in `server/entry.ts` (lucide, kebab-case); an unknown one is logged and falls back to the default.
 - `endorsed: true` (Data Apps) puts a small green check on the icon's bottom right.
 - The sidebar's filter matches names and tags.
 - `order` puts entries first, lowest first; the rest follow by file name.
-- The server logs each problem once: unknown fields, a field on the wrong kind (`endorsed` on a folder), a key written twice (`sales` and `sales/`), a key under the wrong section, and keys that match nothing.
+- A Data App's link preview takes its own `og:title` first, then `name`, then its `<title>`.
+- The server logs each problem once while it lasts: unknown fields, a field on the wrong kind (`endorsed` on a folder), a key written twice (`sales` and `sales/`), a key under the wrong section, and keys that match nothing.
 
 ## MCP
 

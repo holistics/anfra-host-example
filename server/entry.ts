@@ -13,3 +13,29 @@ export type Entry =
       collapsed: boolean;
       children: Entry[];
     };
+
+/** The icons a repo's `apps/_meta.yaml` can name: lucide's, in kebab-case. The page maps each to its component (src/lib/icons.ts). */
+export const iconNames = [
+  'activity',
+  'app-window',
+  'chart-bar',
+  'chart-line',
+  'chart-pie',
+  'credit-card',
+  'database',
+  'folder',
+  'gauge',
+  'globe',
+  'layout-dashboard',
+  'megaphone',
+  'package',
+  'rocket',
+  'shopping-cart',
+  'star',
+  'table',
+  'truck',
+  'users',
+  'wallet',
+] as const;
+
+export type IconName = (typeof iconNames)[number];

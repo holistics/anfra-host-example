@@ -21,9 +21,10 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
+import type { IconName } from '../../server/entry';
 
-/** The icons a repo's `apps/_meta.yaml` can name, by their lucide names in kebab-case. */
-const icons: Record<string, LucideIcon> = {
+/** The icons a repo's `apps/_meta.yaml` can name (server/entry.ts), each to its component. */
+const icons: Record<IconName, LucideIcon> = {
   activity: Activity,
   'app-window': AppWindowMac,
   'chart-bar': ChartBar,
@@ -48,5 +49,5 @@ const icons: Record<string, LucideIcon> = {
 
 /** The icon a name stands for, else the fallback. Own keys only: `constructor` is no icon. */
 export function iconOf(name: string | undefined, fallback: LucideIcon): LucideIcon {
-  return (name && Object.hasOwn(icons, name) && icons[name]) || fallback;
+  return (name && Object.hasOwn(icons, name) && icons[name as IconName]) || fallback;
 }

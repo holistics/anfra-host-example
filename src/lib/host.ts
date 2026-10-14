@@ -5,6 +5,7 @@ import type { Entry } from '../../server/entry';
 export type { Entry };
 
 export type AppEntry = Extract<Entry, { kind: 'app' }>;
+export type FolderEntry = Extract<Entry, { kind: 'folder' }>;
 
 /** The tree cut to what matches a search: a name or a tag. A folder that matches keeps all it holds. */
 export function filterEntries(entries: Entry[], query: string): Entry[] {

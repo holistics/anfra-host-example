@@ -1,7 +1,7 @@
 import { type Dirent, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Entry } from './entry.js';
-import { type Meta, type MetaFile, readMeta, warnOnce } from './meta.js';
+import { type Meta, type MetaFile, readMeta, startRead, warnOnce } from './meta.js';
 
 export type { Entry };
 
@@ -133,6 +133,7 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
 
 /** Every Data App definition under the apps folder, as a tree. Paths are relative to it, with their `.html`. */
 export function catalog(appsDir: string, onApp?: OnApp): Entry[] {
+  startRead();
   const ctx: Scan = { meta: readMeta(appsDir), onApp, folders: new Set(), apps: new Set() };
   const tree = scan(appsDir, '', ctx);
   // Each section checked against its own kind, so a key under the wrong one is said, not ignored.

@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
 } from '@/components/ui/sidebar';
-import { type Entry, filterEntries, foldersOf, urlOf } from '@/lib/host';
+import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
 interface Props {
@@ -28,8 +28,6 @@ interface Props {
   selected: string | undefined;
   onSelect: (path: string) => void;
 }
-
-type FolderEntry = Extract<Entry, { kind: 'folder' }>;
 
 /** Folders opened or closed by hand, by path. */
 type Toggled = Record<string, boolean>;
@@ -40,16 +38,17 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   const searching = query.trim() !== '';
   const shown = entries && filterEntries(entries, query);
   // Kept here, not in each folder, so they last while a folder is filtered out. A search has its
-  // own, dropped when it ends, so browsing comes back as it was left.
+  // own, dropped when the query changes, so browsing comes back as it was left.
   const [browsed, setBrowsed] = useState<Toggled>({});
   const [searched, setSearched] = useState<Toggled>({});
 
-  // The open app's folders open when it changes, even ones closed by hand.
+  // The open app's folders open when it changes, even ones closed by hand: what was set by hand is
+  // dropped, so they follow isOpen, and a folder the repo collapses closes again once left.
   useEffect(() => {
     if (!selected) return;
     setBrowsed((prev) => {
       const next = { ...prev };
-      for (const folder of foldersOf(selected)) next[folder] = true;
+      for (const folder of foldersOf(selected)) delete next[folder];
       return next;
     });
   }, [selected]);
@@ -83,7 +82,8 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
-                if (!event.target.value.trim()) setSearched({});
+                // A folder closed for one query would hide what the next one matches.
+                setSearched({});
               }}
               placeholder="Filter by name or tag"
               aria-label="Filter Data Apps"
@@ -135,9 +135,17 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
     };
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
+        <SidebarMenuButton
+          asChild
+          isActive={entry.path === selected}
+          tooltip={entry.path}
+          className="group/app"
+        >
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <AppIcon app={entry} />
+            <AppIcon
+              app={entry}
+              checkClassName="group-hover/app:ring-sidebar-accent group-data-[active=true]/app:ring-sidebar-accent"
+            />
             <span>{entry.label}</span>
           </a>
         </SidebarMenuButton>
