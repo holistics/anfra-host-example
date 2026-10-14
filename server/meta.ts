@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 import { iconNames } from './entry.js';
+import type { Redirects } from './redirect.js';
 
 /** Where a repo says how its Data Apps are shown, under the apps folder; `.yml` is read too. */
 export const metaFile = '_meta.yaml';
@@ -27,6 +28,8 @@ export interface MetaFile {
   folders: Map<string, Meta>;
   /** By path relative to the apps folder, with the `.html`, as `sales/overview.html`. */
   apps: Map<string, Meta>;
+  /** Old paths to new, as a page's URL has them, without `.html`; a folder's ends in `/`. See redirect.ts. */
+  redirects: Redirects;
 }
 
 /** The problems said on the last read of the tree, and on this one. */
@@ -124,6 +127,56 @@ function section(root: Record<string, unknown>, name: Section): Map<string, Meta
   return result;
 }
 
+/**
+ * A path under `redirects` as a page's URL has it: decoded, from the apps folder, no `.html`. A
+ * folder's keeps its trailing slash, as that is what makes it one. Pasted URLs (`/apps/sales/x`) are
+ * read too. None when nothing is left.
+ */
+function redirectPath(raw: string, key: string): string | undefined {
+  const folder = raw.endsWith('/');
+  let rel = raw
+    .replace(/^\/apps\//, '')
+    .replace(/^(\.?\/)+/, '')
+    .replace(/\/+$/, '');
+  if (/\.html$/i.test(rel)) {
+    warnOnce(`redirects: "${key}": write "${raw}" as in the page's URL, without .html.`);
+    rel = rel.replace(/\.html$/i, '');
+  }
+  if (!rel) return undefined;
+  return folder ? `${rel}/` : rel;
+}
+
+function redirectsSection(root: Record<string, unknown>): Redirects {
+  const result = new Map<string, string>();
+  const value = root.redirects;
+  if (value === undefined || value === null) return {};
+  if (!isRecord(value)) {
+    warnOnce('redirects should be a mapping from old path to new.');
+    return {};
+  }
+  for (const [key, v] of Object.entries(value)) {
+    const from = redirectPath(key.trim(), key);
+    const target = textOf(v);
+    const to = target ? redirectPath(target, key) : undefined;
+    if (!from) {
+      warnOnce(`redirects: "${key}" names no path; ignored.`);
+    } else if (!to) {
+      warnOnce(`redirects: "${key}" should give the path it moved to; ignored.`);
+    } else if (from.endsWith('/') !== to.endsWith('/')) {
+      warnOnce(
+        from.endsWith('/')
+          ? `redirects: "${key}" is a folder, so "${target}" should end in / too; ignored.`
+          : `redirects: "${key}" is a Data App, so "${target}" should not end in /; ignored.`,
+      );
+    } else {
+      if (result.has(from)) warnOnce(`redirects: "${key}" names "${from}" again; the last one wins.`);
+      result.set(from, to);
+    }
+  }
+  // `fromEntries`, not assignment, so a key such as `__proto__` stays a key.
+  return Object.fromEntries(result);
+}
+
 /** A file's text, or none when it isn't there; one that can't be read is said. */
 function readText(file: string): string | undefined {
   try {
@@ -137,7 +190,7 @@ function readText(file: string): string | undefined {
 
 /** The manifest under the apps folder, or an empty one when there is none or it can't be read. */
 export function readMeta(appsDir: string): MetaFile {
-  const empty: MetaFile = { folders: new Map(), apps: new Map() };
+  const empty: MetaFile = { folders: new Map(), apps: new Map(), redirects: {} };
   const yaml = readText(path.join(appsDir, metaFile));
   const yml = readText(path.join(appsDir, altMetaFile));
   if (yaml !== undefined && yml !== undefined)
@@ -153,11 +206,16 @@ export function readMeta(appsDir: string): MetaFile {
   }
   if (root === null || root === undefined) return empty;
   if (!isRecord(root)) {
-    warnOnce('should be a mapping with `folders` and `apps`.');
+    warnOnce('should be a mapping with `folders`, `apps` and `redirects`.');
     return empty;
   }
   for (const field of Object.keys(root)) {
-    if (field !== 'folders' && field !== 'apps') warnOnce(`unknown top-level field "${field}".`);
+    if (field !== 'folders' && field !== 'apps' && field !== 'redirects')
+      warnOnce(`unknown top-level field "${field}".`);
   }
-  return { folders: section(root, 'folders'), apps: section(root, 'apps') };
+  return {
+    folders: section(root, 'folders'),
+    apps: section(root, 'apps'),
+    redirects: redirectsSection(root),
+  };
 }

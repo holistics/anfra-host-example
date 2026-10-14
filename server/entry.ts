@@ -26,6 +26,15 @@ export type Entry =
       children: Entry[];
     };
 
+/**
+ * What `/host/apps` sends: the Data App tree, and where old paths go (the manifest's `redirects`, see
+ * server/redirect.ts), so the page can follow an old link it meets without the server.
+ */
+export interface Catalog {
+  entries: Entry[];
+  redirects: Record<string, string>;
+}
+
 /** The prompt that made a Data App, from its `<script type="application/json" id="data-app-metadata">`. */
 export interface AppPrompt {
   prompt: string;

@@ -1,9 +1,10 @@
 import { type Dirent, existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { AppPrompt, Entry } from './entry.js';
+import type { AppPrompt, Catalog, Entry } from './entry.js';
 import { type Meta, type MetaFile, readMeta, startRead, warnOnce } from './meta.js';
+import { followRedirects, type Redirects } from './redirect.js';
 
-export type { Entry };
+export type { Catalog, Entry };
 
 const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const metadataRe = /<script\b[^>]*\sid\s*=\s*["']?data-app-metadata["']?[^>]*>([\s\S]*?)<\/script>/i;
@@ -197,11 +198,19 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
   return [...folders.sort(byOrder), ...apps.sort(byOrder)].map((item) => item.entry);
 }
 
-/** Every Data App definition under the apps folder, as a tree. Paths are relative to it, with their `.html`. */
-export function catalog(appsDir: string, onApp?: OnApp): Entry[] {
+/** One read of the apps folder: what the page is sent, and every definition there, with its `.html`. */
+export interface Read extends Catalog {
+  apps: ReadonlySet<string>;
+}
+
+/**
+ * Every Data App definition under the apps folder, as a tree, and the manifest's redirects. Paths
+ * in the tree are relative to the apps folder, with their `.html`.
+ */
+export function catalog(appsDir: string, onApp?: OnApp): Read {
   startRead();
   const ctx: Scan = { meta: readMeta(appsDir), onApp, folders: new Set(), apps: new Set() };
-  const tree = scan(appsDir, '', ctx);
+  const entries = scan(appsDir, '', ctx);
   // Each section checked against its own kind, so a key under the wrong one is said, not ignored.
   for (const key of ctx.meta.folders.keys()) {
     if (ctx.folders.has(key)) continue;
@@ -219,5 +228,34 @@ export function catalog(appsDir: string, onApp?: OnApp): Entry[] {
         : `"${key}" under apps matches no Data App.`,
     );
   }
-  return tree;
+  checkRedirects(ctx.meta.redirects, ctx);
+  return { entries, redirects: ctx.meta.redirects, apps: ctx.apps };
+}
+
+/**
+ * Say what in the redirects can't work: an old path still there, so never redirected, and a new
+ * one that leads nowhere, or back to itself, after any redirects from it.
+ */
+function checkRedirects(redirects: Redirects, ctx: Scan) {
+  const isApp = (path: string) => ctx.apps.has(`${path}.html`);
+  const isFolder = (path: string) => ctx.folders.has(path.slice(0, -1));
+  for (const [from, to] of Object.entries(redirects)) {
+    const folder = from.endsWith('/');
+    if (folder ? isFolder(from) : isApp(from))
+      warnOnce(
+        folder
+          ? `redirects: "${from}" is still a folder; only the Data Apps no longer in it are redirected.`
+          : `redirects: "${from}" is still a Data App, so it isn't redirected.`,
+      );
+    if (folder && isFolder(to)) continue;
+    // From the old path, so a chain that comes back to it is a loop.
+    const followed = followRedirects(redirects, from, folder ? isFolder : isApp);
+    if (followed.to) continue;
+    const end = followed.chain.at(-1);
+    warnOnce(
+      followed.loop
+        ? `redirects: "${from}" loops (${followed.chain.join(' → ')}); ignored.`
+        : `redirects: "${from}" leads to "${end}", which is no ${folder ? 'folder' : 'Data App'}; ignored.`,
+    );
+  }
 }
