@@ -7,7 +7,7 @@ import { countProblems, entityKey } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
-import type { DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
+import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
@@ -49,6 +49,7 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
   const [node, setNode] = useState<NodeRequest>();
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
+  const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
   useEffect(() => setNode(picked), [picked]);
 
   const reveal = (target: RevealTarget) => {
@@ -160,7 +161,10 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
               view={view}
               onView={setView}
               canViewSql={source.env.reader.permissions.canViewGeneratedSql}
+              expansion={expansion}
+              onExpansion={setExpansion}
               focus={focus}
+              onFocused={() => setFocus(undefined)}
               onLocate={source.locate}
               onReveal={reveal}
             />
@@ -169,7 +173,13 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
 
         <TabsContent value="wiring" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <WiringTab apps={apps} checks={checks} focus={check} onReveal={reveal} />
+            <WiringTab
+              apps={apps}
+              checks={checks}
+              focus={check}
+              onFocused={() => setCheck(undefined)}
+              onReveal={reveal}
+            />
           </div>
         </TabsContent>
       </Tabs>

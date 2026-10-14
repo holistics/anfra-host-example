@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import { formatCondition } from '../../model/format';
 import type { controlTargets } from '../../model/inputs';
 import type { RevealTarget } from '../../model/types';
+import { EntityLink } from '../shared/entity-link';
 import { Field, Fields } from '../shared/fields';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
 
@@ -66,13 +67,7 @@ export function ControlRow({
             targets.map((target, i) => (
               <Fragment key={target.query}>
                 {i > 0 && ', '}
-                <button
-                  type="button"
-                  className="font-mono hover:underline"
-                  onClick={() => onReveal({ entity: 'query', app: props.app, name: target.query })}
-                >
-                  {target.query}
-                </button>
+                <EntityLink entity="query" app={props.app} name={target.query} onReveal={onReveal} />
                 <span className="text-muted-foreground"> on {target.field}</span>
               </Fragment>
             ))

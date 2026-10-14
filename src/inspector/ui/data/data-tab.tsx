@@ -15,14 +15,14 @@ import {
   Search,
   SlidersHorizontal,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, toggleIn } from '@/lib/utils';
 import { entityKey, usageOf } from '../../model/format';
 import { controlTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
-import type { DataFilter, RevealTarget } from '../../model/types';
+import type { DataExpansion, DataFilter, RevealTarget } from '../../model/types';
 import { Note } from '../shared/fields';
 import { scrollToAndFlash } from '../shared/reveal';
 import { ControlRow } from './control-row';
@@ -40,8 +40,13 @@ interface Props {
   onView: (view: DataFilter) => void;
   /** Whether the reader may see generated SQL. */
   canViewSql: boolean;
+  /** Which rows are open and which sections closed, kept by the panel across tab switches. */
+  expansion: DataExpansion;
+  onExpansion: Dispatch<SetStateAction<DataExpansion>>;
   /** An entity to open and scroll to, asked for from elsewhere; the nonce repeats a request. */
   focus: { key: string; nonce: number } | undefined;
+  /** Called once `focus` is handled, so the tab mounting again doesn't repeat it. */
+  onFocused: () => void;
   onLocate: (target: LocateTarget) => void;
   onReveal: (target: RevealTarget) => void;
 }
@@ -66,7 +71,7 @@ function showControl(view: DataFilter, app: InspectedApp, name: string, control:
 
 /**
  * Every app's queries, controls and selection, one line each until opened. Which rows and
- * sections are open, and each query's code tab, survive the snapshots the frame keeps posting.
+ * sections are open is the panel's, so it survives both new snapshots and switching tabs.
  */
 export function DataTab({
   apps,
@@ -75,23 +80,26 @@ export function DataTab({
   view,
   onView,
   canViewSql,
+  expansion,
+  onExpansion,
   focus,
+  onFocused,
   onLocate,
   onReveal,
 }: Props) {
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const [closedSections, setClosedSections] = useState<Set<string>>(new Set());
-
-  const toggleIn = (set: Set<string>, key: string) => {
-    const next = new Set(set);
-    if (!next.delete(key)) next.add(key);
-    return next;
-  };
+  const { open, closedSections } = expansion;
+  const setOpen = (update: (prev: Set<string>) => Set<string>) =>
+    onExpansion((prev) => ({ ...prev, open: update(prev.open) }));
+  const setClosedSections = (update: (prev: Set<string>) => Set<string>) =>
+    onExpansion((prev) => ({ ...prev, closedSections: update(prev.closedSections) }));
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per snapshot
   useEffect(() => {
     if (!focus) return;
-    const [kind, rest = ''] = focus.key.split(':');
+    // Split at the first ':' only: a name may contain one.
+    const colon = focus.key.indexOf(':');
+    const kind = focus.key.slice(0, colon);
+    const rest = focus.key.slice(colon + 1);
     const app = Number(rest.split('/')[0]);
     const name = rest.slice(rest.indexOf('/') + 1);
     // A search or filter that would hide it goes.
@@ -111,6 +119,7 @@ export function DataTab({
       return next;
     });
     scrollToAndFlash(`[data-entity="${CSS.escape(focus.key)}"]`);
+    onFocused();
   }, [focus]);
 
   if (!apps) return <Note>Waiting for the Data App…</Note>;

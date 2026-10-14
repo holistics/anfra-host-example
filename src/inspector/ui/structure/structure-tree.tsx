@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, toggleIn } from '@/lib/utils';
 import { handleFor } from '../../model/format';
 import type { NodeRequest } from '../../model/types';
 import { CopyButton } from '../shared/copy-button';
@@ -87,12 +87,11 @@ export function StructureTree({ structure, picked, onHighlight, onLocate, onShow
     );
   }, [picked]);
 
-  const toggle = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
+  // Leaving the tree clears the highlight; so must unmounting it under the pointer, as a tab switch does.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on unmount only
+  useEffect(() => () => onHighlight(null), []);
+
+  const toggle = (key: string) => setCollapsed((prev) => toggleIn(prev, key));
 
   const renderNode = (node: StructureNode) => {
     const open = !collapsed.has(node.key);

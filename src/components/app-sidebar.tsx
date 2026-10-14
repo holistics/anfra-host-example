@@ -1,9 +1,9 @@
-import { ChevronRight, AppWindowMac, Folder } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { AppWindowMac, ChevronRight, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -34,7 +34,9 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
         <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
           <img src="/logo.svg" alt="" className="size-6 object-contain" />
           anfra
-          <Badge variant="secondary" className="mt-1">demo</Badge>
+          <Badge variant="secondary" className="mt-1">
+            demo
+          </Badge>
         </a>
       </SidebarHeader>
       {/* On desktop, reach over the inset padding, so the scrollbar sits on the edge and the gap is inside it. */}
