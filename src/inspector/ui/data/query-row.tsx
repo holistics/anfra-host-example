@@ -171,7 +171,7 @@ export function QueryRow({
         {inputs.length > 0 && (
           <MiniTable
             caption={`Inputs (${inputs.length})`}
-            head={['from · on', 'now']}
+            head={['from · on', 'applied']}
             rows={inputs.map((input) => {
               const Icon = input.kind === 'control' ? SlidersHorizontal : ChartColumn;
               const from = input.kind === 'control' ? 'From a control' : 'Cross-filter from a chart';
@@ -199,16 +199,22 @@ export function QueryRow({
                       {input.field}
                     </div>
                   </div>,
-                  <span
-                    key="now"
-                    className={cn(
-                      input.value === 'not set' || input.value === 'no selection'
-                        ? 'text-muted-foreground'
-                        : '',
+                  <div key="applied" className="min-w-0">
+                    <span
+                      className={cn(
+                        input.value === 'not set' || input.value === 'no selection'
+                          ? 'text-muted-foreground'
+                          : '',
+                      )}
+                    >
+                      {input.value}
+                    </span>
+                    {input.pending && (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                        pending: {input.pending}
+                      </div>
                     )}
-                  >
-                    {input.value}
-                  </span>,
+                  </div>,
                 ],
               };
             })}
