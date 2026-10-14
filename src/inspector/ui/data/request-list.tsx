@@ -25,7 +25,7 @@ export function RequestList({ items }: { items: { entry: RequestEntry; shared?: 
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <div>
-      <ul className="space-y-px">
+      <ul className="space-y-0.5">
         {shown.map(({ entry, shared }) => (
           <RequestItem key={entry.id} entry={entry} shared={shared} />
         ))}
@@ -45,7 +45,7 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
     <li className={cn('rounded-md', open && 'bg-background')}>
       <button
         type="button"
-        className="flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-sm hover:bg-accent"
+        className="flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-sm hover:bg-accent"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
@@ -61,7 +61,7 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
         </span>
       </button>
       {open && (
-        <div className="space-y-2 px-1 pt-1 pb-2 pl-5">
+        <div className="space-y-2.5 px-1 pt-1.5 pb-2.5 pl-5">
           {entry.error && <p className="text-xs break-words text-destructive">{entry.error}</p>}
           {entry.preview && entry.columns && (
             <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />

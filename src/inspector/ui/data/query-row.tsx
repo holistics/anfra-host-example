@@ -246,7 +246,7 @@ export function QueryRow({
 
       {requests.length > 0 && (
         <div>
-          <p className="mb-0.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
+          <p className="mb-1.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
           <RequestList items={requests} />
         </div>
       )}
@@ -257,7 +257,7 @@ export function QueryRow({
 /** How the query is defined: its fields, then what filters it. */
 function Definition({ children }: { children: ReactNode }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center gap-1 px-1 text-sm font-medium">
         Definition
         <Tooltip>

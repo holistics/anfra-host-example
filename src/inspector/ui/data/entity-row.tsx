@@ -27,8 +27,11 @@ export function EntityRow({
 }: RowProps & { kind: LocateKind; summary: ReactNode; below?: ReactNode; children: ReactNode }) {
   const attribute = entityAttribute(kind, props.app, props.name);
   return (
-    <div data-entity={props.entityKey} className={cn('rounded-md', props.open && 'bg-muted/50')}>
-      <div className="group flex h-7 items-center gap-1.5 rounded-md pr-1 hover:bg-accent">
+    <div
+      data-entity={props.entityKey}
+      className={cn('rounded-md border', props.open ? 'bg-muted/50' : 'bg-card')}
+    >
+      <div className="group flex h-8 items-center gap-1.5 rounded-md pr-1 hover:bg-accent">
         <button
           type="button"
           className="flex h-full min-w-0 flex-1 items-center gap-1.5 pl-1 text-left text-sm"
@@ -55,7 +58,7 @@ export function EntityRow({
         </Button>
       </div>
       {below}
-      {props.open && <div className="space-y-2 px-2 pt-1 pb-2 pl-6">{children}</div>}
+      {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3 pl-7">{children}</div>}
     </div>
   );
 }

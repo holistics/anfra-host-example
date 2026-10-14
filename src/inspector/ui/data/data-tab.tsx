@@ -135,7 +135,7 @@ export function DataTab({
   return (
     <div>
       <Toolbar view={view} onView={onView} counts={counts} />
-      <div className="space-y-5 p-2">
+      <div className="space-y-6 p-3">
         {apps.map((app, index) => {
           const queries = Object.entries(app.queries);
           const controls = Object.entries(app.controls);
@@ -161,7 +161,7 @@ export function DataTab({
             view.search.trim() ? `No ${what} match "${view.search.trim()}".` : `No ${what} match the filter.`;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
-            <section key={index} className="space-y-3">
+            <section key={index} className="space-y-5">
               <p className="px-1 text-xs text-muted-foreground">
                 {apps.length > 1 && <span className="font-medium text-foreground">App {index + 1} · </span>}
                 {app.title || 'Untitled'} · {app.timezone || 'tenant timezone'} ·{' '}
@@ -268,7 +268,7 @@ function Toolbar({
     { value: 'dirty', label: `Dirty (${counts.dirty})` },
   ];
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b bg-background p-2">
+    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b bg-background px-3 py-2.5">
       <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -322,7 +322,7 @@ function Section(props: {
           </span>
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-1 space-y-px">
+      <CollapsibleContent className="mt-1.5 space-y-1">
         {visible === 0 ? <Note>{props.empty}</Note> : props.children}
       </CollapsibleContent>
     </Collapsible>
