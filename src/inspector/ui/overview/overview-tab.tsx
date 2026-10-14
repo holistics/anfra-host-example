@@ -170,7 +170,7 @@ function Stats({
           ]
             .filter(Boolean)
             .join(' · ')}
-          onClick={() => onReveal({ tab: 'data' })}
+          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
         />
         <Stat
           icon={<SlidersHorizontal />}
@@ -178,7 +178,7 @@ function Stats({
           value={controls.length}
           tone={unapplied ? 'warn' : undefined}
           detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
-          onClick={() => onReveal({ tab: 'data' })}
+          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
         />
       </div>
       <div className={cn('grid grid-cols-2', gap)}>
