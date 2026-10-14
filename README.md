@@ -119,10 +119,12 @@ apps:
     name: Revenue overview  # shown in place of the <title>
     icon: chart-line
     tags: [kpi]
+    endorsed: true          # a green check on its icon
     order: 1
 ```
 
 - `icon` is one of the names in `src/lib/icons.ts` (lucide, kebab-case); an unknown one falls back to the default.
+- `endorsed: true` (Data Apps) puts a small green check on the icon's bottom right.
 - The sidebar's filter matches names and tags.
 - Unknown fields and keys that match no folder or app are logged once by the server.
 

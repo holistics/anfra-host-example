@@ -1,4 +1,4 @@
-import { AppWindowMac, ChevronRight, Folder } from 'lucide-react';
+import { AppWindowMac, Check, ChevronRight, Folder } from 'lucide-react';
 import { type MouseEvent, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { SidebarResizer } from '@/components/sidebar-resizer';
@@ -104,7 +104,22 @@ function Item({
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <Icon />
+            {entry.endorsed ? (
+              // The check sits on the icon's bottom right, ringed in the sidebar's colour so it reads over it.
+              <span className="relative flex shrink-0">
+                <Icon className="size-4" />
+                <span
+                  role="img"
+                  aria-label="Endorsed"
+                  title="Endorsed"
+                  className="absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-full bg-green-500 text-white ring-2 ring-sidebar"
+                >
+                  <Check className="size-1.5 stroke-[5]" />
+                </span>
+              </span>
+            ) : (
+              <Icon />
+            )}
             <span>{entry.label}</span>
           </a>
         </SidebarMenuButton>

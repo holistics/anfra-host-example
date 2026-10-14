@@ -4,7 +4,7 @@ import { type Meta, type MetaFile, readMeta, warnOnce } from './meta.js';
 
 /** One node of the Data App tree: a definition, or a folder holding some. */
 export type Entry =
-  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[] }
+  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[]; endorsed: boolean }
   | {
       kind: 'folder';
       path: string;
@@ -121,7 +121,14 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
       apps.push({
         order: meta.order,
         name: label,
-        entry: { kind: 'app', path: childRel, label, icon: meta.icon, tags: meta.tags },
+        entry: {
+          kind: 'app',
+          path: childRel,
+          label,
+          icon: meta.icon,
+          tags: meta.tags,
+          endorsed: meta.endorsed ?? false,
+        },
       });
     }
   }
