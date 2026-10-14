@@ -66,11 +66,11 @@ export function CodeBlock<T extends string>({
         {code && <CopyButton text={code} label={`Copy the ${label}`} className="ml-auto" />}
       </div>
       {code ? (
-        <pre className={cn('max-h-56 overflow-auto p-2 font-mono text-xs', className)}>
+        <pre className={cn('max-h-56 overflow-auto bg-code px-4 py-3 font-mono text-xs leading-relaxed', className)}>
           <Highlighted code={code} lang={lang} />
         </pre>
       ) : (
-        <p className="p-2 text-xs text-muted-foreground">{empty}</p>
+        <p className="bg-code px-4 py-3 text-xs text-muted-foreground">{empty}</p>
       )}
     </div>
   );
