@@ -1,19 +1,9 @@
 import { type Dirent, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import type { Entry } from './entry.js';
 import { type Meta, type MetaFile, readMeta, warnOnce } from './meta.js';
 
-/** One node of the Data App tree: a definition, or a folder holding some. */
-export type Entry =
-  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[]; endorsed: boolean }
-  | {
-      kind: 'folder';
-      path: string;
-      name: string;
-      icon?: string;
-      tags: string[];
-      collapsed: boolean;
-      children: Entry[];
-    };
+export type { Entry };
 
 const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
 
@@ -59,23 +49,27 @@ export function titleOf(html: string): string | undefined {
   return raw ? textOf(raw) || undefined : undefined;
 }
 
-/** Called with each definition as the tree is read, so a caller needing its HTML reads it once. */
-type OnApp = (rel: string, html: string) => void;
+/**
+ * Called with each definition as the tree is read, so a caller needing its HTML reads it once.
+ * `name` is the manifest's, if it gives one.
+ */
+type OnApp = (rel: string, html: string, name: string | undefined) => void;
 
 interface Scan {
   meta: MetaFile;
   onApp?: OnApp;
-  /** Every folder and definition met, to find what the manifest names that isn't there. */
-  seen: Set<string>;
+  /** Every folder met, shown or not, to find what the manifest names that isn't there. */
+  folders: Set<string>;
+  /** Every definition met. */
+  apps: Set<string>;
 }
 
 const noMeta: Meta = { tags: [] };
 
-/** By `order`, the ordered first, lowest first; then as the file tree reads, by name. */
-function byOrder(a: { order?: number; name: string }, b: { order?: number; name: string }) {
-  if (a.order !== b.order)
-    return (a.order ?? Number.POSITIVE_INFINITY) - (b.order ?? Number.POSITIVE_INFINITY) || 0;
-  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+/** By `order`, the ordered first, lowest first. A stable sort keeps the rest as they came: by file name. */
+function byOrder(a: { order?: number }, b: { order?: number }) {
+  // Infinity - Infinity is NaN, when neither has an order.
+  return (a.order ?? Number.POSITIVE_INFINITY) - (b.order ?? Number.POSITIVE_INFINITY) || 0;
 }
 
 function scan(root: string, rel: string, ctx: Scan): Entry[] {
@@ -86,21 +80,23 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
     return [];
   }
   dirents.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  const folders: { order?: number; name: string; entry: Entry }[] = [];
-  const apps: { order?: number; name: string; entry: Entry }[] = [];
+  const folders: { order?: number; entry: Entry }[] = [];
+  const apps: { order?: number; entry: Entry }[] = [];
   for (const d of dirents) {
     if (d.name.startsWith('.')) continue;
     const childRel = rel ? `${rel}/${d.name}` : d.name;
     if (d.isDirectory()) {
       // A folder holding no Data App, at any depth, is left out.
       const children = scan(root, childRel, ctx);
-      if (children.length === 0) continue;
-      ctx.seen.add(childRel);
+      ctx.folders.add(childRel);
+      if (children.length === 0) {
+        if (ctx.meta.folders.has(childRel)) warnOnce(`"${childRel}" holds no Data App, so it isn't shown.`);
+        continue;
+      }
       const meta = ctx.meta.folders.get(childRel) ?? noMeta;
       const name = meta.name ?? d.name;
       folders.push({
         order: meta.order,
-        name,
         entry: {
           kind: 'folder',
           path: childRel,
@@ -113,14 +109,13 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
       });
     } else if (d.isFile() && d.name.toLowerCase().endsWith('.html')) {
       const html = readFileSync(path.join(root, childRel), 'utf8');
-      ctx.onApp?.(childRel, html);
-      ctx.seen.add(childRel);
+      ctx.apps.add(childRel);
       const meta = ctx.meta.apps.get(childRel) ?? noMeta;
+      ctx.onApp?.(childRel, html, meta.name);
       // The manifest's name, else the definition's `<title>`, else its file name.
       const label = meta.name ?? titleOf(html) ?? d.name;
       apps.push({
         order: meta.order,
-        name: label,
         entry: {
           kind: 'app',
           path: childRel,
@@ -132,16 +127,30 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
       });
     }
   }
-  // Folders first, then Data Apps, each by `order`, then alphabetical, as a file tree reads.
+  // Folders first, then Data Apps, each by `order`, then by file name, as a file tree reads.
   return [...folders.sort(byOrder), ...apps.sort(byOrder)].map((item) => item.entry);
 }
 
 /** Every Data App definition under the apps folder, as a tree. Paths are relative to it, with their `.html`. */
 export function catalog(appsDir: string, onApp?: OnApp): Entry[] {
-  const ctx: Scan = { meta: readMeta(appsDir), onApp, seen: new Set() };
+  const ctx: Scan = { meta: readMeta(appsDir), onApp, folders: new Set(), apps: new Set() };
   const tree = scan(appsDir, '', ctx);
-  for (const key of [...ctx.meta.folders.keys(), ...ctx.meta.apps.keys()]) {
-    if (!ctx.seen.has(key)) warnOnce(`"${key}" matches no folder or Data App.`);
+  // Each section checked against its own kind, so a key under the wrong one is said, not ignored.
+  for (const key of ctx.meta.folders.keys()) {
+    if (ctx.folders.has(key)) continue;
+    warnOnce(
+      ctx.apps.has(key)
+        ? `"${key}" is a Data App; move it under apps.`
+        : `"${key}" under folders matches no folder.`,
+    );
+  }
+  for (const key of ctx.meta.apps.keys()) {
+    if (ctx.apps.has(key)) continue;
+    warnOnce(
+      ctx.folders.has(key)
+        ? `"${key}" is a folder; move it under folders.`
+        : `"${key}" under apps matches no Data App.`,
+    );
   }
   return tree;
 }

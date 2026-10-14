@@ -42,14 +42,25 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /** A key as a path relative to the apps folder: no `./`, no trailing slash. */
 const normalize = (key: string) => key.replace(/^(\.\/)+/, '').replace(/\/+$/, '');
 
-function entryMeta(key: string, value: unknown): Meta {
+type Section = 'folders' | 'apps';
+
+/** The fields that mean something for one kind only. */
+const onlyFor = new Map<string, Section>([
+  ['endorsed', 'apps'],
+  ['collapsed', 'folders'],
+]);
+
+function entryMeta(key: string, value: unknown, kind: Section): Meta {
   const meta: Meta = { tags: [] };
   if (!isRecord(value)) {
     warnOnce(`"${key}" should be a mapping; ignored.`);
     return meta;
   }
   for (const [field, v] of Object.entries(value)) {
-    if (field === 'name' || field === 'icon') {
+    const only = onlyFor.get(field);
+    if (only && only !== kind) {
+      warnOnce(`"${key}": ${field} applies to ${only === 'apps' ? 'Data Apps' : 'folders'} only; ignored.`);
+    } else if (field === 'name' || field === 'icon') {
       if (typeof v === 'string' && v.trim()) meta[field] = v.trim();
       else warnOnce(`"${key}": ${field} should be a non-empty string.`);
     } else if (field === 'tags') {
@@ -72,7 +83,7 @@ function entryMeta(key: string, value: unknown): Meta {
   return meta;
 }
 
-function section(root: Record<string, unknown>, name: 'folders' | 'apps'): Map<string, Meta> {
+function section(root: Record<string, unknown>, name: Section): Map<string, Meta> {
   const result = new Map<string, Meta>();
   const value = root[name];
   if (value === undefined || value === null) return result;
@@ -80,7 +91,12 @@ function section(root: Record<string, unknown>, name: 'folders' | 'apps'): Map<s
     warnOnce(`${name} should be a mapping from path to settings.`);
     return result;
   }
-  for (const [key, v] of Object.entries(value)) result.set(normalize(key), entryMeta(key, v));
+  for (const [key, v] of Object.entries(value)) {
+    const rel = normalize(key);
+    // `sales` and `sales/` are one folder: the last written would win, unseen.
+    if (result.has(rel)) warnOnce(`"${key}" names "${rel}" again under ${name}; the last one wins.`);
+    result.set(rel, entryMeta(key, v, name));
+  }
   return result;
 }
 
