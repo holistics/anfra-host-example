@@ -20,6 +20,9 @@ export function formatTime(value: Date | string | undefined): string {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleTimeString();
 }
 
+/** A count and its noun: `1 row`, `2 rows`. */
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 /** JSON indented for reading; anything else as it is. */
 export function prettyJson(text: string): string {
   try {

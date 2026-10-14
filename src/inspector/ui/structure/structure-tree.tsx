@@ -28,6 +28,8 @@ interface Props {
   structure: InspectedStructure;
   /** A node to select and reveal: picked on the page, or asked for from elsewhere in the panel. */
   picked: NodeRequest | undefined;
+  /** The pick is revealed: it isn't to be replayed when the tree mounts again. */
+  onPicked: () => void;
   onHighlight: (node: string | null) => void;
   onLocate: (node: string) => void;
   /** Open a query's or control's row in the Data tab. */
@@ -72,20 +74,31 @@ function ancestorsOf(nodes: StructureNode[], key: string, trail: string[] = []):
  * The page's structure as a tree: hover a node to highlight it on the page, click it to scroll it
  * into view, and copy its handle (the attribute that marks it) to point an agent at it.
  */
-export function StructureTree({ structure, picked, onHighlight, onLocate, onShowInData, onDownload }: Props) {
+export function StructureTree({
+  structure,
+  picked,
+  onPicked,
+  onHighlight,
+  onLocate,
+  onShowInData,
+  onDownload,
+}: Props) {
   const [selected, setSelected] = useState<string>();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per snapshot
+  // A pick can arrive before the snapshot that has its node: it waits for one, then is done with.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onPicked is the parent's, fresh each render
   useEffect(() => {
     if (!picked) return;
+    const ancestors = ancestorsOf(structure.nodes, picked.key);
+    if (!ancestors) return;
     setSelected(picked.key);
-    const ancestors = ancestorsOf(structure.nodes, picked.key) ?? [];
     setCollapsed((prev) => new Set([...prev].filter((key) => !ancestors.includes(key))));
     requestAnimationFrame(() =>
       document.querySelector(`[data-node="${CSS.escape(picked.key)}"]`)?.scrollIntoView({ block: 'nearest' }),
     );
-  }, [picked]);
+    onPicked();
+  }, [picked, structure]);
 
   // Leaving the tree clears the highlight; so must unmounting it under the pointer, as a tab switch does.
   // biome-ignore lint/correctness/useExhaustiveDependencies: on unmount only

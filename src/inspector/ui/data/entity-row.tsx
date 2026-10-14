@@ -3,7 +3,7 @@ import { ChevronRight, LocateFixed } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { entityAttribute } from '../../model/format';
+import { entityAttribute, plural } from '../../model/format';
 import { CopyButton } from '../shared/copy-button';
 
 /** What every query and control row takes. */
@@ -75,7 +75,7 @@ export function Drawn({
 }) {
   const text = !usage
     ? 'Not drawn yet'
-    : `In ${usage.markers} place${usage.markers === 1 ? '' : 's'}${usage.blocks.length ? `: ${usage.blocks.join(', ')}` : ', outside any block'}`;
+    : `In ${plural(usage.markers, 'place')}${usage.blocks.length ? `: ${usage.blocks.join(', ')}` : ', outside any block'}`;
   return (
     <span className="inline-flex items-center gap-1">
       {text}
