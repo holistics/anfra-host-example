@@ -57,7 +57,13 @@ function Footer({ prompt }: { prompt: AppPrompt }) {
 function Time({ label, value }: { label: string; value: string }) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return <span>{`${label} ${value}`}</span>;
-  const day = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  // A bare date parses as UTC midnight: show it in UTC, or it is a day early west of Greenwich.
+  const day = date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: /^\d{4}-\d{2}-\d{2}$/.test(value) ? 'UTC' : undefined,
+  });
   return (
     <time dateTime={value} title={date.toLocaleString()}>
       {`${label} ${day}`}
