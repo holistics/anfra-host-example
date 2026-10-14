@@ -186,7 +186,7 @@ export function QueryRow({
                 key: column.name,
                 cells: [
                   <TypeIcon key="type" icon={Icon} label={title} />,
-                  <span key="name" className="font-mono text-xs leading-5">
+                  <span key="name">
                     {column.name}
                     {column.adhoc && <span className="ml-1 text-amber-600 dark:text-amber-400">ad hoc</span>}
                   </span>,
@@ -211,7 +211,7 @@ export function QueryRow({
                   <TypeIcon key="type" icon={Icon} label={from} />,
                   // The field goes under its source, so the value keeps the width a narrow panel has.
                   <div key="from" className="min-w-0">
-                    <span className="text-xs leading-5">
+                    <span>
                       {input.self ? (
                         <span className="text-muted-foreground">itself</span>
                       ) : (
@@ -223,7 +223,7 @@ export function QueryRow({
                         />
                       )}
                     </span>
-                    <div className="font-mono text-xs break-all text-muted-foreground">{input.field}</div>
+                    <div className="break-all text-muted-foreground">{input.field}</div>
                   </div>,
                   <div key="applied" className="min-w-0">
                     <span

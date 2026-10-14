@@ -13,11 +13,7 @@ export function EntityLink({
   onReveal: (target: RevealTarget) => void;
 }) {
   return (
-    <button
-      type="button"
-      className="font-mono hover:underline"
-      onClick={() => onReveal({ entity, app, name })}
-    >
+    <button type="button" className="hover:underline" onClick={() => onReveal({ entity, app, name })}>
       {name}
     </button>
   );

@@ -137,9 +137,11 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               {!structure && <Note>Waiting for the Data App…</Note>}
               {structure?.nodes.length === 0 && (
                 <Note>
-                  Nothing is marked yet. Add <code>data-anfra-container</code>, <code>data-anfra-block</code>,{' '}
-                  <code>data-anfra-query</code> and <code>data-anfra-control</code> to the page's elements and
-                  they show up here.
+                  Nothing is marked yet. Add <code className="font-sans">data-anfra-container</code>,{' '}
+                  <code className="font-sans">data-anfra-block</code>,{' '}
+                  <code className="font-sans">data-anfra-query</code> and{' '}
+                  <code className="font-sans">data-anfra-control</code> to the page's elements and they show
+                  up here.
                 </Note>
               )}
               {structure && structure.nodes.length > 0 && (

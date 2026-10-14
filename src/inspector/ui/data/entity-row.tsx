@@ -105,7 +105,7 @@ export function Drawn({
             const key = blockKey(block);
             return (
               <li key={block} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
-                <span className="min-w-0 flex-1 truncate font-mono">{block}</span>
+                <span className="min-w-0 flex-1 truncate">{block}</span>
                 {key && (
                   <>
                     <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>

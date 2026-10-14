@@ -328,7 +328,7 @@ function Section(props: {
           <ChevronRight className={cn('ml-auto transition-transform', props.open && 'rotate-90')} />
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 space-y-2">
+      <CollapsibleContent className={cn('space-y-2', visible === 0 ? 'mt-3' : 'mt-2')}>
         {visible === 0 ? <Note>{props.empty}</Note> : props.children}
       </CollapsibleContent>
     </Collapsible>

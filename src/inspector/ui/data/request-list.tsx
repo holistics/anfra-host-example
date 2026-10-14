@@ -216,7 +216,7 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody className="font-mono">
+            <TableBody>
               {rows.map((row, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
                 <TableRow key={i}>

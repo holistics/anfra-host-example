@@ -22,7 +22,7 @@ export function SelectionCard({ label, selection }: { label: string; selection: 
         <Field label="Rows">{selection.rowCount}</Field>
         {selection.expression && (
           <Field label="Expression">
-            <code className="break-all">{selection.expression}</code>
+            <code className="font-sans break-all">{selection.expression}</code>
           </Field>
         )}
         {selection.conditions.map((condition, i) => (
