@@ -1,4 +1,5 @@
-import { createReadStream, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
@@ -23,6 +24,10 @@ export function appFile(
     return undefined;
   }
 }
+
+/** A short hash of a file's bytes, to version its URL: a changed file gets a new one. */
+export const versionOf = (file: string) =>
+  createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 10);
 
 /**
  * Serve a file under the apps folder: a definition, as its author wrote it, or what it refers to
