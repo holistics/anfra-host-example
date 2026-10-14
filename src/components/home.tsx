@@ -1,6 +1,7 @@
-import { Folder } from 'lucide-react';
+import { ChevronRight, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { AppIcon } from '@/components/app-icon';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type AppEntry, type Entry, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
@@ -15,18 +16,32 @@ interface Category {
   name: string;
   /** The folder's, from the manifest; none for the root. */
   icon?: string;
+  /** The folder, or one holding it, starts closed in the repo's manifest. */
+  collapsed: boolean;
   apps: AppEntry[];
 }
 
 /** One category per folder, named by its path; the apps at the root go in a category of their own. */
-function categories(entries: Entry[], path: string, name: string, icon?: string): Category[] {
+function categories(
+  entries: Entry[],
+  path: string,
+  name: string,
+  icon?: string,
+  collapsed = false,
+): Category[] {
   const apps = entries.filter((entry): entry is AppEntry => entry.kind === 'app');
   const nested = entries.flatMap((entry) =>
     entry.kind === 'folder'
-      ? categories(entry.children, entry.path, name ? `${name} / ${entry.name}` : entry.name, entry.icon)
+      ? categories(
+          entry.children,
+          entry.path,
+          name ? `${name} / ${entry.name}` : entry.name,
+          entry.icon,
+          collapsed || entry.collapsed,
+        )
       : [],
   );
-  return apps.length > 0 ? [{ path, name, icon, apps }, ...nested] : nested;
+  return apps.length > 0 ? [{ path, name, icon, collapsed, apps }, ...nested] : nested;
 }
 
 /** The home page: every Data App, in a grid under its category. */
@@ -53,17 +68,23 @@ export function Home({ entries, onSelect }: Props) {
 function Group({ group, onSelect }: { group: Category; onSelect: (path: string) => void }) {
   const Icon = iconOf(group.icon, Folder);
   return (
-    <section>
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Icon className="size-4" />
-        {group.name || 'Apps'}
-      </h2>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
-        {group.apps.map((app) => (
-          <AppCard key={app.path} app={app} onSelect={onSelect} />
-        ))}
-      </div>
-    </section>
+    <Collapsible asChild defaultOpen={!group.collapsed}>
+      <section className="group/section">
+        <CollapsibleTrigger className="mb-3 flex w-full items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-4 transition-transform group-data-[state=open]/section:rotate-90" />
+          <Icon className="size-4" />
+          {group.name || 'Apps'}
+          <span className="text-xs font-normal">{group.apps.length}</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4">
+            {group.apps.map((app) => (
+              <AppCard key={app.path} app={app} onSelect={onSelect} />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
@@ -78,16 +99,26 @@ function AppCard({ app, onSelect }: { app: AppEntry; onSelect: (path: string) =>
     <a
       href={urlOf(app.path)}
       onClick={onClick}
-      className="group flex items-center gap-3 rounded-lg border bg-card p-4 text-card-foreground transition-colors hover:bg-accent"
+      className="group flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground transition-colors hover:bg-accent"
     >
-      <AppIcon
-        app={app}
-        className="size-5 shrink-0 text-muted-foreground"
-        checkClassName="ring-card group-hover:ring-accent"
-      />
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium">{app.label}</span>
-        <span className="block truncate text-xs text-muted-foreground">{app.path}</span>
+      {app.image && (
+        <img
+          src={app.image}
+          alt=""
+          loading="lazy"
+          className="aspect-[1200/630] w-full border-b bg-muted object-cover"
+        />
+      )}
+      <span className="flex items-center gap-3 p-4">
+        <AppIcon
+          app={app}
+          className="size-5 shrink-0 text-muted-foreground"
+          checkClassName="ring-card group-hover:ring-accent"
+        />
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{app.label}</span>
+          <span className="block truncate text-xs text-muted-foreground">{app.path}</span>
+        </span>
       </span>
     </a>
   );

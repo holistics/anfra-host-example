@@ -9,6 +9,8 @@ export type Entry =
       label: string;
       /** The definition's `<meta name="description">`. */
       description?: string;
+      /** The definition's `og:image`, as a URL on this host, when it names a file under the apps folder. */
+      image?: string;
       icon?: string;
       tags: string[];
       endorsed: boolean;

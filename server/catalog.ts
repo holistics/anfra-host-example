@@ -1,4 +1,4 @@
-import { type Dirent, readdirSync, readFileSync } from 'node:fs';
+import { type Dirent, existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { AppPrompt, Entry } from './entry.js';
 import { type Meta, type MetaFile, readMeta, startRead, warnOnce } from './meta.js';
@@ -57,6 +57,31 @@ export function descriptionOf(html: string): string | undefined {
     const content = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
     const text = content ? textOf(content[1] ?? content[2] ?? '') : '';
     if (text) return text;
+  }
+  return undefined;
+}
+
+/**
+ * A definition's `<meta property="og:image">` as a URL the page can load from this host
+ * (`/host/files/...`), when it names a file under the apps folder; else none.
+ */
+export function imageOf(html: string, rel: string, root: string): string | undefined {
+  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
+    if (!/\bproperty\s*=\s*["']?og:image["'\s>/]/i.test(tag)) continue;
+    const content = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
+    const value = (content?.[1] ?? content?.[2] ?? '').trim();
+    if (!value) continue;
+    try {
+      const base = 'http://self.invalid/';
+      const url = new URL(value, `${base}${rel.split('/').map(encodeURIComponent).join('/')}`);
+      if (url.origin !== 'http://self.invalid') return undefined;
+      const file = url.pathname.slice(1).split('/').map(decodeURIComponent).join('/');
+      const full = path.resolve(root, file);
+      if (!full.startsWith(path.resolve(root) + path.sep) || !existsSync(full)) return undefined;
+      return `/host/files/${file.split('/').map(encodeURIComponent).join('/')}`;
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 }
@@ -159,6 +184,7 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
           path: childRel,
           label,
           description: descriptionOf(html),
+          image: imageOf(html, childRel, root),
           icon: meta.icon,
           tags: meta.tags,
           endorsed: meta.endorsed ?? false,
