@@ -17,6 +17,9 @@ export const storedSidebarWidth = (): string | undefined => {
   }
 };
 
+/** Whether the sidebar was left open, from the cookie the sidebar writes when it toggles; else open. */
+export const storedSidebarOpen = (): boolean => !/(?:^|; )sidebar_state=false(?:;|$)/.test(document.cookie);
+
 /**
  * The sidebar's edge: drag it to resize, click it to collapse. The width is set on the sidebar
  * wrapper as it moves, without a render, and remembered in this browser once the drag ends.

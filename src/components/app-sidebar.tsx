@@ -36,6 +36,17 @@ interface Props {
 /** Folders opened or closed by hand, by path. */
 type Toggled = Record<string, boolean>;
 
+const FOLDERS_KEY = 'sidebar-folders';
+
+const storedFolders = (): Toggled => {
+  try {
+    const value = JSON.parse(localStorage.getItem(FOLDERS_KEY) ?? '{}');
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+};
+
 /** The Data Apps in the repo, as a tree of folders. */
 export function AppSidebar({ entries, selected, onSelect }: Props) {
   const [query, setQuery] = useState('');
@@ -43,7 +54,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   const shown = entries && filterEntries(entries, query);
   // Kept here, not in each folder, so they last while a folder is filtered out. A search has its
   // own, dropped when the query changes, so browsing comes back as it was left.
-  const [browsed, setBrowsed] = useState<Toggled>({});
+  const [browsed, setBrowsed] = useState<Toggled>(storedFolders);
   const [searched, setSearched] = useState<Toggled>({});
 
   // `/` or Cmd/Ctrl+K jumps to the filter, opening the sidebar first if it's hidden. The focus waits
@@ -96,6 +107,15 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       return next;
     });
   }, [selected]);
+
+  // Browsing is remembered in this browser; a search's toggles are not.
+  useEffect(() => {
+    try {
+      localStorage.setItem(FOLDERS_KEY, JSON.stringify(browsed));
+    } catch {
+      // Storage may be blocked; the state just lasts the session.
+    }
+  }, [browsed]);
 
   // Open while searching, so what matched shows; else closed when the repo says so, unless it holds the open app.
   const isOpen = (folder: FolderEntry) =>
