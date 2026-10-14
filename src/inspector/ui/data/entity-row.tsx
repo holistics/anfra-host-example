@@ -43,12 +43,6 @@ export function EntityRow({
           aria-expanded={props.open}
         >
           {summary}
-          <ChevronRight
-            className={cn(
-              'ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform',
-              props.open && 'rotate-90',
-            )}
-          />
         </button>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -69,6 +63,10 @@ export function EntityRow({
             {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
           </TooltipContent>
         </Tooltip>
+        {/* The row button already carries the expanded state; this one is the same click, closer to hand. */}
+        <Button variant="ghost" size="icon-xs" tabIndex={-1} aria-hidden onClick={props.onToggle}>
+          <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />
+        </Button>
       </div>
       {below}
       {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3">{children}</div>}
