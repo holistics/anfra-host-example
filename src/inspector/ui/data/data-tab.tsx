@@ -314,12 +314,12 @@ function Section(props: {
     <Collapsible open={props.open} onOpenChange={props.onToggle}>
       <CollapsibleTrigger asChild>
         <Button variant="ghost" size="sm" className="w-full justify-start">
-          <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />
           <props.icon />
           {props.title}
           <span className="font-normal text-muted-foreground">
             {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
           </span>
+          <ChevronRight className={cn('ml-auto transition-transform', props.open && 'rotate-90')} />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-1.5 space-y-1">

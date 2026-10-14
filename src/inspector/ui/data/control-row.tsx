@@ -27,7 +27,7 @@ export function ControlRow({
         {control.condition.values?.length ? formatCondition(control.condition) : 'not set'}
       </span>
       {control.isDirty && (
-        <span className="ml-auto shrink-0 text-xs text-amber-600 dark:text-amber-400">unapplied</span>
+        <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">unapplied</span>
       )}
     </>
   );

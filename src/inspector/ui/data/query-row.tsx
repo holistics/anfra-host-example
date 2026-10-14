@@ -83,7 +83,7 @@ export function QueryRow({
       </span>
       {query.isDirty && <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>}
       {query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>}
-      <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
+      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <span role="img" className="flex h-3 shrink-0 items-end" aria-label={`Trust level ${trust.level}`}>

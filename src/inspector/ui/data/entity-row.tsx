@@ -34,17 +34,17 @@ export function EntityRow({
       <div className="group flex h-8 items-center gap-1.5 rounded-md pr-1 hover:bg-accent">
         <button
           type="button"
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 pl-1 text-left text-sm"
+          className="flex h-full min-w-0 flex-1 items-center gap-1.5 pl-2 text-left text-sm"
           onClick={props.onToggle}
           aria-expanded={props.open}
         >
+          {summary}
           <ChevronRight
             className={cn(
-              'size-3.5 shrink-0 text-muted-foreground transition-transform',
+              'ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform',
               props.open && 'rotate-90',
             )}
           />
-          {summary}
         </button>
         <Button
           variant="ghost"
