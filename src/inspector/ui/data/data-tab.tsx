@@ -135,7 +135,7 @@ export function DataTab({
   return (
     <div>
       <Toolbar view={view} onView={onView} counts={counts} />
-      <div className="space-y-6 p-3">
+      <div className="space-y-6 px-3 pt-1 pb-3">
         {apps.map((app, index) => {
           const queries = Object.entries(app.queries);
           const controls = Object.entries(app.controls);
@@ -269,7 +269,7 @@ function Toolbar({
     { value: 'dirty', label: `Dirty (${counts.dirty})` },
   ];
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b bg-background px-3 py-2.5">
+    <div className="sticky top-0 z-10 flex items-center gap-1.5 bg-background px-3 pt-2.5 pb-1">
       <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -282,15 +282,20 @@ function Toolbar({
         />
       </div>
       <ToggleGroup
+        className="shadow-xs"
         type="single"
         variant="outline"
-        size="sm"
+        size="default"
         value={view.filter}
         // Clicking the pressed item clears a single group; a filter is always one of the three.
         onValueChange={(value) => value && onView({ ...view, filter: value as DataFilter['filter'] })}
       >
         {filters.map((filter) => (
-          <ToggleGroupItem key={filter.value} value={filter.value}>
+          <ToggleGroupItem
+            key={filter.value}
+            value={filter.value}
+            className="dark:bg-input/30 dark:data-[state=on]:bg-accent"
+          >
             {filter.label}
           </ToggleGroupItem>
         ))}

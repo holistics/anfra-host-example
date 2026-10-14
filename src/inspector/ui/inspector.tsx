@@ -7,6 +7,7 @@ import { countProblems, entityKey } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
+import { appTrust } from '../model/trust';
 import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
@@ -43,6 +44,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const attributed = useMemo(() => attributeRequests(requests, apps ?? []), [requests, apps]);
   const problems = structure ? countProblems(structure.nodes) : 0;
   const counts = apps && queryCounts(apps);
+  const trust = apps?.length
+    ? apps.map(appTrust).reduce((lowest, t) => (t.level < lowest.level ? t : lowest))
+    : undefined;
   const checks = useMemo(() => (apps ?? []).map(wiringChecks), [apps]);
   const warnings = checks.flat().filter((c) => c.level !== 'info').length;
 
@@ -87,6 +91,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
         <InspectorHeader
           title={title}
           counts={counts}
+          trust={trust}
           picking={picking}
           onTogglePicking={onTogglePicking}
           onShowQueries={(filter) => {
@@ -96,8 +101,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           report={() => JSON.stringify(buildReport(snapshot, source.env, requests), null, 2)}
           onClose={onClose}
         />
-        <div className="shrink-0 overflow-x-auto border-b px-2 py-1.5">
-          <TabsList>
+        <div className="shrink-0 overflow-x-auto border-b px-2 pt-1.5">
+          <TabsList variant="line">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="structure">
               Structure
