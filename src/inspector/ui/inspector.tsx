@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -57,6 +57,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
 
+  const handledPick = useRef(picked?.nonce);
+
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
       if (target.filter) setView({ search: '', filter: target.filter });
@@ -77,6 +79,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
   useEffect(() => {
     if (!picked) return setNode(undefined);
+    // A pick already handled before this mount (the panel was closed and reopened) isn't a new one.
+    if (picked.nonce === handledPick.current) return;
+    handledPick.current = picked.nonce;
     const entity = picked.inData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
     if (entity) reveal(entity);
     else {

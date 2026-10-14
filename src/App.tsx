@@ -63,7 +63,7 @@ export function App() {
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
   // Whether the last click in the frame held Shift; a pick's click is reported just before the pick.
-  const shiftClick = useRef(false);
+  const shiftClick = useRef({ shift: false, at: 0 });
   const [toast, setToast] = useState<Toast>();
   const stage = useRef<StageHandle>(null);
 
@@ -185,7 +185,8 @@ export function App() {
     const onMessage = (event: MessageEvent) => {
       if (event.data === togglePromptMessage) run('prompt');
       if (event.data === toggleInspectMessage) run('inspect');
-      if (event.data?.type === clickMessage) shiftClick.current = !!event.data.shift;
+      if (event.data?.type === clickMessage)
+        shiftClick.current = { shift: !!event.data.shift, at: Date.now() };
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('message', onMessage);
@@ -198,9 +199,15 @@ export function App() {
   const onPick = (node: string | null) => {
     if (node) {
       // Shift goes to the node's first query or control in Data; the inspector picks the tab.
-      const inData = shiftClick.current;
-      setPicked({ key: node, nonce: Date.now(), inData });
-      if (!inData) setTab('structure');
+      // The frame's click message may land just after the pick report, so read it a moment later, and
+      // only if it is that click's: a pick that isn't from a click doesn't inherit an old Shift.
+      setTimeout(() => {
+        const { shift, at } = shiftClick.current;
+        const inData = shift && Date.now() - at < 500;
+        shiftClick.current = { shift: false, at: 0 };
+        setPicked({ key: node, nonce: Date.now(), inData });
+        if (!inData) setTab('structure');
+      }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
     setPicking(false);

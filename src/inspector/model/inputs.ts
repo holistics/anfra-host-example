@@ -106,6 +106,31 @@ export function controlTargets(app: InspectedApp, control: string) {
     .map((m) => ({ query: m.to.name, field: mappingField(m) }));
 }
 
+/** The AQL without its `//` and block comments, quotes respected. */
+function withoutComments(text: string): string {
+  let out = '';
+  let quote: string | undefined;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i] ?? '';
+    if (quote) {
+      out += ch;
+      if (ch === '\\') out += text[++i] ?? '';
+      else if (ch === quote) quote = undefined;
+    } else if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      out += ch;
+    } else if (ch === '/' && text[i + 1] === '/') {
+      while (i < text.length && text[i] !== '\n') i++;
+      i--;
+    } else if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end < 0 ? text.length : end + 1;
+      out += ' ';
+    } else out += ch;
+  }
+  return out;
+}
+
 /** The text of the `{ … }` block opening at `open`, braces and quotes balanced; undefined if it never closes. */
 function blockAt(text: string, open: number): string | undefined {
   let depth = 0;
@@ -131,8 +156,11 @@ function splitEntries(block: string): string[] {
   for (let i = 0; i < block.length; i++) {
     const ch = block[i] ?? '';
     if (quote) {
-      if (ch === '\\') current += block[i++] ?? '';
-      else if (ch === quote) quote = undefined;
+      if (ch === '\\') {
+        current += ch + (block[++i] ?? '');
+        continue;
+      }
+      if (ch === quote) quote = undefined;
     } else if (ch === '"' || ch === "'" || ch === '`') quote = ch;
     else if ('({['.includes(ch)) depth++;
     else if (')}]'.includes(ch)) depth--;
@@ -162,7 +190,8 @@ const CONDITION = /^(.*?)\s+(==|!=|>=|<=|>|<|not in|in|is not|is|like|not like|m
  * it filters and the condition on it. An entry that isn't `field operator value` keeps its whole
  * text as the field.
  */
-export function declaredFilters(aql: string | undefined): QueryInput[] {
+export function declaredFilters(source: string | undefined): QueryInput[] {
+  const aql = source && withoutComments(source);
   const at = aql?.search(/\bfilters\s*\{/);
   if (!aql || at === undefined || at < 0) return [];
   const block = blockAt(aql, aql.indexOf('{', at));

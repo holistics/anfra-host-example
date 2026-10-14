@@ -219,7 +219,7 @@ export function QueryRow({
           {filters.length === 0 && <p className="text-xs text-muted-foreground">No active filters.</p>}
           {filters.length > 0 && (
             <MiniTable
-              rows={filters.map((input) => {
+              rows={filters.map((input, index) => {
                 const Icon =
                   input.kind === 'declared'
                     ? Table2
@@ -241,7 +241,7 @@ export function QueryRow({
                         ? "Cross-filter from selecting rows in this query's own result"
                         : `Cross-filter from selecting rows in "${input.source}"`;
                 return {
-                  key: `${input.kind}:${input.source}:${input.field}`,
+                  key: `${input.kind}:${input.source}:${input.field}:${index}`,
                   cells: [
                     <div key="field" className="flex min-w-0 items-start gap-2.5">
                       <TypeIcon icon={FieldIcon} label={fieldKind} />
