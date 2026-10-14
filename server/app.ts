@@ -8,9 +8,9 @@ import { coreApi, exportDownload, health } from './anfra.js';
 import { catalog, type Entry } from './catalog.js';
 import { appsDir, type Config } from './config.js';
 import { repoEvents } from './events.js';
-import { serveAppFile } from './files.js';
+import { serveAppFile, versionOf } from './files.js';
 import { mcp } from './mcp.js';
-import { appPreview, defaultImage, type Preview, withPreview } from './preview.js';
+import { appPreview, defaultImage, type Preview, withImageFile, withPreview } from './preview.js';
 
 export interface AppOptions {
   config: Config;
@@ -45,11 +45,13 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
   // reads them once.
   const previews = new Map<string, Preview>();
   const tree: Entry[] | undefined = production
-    ? catalog(apps, (rel, html, name) => previews.set(rel, appPreview(rel, html, name)))
+    ? catalog(apps, (rel, html, name) =>
+        previews.set(rel, withImageFile(appPreview(rel, html, name), rel, apps, config)),
+      )
     : undefined;
   app.get('/host/apps', (c) => c.json(tree ?? catalog(apps), 200, { 'Cache-Control': 'no-store' }));
 
-  // A definition, or a file it refers to.
+  // A definition, or a file it refers to. A query, as a preview image's `?v=`, is not part of the path.
   app.on(['GET', 'HEAD'], '/host/files/*', (c) => {
     const rel = decodeURIComponent(c.req.path.slice('/host/files/'.length));
     return serveAppFile(c, apps, rel, production ? 'short' : 'none');
@@ -92,13 +94,16 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
     // The rest of public/: the favicon and sidebar logo, and the default preview image.
     app.get('/logo.svg', serveStatic({ root: pageDir }));
     app.get(defaultImage, serveStatic({ root: pageDir }));
+    const defaultVersion = versionOf(path.join(pageDir, defaultImage));
 
     // The page itself: `/`, and `/apps/<path>` for each Data App, with its preview. Anything else
     // is not here.
     const shell = (c: Context) => {
       const rel = definitionOf(c.req.path);
       const preview = rel ? previews.get(rel) : undefined;
-      return c.html(withPreview(index, c, config, preview, rel), 200, { 'Cache-Control': 'no-cache' });
+      return c.html(withPreview(index, c, config, { preview, rel, defaultVersion }), 200, {
+        'Cache-Control': 'no-cache',
+      });
     };
     app.get('/', shell);
     app.get('/apps/*', shell);

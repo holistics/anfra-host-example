@@ -92,7 +92,9 @@ A link to a Data App shared in Slack, a chat app or a social site shows the app'
 
 - the title: `og:title`, else `<title>`, else the file name;
 - the description: `og:description`, else `<meta name="description">`, else a line about Data Apps;
-- the image: `og:image`, a URL or a path relative to the definition, else [`public/og-image.png`](public/og-image.png).
+- the image: `og:image`, a URL or a path relative to the definition, else [`public/og-image.png`](public/og-image.png), the anfra card. A file under `apps/` that isn't there shows the default (and is warned of at startup).
+
+An image under `apps/`, and the default, gets `?v=` and a short hash of its bytes, read at startup, so a crawler that caches images by URL (Facebook, LinkedIn) fetches a changed one. They are said to be 1200x630 (`og:image:width`, `og:image:height`), as no image is read to learn its size: pre-render them at that size in the Data Folder, as anfra-demo-data's `scripts/og_snapshots.py` does. Every image gets `og:image:type` from its extension (png, jpg, webp) and `og:image:alt`, the title.
 
 ```html
 <title>Funnel Analysis</title>
