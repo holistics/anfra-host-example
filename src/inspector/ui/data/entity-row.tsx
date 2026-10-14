@@ -1,6 +1,6 @@
 import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk/common';
-import { ChevronRight, LocateFixed } from 'lucide-react';
-import { Fragment, type ReactNode } from 'react';
+import { ChevronRight, LocateFixed, Network } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -74,7 +74,7 @@ export function EntityRow({
   );
 }
 
-/** Where an entity is drawn on the page, with its handle to copy. */
+/** Where an entity shows up on the page: a count that opens into its blocks, each with locate and reveal buttons. */
 export function Drawn({
   kind,
   app,
@@ -82,6 +82,7 @@ export function Drawn({
   usage,
   blockKey,
   onReveal,
+  onLocate,
 }: {
   kind: LocateKind;
   app: number;
@@ -89,33 +90,78 @@ export function Drawn({
   usage?: EntityUsage;
   blockKey: RowProps['blockKey'];
   onReveal: (target: RevealTarget) => void;
+  onLocate: RowProps['onLocate'];
 }) {
-  const text = !usage
-    ? 'Not drawn yet'
-    : `In ${plural(usage.markers, 'place')}${usage.blocks.length ? ': ' : ', outside any block'}`;
+  const [open, setOpen] = useState(false);
+  if (!usage) {
+    return <span className="text-muted-foreground">Not on the page yet</span>;
+  }
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-1">
-      {text}
-      {usage?.blocks.map((block, i) => {
-        const key = blockKey(block);
-        return (
-          <Fragment key={block}>
-            {i > 0 && ', '}
-            {key ? (
-              <button
-                type="button"
-                className="font-mono hover:underline"
-                onClick={() => onReveal({ node: key })}
-              >
-                {block}
-              </button>
-            ) : (
-              block
-            )}
-          </Fragment>
-        );
-      })}
-      <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
-    </span>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 hover:underline"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
+          In {plural(usage.markers, 'place')}
+          {!usage.blocks.length && ', outside any block'}
+        </button>
+        <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
+      </div>
+      {open && (
+        <ul className="space-y-0.5 pl-1">
+          {usage.blocks.length === 0 && (
+            <li className="flex items-center gap-1">
+              <span className="flex-1 text-muted-foreground">Outside any block</span>
+              <IconButton label="Highlight on the page" onClick={() => onLocate({ app, kind, name })}>
+                <LocateFixed />
+              </IconButton>
+            </li>
+          )}
+          {usage.blocks.map((block) => {
+            const key = blockKey(block);
+            return (
+              <li key={block} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
+                <span className="min-w-0 flex-1 truncate font-mono">{block}</span>
+                {key && (
+                  <>
+                    <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>
+                      <LocateFixed />
+                    </IconButton>
+                    <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
+                      <Network />
+                    </IconButton>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon-xs" aria-label={label} onClick={onClick}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

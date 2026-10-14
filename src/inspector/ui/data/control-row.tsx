@@ -73,7 +73,7 @@ export function ControlRow({
             ))
           )}
         </Field>
-        <Field label="Drawn">
+        <Field label="On the page">
           <Drawn
             kind="control"
             app={props.app}
@@ -81,6 +81,7 @@ export function ControlRow({
             usage={props.usage}
             blockKey={props.blockKey}
             onReveal={onReveal}
+            onLocate={props.onLocate}
           />
         </Field>
       </Fields>

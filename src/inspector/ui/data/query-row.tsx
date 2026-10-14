@@ -120,7 +120,7 @@ export function QueryRow({
             {declaration?.dataset || 'none declared'}
           </span>
         </Field>
-        <Field label="Drawn">
+        <Field label="On the page">
           <Drawn
             kind="query"
             app={props.app}
@@ -128,6 +128,7 @@ export function QueryRow({
             usage={props.usage}
             blockKey={props.blockKey}
             onReveal={onReveal}
+            onLocate={props.onLocate}
           />
         </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
