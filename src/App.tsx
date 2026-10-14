@@ -1,5 +1,6 @@
-import { Crosshair, Download, PanelRight, RotateCw, ScrollText } from 'lucide-react';
+import { Download, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
@@ -217,9 +218,7 @@ export function App() {
             <SidebarTrigger />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
             <h1 className="truncate text-sm font-medium">{app?.label ?? 'anfra demo'}</h1>
-            {app && (
-              <span className="hidden truncate text-xs text-muted-foreground md:inline">{app.path}</span>
-            )}
+            {app && <AppInfo app={app} />}
             <div className="ml-auto flex items-center gap-1">
               <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
                 <RotateCw />
@@ -236,14 +235,6 @@ export function App() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <ToolbarButton
-                label={picking ? 'Stop picking' : 'Pick an element on the page'}
-                disabled={!app}
-                active={picking}
-                onClick={togglePicking}
-              >
-                <Crosshair />
-              </ToolbarButton>
-              <ToolbarButton
                 label={
                   !app || app.prompt
                     ? prompting
@@ -254,6 +245,7 @@ export function App() {
                 disabled={!app?.prompt}
                 active={prompting}
                 onClick={togglePrompt}
+                text="Prompt"
               >
                 <ScrollText />
               </ToolbarButton>
@@ -262,8 +254,9 @@ export function App() {
                 disabled={!app}
                 active={inspecting}
                 onClick={toggleInspecting}
+                text="Inspect"
               >
-                <PanelRight />
+                <ScanSearch />
               </ToolbarButton>
             </div>
           </header>
@@ -281,6 +274,8 @@ export function App() {
                     tab={tab}
                     onTab={setTab}
                     picked={picked}
+                    picking={picking}
+                    onTogglePicking={togglePicking}
                     onClose={toggleInspecting}
                   />
                 </ResizablePanel>
@@ -332,22 +327,28 @@ function Message({ children }: { children: React.ReactNode }) {
   return <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">{children}</div>;
 }
 
+/** An icon button; with `text` it carries a visible label beside the icon. */
 function ToolbarButton({
   label,
   active,
+  text,
+  children,
   ...props
-}: { label: string; active?: boolean } & React.ComponentProps<typeof Button>) {
+}: { label: string; active?: boolean; text?: string } & React.ComponentProps<typeof Button>) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className={cn('size-8', active && 'bg-accent text-accent-foreground')}
+          size={text ? 'sm' : 'icon'}
+          className={cn(!text && 'size-8', active && 'bg-accent text-accent-foreground')}
           aria-label={label}
           aria-pressed={active}
           {...props}
-        />
+        >
+          {children}
+          {text}
+        </Button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

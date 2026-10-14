@@ -1,4 +1,4 @@
-import { Check, ClipboardCopy, X } from 'lucide-react';
+import { Check, ClipboardCopy, SquareMousePointer, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,6 +12,9 @@ interface Props {
   title: string;
   /** Undefined until the frame has reported. */
   counts: ReturnType<typeof queryCounts> | undefined;
+  /** Whether the frame is in pick mode. */
+  picking: boolean;
+  onTogglePicking: () => void;
   /** Open the Data tab on the queries counted, filtered to them. */
   onShowQueries: (filter: DataFilter['filter']) => void;
   /** The report, as JSON, built when asked for. */
@@ -19,12 +22,35 @@ interface Props {
   onClose: () => void;
 }
 
-/** The panel's top: what is inspected, its queries at a glance, Copy report and close. */
-export function InspectorHeader({ title, counts, onShowQueries, report, onClose }: Props) {
+/** The panel's top: what is inspected, its queries at a glance, Pick, Copy report and close. */
+export function InspectorHeader({
+  title,
+  counts,
+  picking,
+  onTogglePicking,
+  onShowQueries,
+  report,
+  onClose,
+}: Props) {
   return (
     <div className="shrink-0 space-y-1 border-b px-2 pt-1.5 pb-2">
       <div className="flex h-7 items-center gap-1">
         <h2 className="min-w-0 flex-1 truncate pl-1 text-sm font-medium">{title}</h2>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn('h-7 px-2', picking && 'bg-accent text-accent-foreground')}
+              onClick={onTogglePicking}
+              aria-pressed={picking}
+            >
+              <SquareMousePointer />
+              Pick
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{picking ? 'Stop picking' : 'Pick an element on the page'}</TooltipContent>
+        </Tooltip>
         <CopyReport report={report} />
         <Button
           variant="ghost"
