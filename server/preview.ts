@@ -1,8 +1,6 @@
-import { readFileSync } from 'node:fs';
 import type { Context } from 'hono';
 import { textOf, titleOf } from './catalog.js';
 import type { Config } from './config.js';
-import { appFile } from './files.js';
 
 /**
  * What a link to a page shows where it is shared (Slack, social sites, chat apps). Their crawlers
@@ -41,12 +39,9 @@ function metaOf(html: string): Map<string, string> {
 
 /**
  * A Data App's preview, from its definition: its `og:title` or `<title>`, its `og:description` or
- * `description`, its `og:image`. None for a path that names no definition.
+ * `description`, its `og:image`.
  */
-export function appPreview(appsDir: string, rel: string): Preview | undefined {
-  const found = appFile(appsDir, rel);
-  if (!found || !rel.toLowerCase().endsWith('.html')) return undefined;
-  const html = readFileSync(found.file, 'utf8');
+export function appPreview(rel: string, html: string): Preview {
   const meta = metaOf(html);
   return {
     title: meta.get('og:title') ?? titleOf(html) ?? (rel.split('/').at(-1) as string),

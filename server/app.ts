@@ -41,8 +41,12 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
   // An export's file, at the link anfra made for this host's origin.
   app.on(['GET', 'HEAD'], '/exports/download/*', (c) => exportDownload(c, config));
 
-  // The Data App tree. A deployed repo does not change, so production reads it once.
-  const tree: Entry[] | undefined = production ? catalog(apps) : undefined;
+  // The Data App tree, and each app's link preview. A deployed repo does not change, so production
+  // reads them once.
+  const previews = new Map<string, Preview>();
+  const tree: Entry[] | undefined = production
+    ? catalog(apps, (rel, html) => previews.set(rel, appPreview(rel, html)))
+    : undefined;
   app.get('/host/apps', (c) => c.json(tree ?? catalog(apps), 200, { 'Cache-Control': 'no-store' }));
 
   // A definition, or a file it refers to.
@@ -87,28 +91,11 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
     );
     app.get(defaultImage, serveStatic({ root: pageDir }));
 
-    // Each Data App's preview, for links shared to Slack and the like. Read once, in production,
-    // for the definitions the tree holds; per request otherwise.
-    const previews = new Map<string, Preview>();
-    if (tree) {
-      const walk = (entries: Entry[]) => {
-        for (const e of entries) {
-          if (e.kind === 'folder') walk(e.children);
-          else {
-            const preview = appPreview(apps, e.path);
-            if (preview) previews.set(e.path, preview);
-          }
-        }
-      };
-      walk(tree);
-    }
-    const previewOf = (rel: string) => (tree ? previews.get(rel) : appPreview(apps, rel));
-
     // The page itself: `/`, and `/apps/<path>` for each Data App, with its preview. Anything else
     // is not here.
     const shell = (c: Context) => {
       const rel = definitionOf(c.req.path);
-      const preview = rel ? previewOf(rel) : undefined;
+      const preview = rel ? previews.get(rel) : undefined;
       return c.html(withPreview(index, c, config, preview, rel), 200, { 'Cache-Control': 'no-cache' });
     };
     app.get('/', shell);
