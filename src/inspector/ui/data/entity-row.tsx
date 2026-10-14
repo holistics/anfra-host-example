@@ -45,14 +45,13 @@ export function EntityRow({
         </button>
         <Button
           variant="ghost"
-          size="icon"
-          className="size-6 shrink-0 text-muted-foreground"
+          size="icon-xs"
           disabled={!props.usage}
           title={props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
           aria-label="Locate"
           onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
         >
-          <LocateFixed className="size-3.5" />
+          <LocateFixed />
         </Button>
       </div>
       {below}
@@ -79,7 +78,7 @@ export function Drawn({
   return (
     <span className="inline-flex items-center gap-1">
       {text}
-      <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1 size-5" />
+      <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
     </span>
   );
 }

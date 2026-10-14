@@ -15,13 +15,11 @@ export function MiniTable({
     <div>
       <div className="mb-0.5 px-1 text-xs text-muted-foreground">{caption}</div>
       <div className="rounded-md border bg-background">
-        <Table className="text-xs">
+        <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow>
               {head.map((label) => (
-                <TableHead key={label} className="h-7 text-muted-foreground">
-                  {label}
-                </TableHead>
+                <TableHead key={label}>{label}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -30,9 +28,7 @@ export function MiniTable({
               <TableRow key={row.key}>
                 {row.cells.map((cell, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: cells are positional
-                  <TableCell key={i} className="px-2 py-1 align-top whitespace-normal">
-                    {cell}
-                  </TableCell>
+                  <TableCell key={i}>{cell}</TableCell>
                 ))}
               </TableRow>
             ))}

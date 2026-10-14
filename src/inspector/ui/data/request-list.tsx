@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { formatTime, plural } from '../../model/format';
@@ -30,13 +31,9 @@ export function RequestList({ items }: { items: { entry: RequestEntry; shared?: 
         ))}
       </ul>
       {items.length > FIRST && (
-        <button
-          type="button"
-          className="mt-0.5 px-1 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => setAll(!all)}
-        >
+        <Button variant="link" size="xs" onClick={() => setAll(!all)}>
           {all ? 'Show fewer' : `Show all ${items.length}`}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -48,7 +45,7 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
     <li className={cn('rounded-md', open && 'bg-background')}>
       <button
         type="button"
-        className="flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-xs hover:bg-accent"
+        className="flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-sm hover:bg-accent"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
@@ -140,7 +137,7 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
       {rows.length > 0 && (
         // The table scrolls within its own container, so the cap goes there for the header to stick.
         <div className="rounded-md border bg-background [&_[data-slot=table-container]]:max-h-60 [&_[data-slot=table-container]]:overflow-auto">
-          <Table className="text-[11px]">
+          <Table className="text-xs">
             <TableHeader className="sticky top-0 bg-muted">
               <TableRow className="hover:bg-transparent">
                 {columns.map((column) => (

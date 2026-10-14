@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { type Lang, type TokenKind, tokenize } from '../../model/highlight';
 import { CopyButton } from './copy-button';
@@ -39,26 +40,25 @@ export function CodeBlock<T extends string>({
   const { label, code, lang, empty } = sources[shown];
   return (
     <div className="overflow-hidden rounded-md border bg-background">
-      <div className="flex items-center border-b">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            disabled={!sources[t].code}
-            className={cn(
-              '-mb-px border-b-2 border-transparent px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
-              t === shown && 'border-foreground font-medium text-foreground',
-            )}
-            onClick={() => onTab(t)}
-            title={sources[t].code ? undefined : sources[t].empty}
-          >
-            {sources[t].label}
-          </button>
-        ))}
-        {code && <CopyButton text={code} label={`Copy the ${label}`} className="mr-1 ml-auto size-6" />}
+      <div className="flex items-center border-b px-1">
+        <Tabs value={shown} onValueChange={(value) => onTab(value as T)}>
+          <TabsList variant="line">
+            {tabs.map((t) => (
+              <TabsTrigger
+                key={t}
+                value={t}
+                disabled={!sources[t].code}
+                title={sources[t].code ? undefined : sources[t].empty}
+              >
+                {sources[t].label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        {code && <CopyButton text={code} label={`Copy the ${label}`} className="ml-auto" />}
       </div>
       {code ? (
-        <pre className={cn('max-h-56 overflow-auto p-2 font-mono text-[11px] leading-snug', className)}>
+        <pre className={cn('max-h-56 overflow-auto p-2 font-mono text-xs', className)}>
           <Highlighted code={code} lang={lang} />
         </pre>
       ) : (

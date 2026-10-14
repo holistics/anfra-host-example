@@ -14,6 +14,7 @@ import {
   Type,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
@@ -146,7 +147,7 @@ export function QueryRow({
               return {
                 key: column.name,
                 cells: [
-                  <span key="name" className="inline-flex items-center gap-1.5 font-mono">
+                  <span key="name" className="inline-flex items-center gap-1.5 font-mono text-xs">
                     <Icon
                       className="size-3.5 shrink-0 text-muted-foreground"
                       aria-label={column.semantic_type}
@@ -180,7 +181,7 @@ export function QueryRow({
                 cells: [
                   // The field goes under its source, so the value keeps the width a narrow panel has.
                   <div key="from" className="min-w-0">
-                    <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-xs">
                       <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-label={from}>
                         <title>{from}</title>
                       </Icon>
@@ -195,7 +196,7 @@ export function QueryRow({
                         />
                       )}
                     </span>
-                    <div className="pl-5 font-mono text-[11px] break-all text-muted-foreground">
+                    <div className="pl-5 font-mono text-xs break-all text-muted-foreground">
                       {input.field}
                     </div>
                   </div>,
@@ -210,7 +211,7 @@ export function QueryRow({
                       {input.value}
                     </span>
                     {input.pending && (
-                      <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                      <div className="text-xs text-amber-600 dark:text-amber-400">
                         pending: {input.pending}
                       </div>
                     )}
@@ -257,17 +258,13 @@ export function QueryRow({
 function Definition({ children }: { children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 px-1 text-xs font-medium">
+      <div className="flex items-center gap-1 px-1 text-sm font-medium">
         Definition
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="About the definition"
-            >
-              <Info className="size-3.5" />
-            </button>
+            <Button variant="ghost" size="icon-xs" aria-label="About the definition">
+              <Info />
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-64">
             How the query is defined: the metrics and dimensions it returns, and the controls and

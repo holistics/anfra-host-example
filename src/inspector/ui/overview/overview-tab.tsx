@@ -9,7 +9,10 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Check } from '../../model/checks';
@@ -61,44 +64,42 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
 function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
   const trust = appTrust(app);
   return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-center gap-2">
-        <p className="text-xs text-muted-foreground">
-          {label && <span className="font-medium text-foreground">{label} · </span>}
-          Trust level
-        </p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="About trust levels"
-            >
-              <Info className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
-            {LEVELS.map((level) => (
-              <p key={level}>
-                <span className="font-medium">
-                  {level}. {TRUST_LEVELS[level].name}
-                </span>
-                : {TRUST_LEVELS[level].hint}
-              </p>
-            ))}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2.5">
-        <TrustBars trust={trust} />
-        <div>
-          <p className={cn('text-sm font-medium', toneText[trust.tone])}>
-            Level {trust.level} · {TRUST_LEVELS[trust.level].name}
+    <Card className="py-3">
+      <CardContent className="px-3">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted-foreground">
+            {label && <span className="font-medium text-foreground">{label} · </span>}
+            Trust level
           </p>
-          <p className="text-xs text-muted-foreground">{trust.text}</p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-xs" aria-label="About trust levels">
+                <Info />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
+              {LEVELS.map((level) => (
+                <p key={level}>
+                  <span className="font-medium">
+                    {level}. {TRUST_LEVELS[level].name}
+                  </span>
+                  : {TRUST_LEVELS[level].hint}
+                </p>
+              ))}
+            </TooltipContent>
+          </Tooltip>
         </div>
-      </div>
-    </div>
+        <div className="mt-1.5 flex items-center gap-2.5">
+          <TrustBars trust={trust} />
+          <div>
+            <p className={cn('text-sm font-medium', toneText[trust.tone])}>
+              Level {trust.level} · {TRUST_LEVELS[trust.level].name}
+            </p>
+            <p className="text-xs text-muted-foreground">{trust.text}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -184,21 +185,23 @@ function Stat(props: {
   onClick?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      disabled={!props.onClick}
-      onClick={props.onClick}
-      className="flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none"
+    <Item
+      asChild
+      variant="outline"
+      size="sm"
+      className="min-w-0 flex-col items-start gap-0.5 text-left hover:bg-accent"
     >
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground [&_svg]:size-3.5">
-        {props.icon}
-        {props.title}
-      </span>
-      <span className={cn('text-lg font-semibold tabular-nums', props.tone && toneText[props.tone])}>
-        {props.value}
-      </span>
-      <span className="w-full truncate text-xs text-muted-foreground">{props.detail}</span>
-    </button>
+      <button type="button" disabled={!props.onClick} onClick={props.onClick}>
+        <ItemDescription className="flex items-center gap-1.5 [&_svg]:size-3.5">
+          {props.icon}
+          {props.title}
+        </ItemDescription>
+        <ItemTitle className={cn('text-lg tabular-nums', props.tone && toneText[props.tone])}>
+          {props.value}
+        </ItemTitle>
+        <ItemDescription className="w-full truncate">{props.detail}</ItemDescription>
+      </button>
+    </Item>
   );
 }
 
@@ -213,29 +216,25 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
         {shown.map((issue, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: issues have no identity of their own
           <li key={i}>
-            <button
-              type="button"
-              onClick={() => onReveal(issue.target)}
-              className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent"
-            >
-              {issue.level === 'error' ? (
-                <CircleAlert className="mt-px size-3.5 shrink-0 text-destructive" />
-              ) : (
-                <TriangleAlert className="mt-px size-3.5 shrink-0 text-amber-500" />
-              )}
-              <span className="min-w-0 break-words">{issue.message}</span>
-            </button>
+            <Item asChild size="sm" className="w-full cursor-pointer text-left hover:bg-accent">
+              <button type="button" onClick={() => onReveal(issue.target)}>
+                <ItemMedia variant="default">
+                  {issue.level === 'error' ? (
+                    <CircleAlert className="text-destructive" />
+                  ) : (
+                    <TriangleAlert className="text-amber-500" />
+                  )}
+                </ItemMedia>
+                <ItemContent className="break-words">{issue.message}</ItemContent>
+              </button>
+            </Item>
           </li>
         ))}
       </ul>
       {issues.length > FIRST_ISSUES && (
-        <button
-          type="button"
-          className="mt-1 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => setAll(!all)}
-        >
+        <Button variant="link" size="xs" onClick={() => setAll(!all)}>
           {all ? 'Show fewer' : `Show all ${issues.length}`}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -250,9 +249,11 @@ function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: Inspe
     .filter(({ app }) => app.timezone && app.timezone !== reader.timezone);
   return (
     <Collapsible>
-      <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded px-1 py-0.5 hover:text-foreground">
-        <ChevronRight className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-        <SectionTitle className="inline">Environment</SectionTitle>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="group w-full justify-start">
+          <ChevronRight className="transition-transform group-data-[state=open]:rotate-90" />
+          Environment
+        </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 px-1 pt-1.5">
         {mismatched.length > 0 && (

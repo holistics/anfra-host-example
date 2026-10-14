@@ -16,7 +16,10 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, toggleIn } from '@/lib/utils';
 import { entityKey, usageOf } from '../../model/format';
 import { controlTargets, queryInputs } from '../../model/inputs';
@@ -274,25 +277,23 @@ function Toolbar({
           onKeyDown={(event) => event.key === 'Escape' && onView({ ...view, search: '' })}
           placeholder="Search names, datasets, labels"
           aria-label="Search queries and controls"
-          className="h-7 pl-7 text-xs md:text-xs"
+          className="pl-7"
         />
       </div>
-      <div className="flex gap-1">
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        value={view.filter}
+        // Clicking the pressed item clears a single group; a filter is always one of the three.
+        onValueChange={(value) => value && onView({ ...view, filter: value as DataFilter['filter'] })}
+      >
         {filters.map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            aria-pressed={view.filter === filter.value}
-            onClick={() => onView({ ...view, filter: filter.value })}
-            className={cn(
-              'rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground',
-              view.filter === filter.value && 'bg-accent font-medium text-foreground',
-            )}
-          >
+          <ToggleGroupItem key={filter.value} value={filter.value}>
             {filter.label}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }
@@ -310,23 +311,20 @@ function Section(props: {
 }) {
   const visible = props.shown ?? props.count;
   return (
-    <div>
-      <button
-        type="button"
-        className="flex w-full items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
-        onClick={props.onToggle}
-        aria-expanded={props.open}
-      >
-        <ChevronRight className={cn('size-3 transition-transform', props.open && 'rotate-90')} />
-        <props.icon className="size-3.5" />
-        {props.title}
-        <span className="font-normal">
-          {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
-        </span>
-      </button>
-      {props.open && (
-        <div className="mt-1 space-y-px">{visible === 0 ? <Note>{props.empty}</Note> : props.children}</div>
-      )}
-    </div>
+    <Collapsible open={props.open} onOpenChange={props.onToggle}>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-full justify-start">
+          <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />
+          <props.icon />
+          {props.title}
+          <span className="font-normal text-muted-foreground">
+            {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
+          </span>
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-1 space-y-px">
+        {visible === 0 ? <Note>{props.empty}</Note> : props.children}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
