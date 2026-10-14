@@ -24,13 +24,22 @@ import {
   type StructureNode,
   sdkVersion,
 } from '@/data-app';
-import { createInspectorStore, createRequestLog, Inspector, type InspectorTab } from '@/inspector';
+import {
+  createInspectorStore,
+  createRequestLog,
+  Inspector,
+  type InspectorTab,
+  type NodeRequest,
+} from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
 import { cn } from '@/lib/utils';
 
 // Read once: while dragging, the resizer sets the width on the wrapper itself.
 const sidebarWidth = storedSidebarWidth();
 const sidebarStyle = (sidebarWidth ? { '--sidebar-width': sidebarWidth } : {}) as CSSProperties;
+
+// Numbers each mount of a Data App: the stage and the inspect panel are keyed on it.
+let mounts = 0;
 
 export function App() {
   const [entries, setEntries] = useState<Entry[]>();
@@ -42,7 +51,7 @@ export function App() {
   const [inspecting, setInspecting] = useState(false);
   const [picking, setPicking] = useState(false);
   const [tab, setTab] = useState<InspectorTab>('overview');
-  const [picked, setPicked] = useState<string>();
+  const [picked, setPicked] = useState<NodeRequest>();
   const [toast, setToast] = useState<Toast>();
   const stage = useRef<StageHandle>(null);
 
@@ -76,8 +85,10 @@ export function App() {
     setPath(next);
   };
 
-  // A new Data App starts with nothing inspected: one inspector store per mounted frame.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new store whenever the app or its revision changes
+  // A new Data App starts with nothing inspected: one inspector store, request log and panel per
+  // mounted frame. The stage and the panel are keyed on `mount`, so a new store always comes with a
+  // new frame recording into it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new mount whenever the app, its revision or the datasets change
   const inspector = useMemo(() => {
     const requests = createRequestLog();
     const store = createInspectorStore({
@@ -87,13 +98,13 @@ export function App() {
       locate: (target) => stage.current?.locate(target),
       download: (node, format) => downloadNode(node, format),
     });
-    return { ...store, record: requests.record };
+    return { ...store, record: requests.record, mount: ++mounts };
   }, [path, revision, datasets]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the app or its revision changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each mount
   useEffect(() => {
     setPicked(undefined);
     setPicking(false);
-  }, [path, revision]);
+  }, [inspector.mount]);
 
   // Live reload, in development: a changed Data App reloads if it is the one open; a changed AML
   // reloads the datasets, and with them the open Data App.
@@ -130,7 +141,7 @@ export function App() {
 
   const onPick = (node: string | null) => {
     if (node) {
-      setPicked(node);
+      setPicked({ key: node, nonce: Date.now() });
       setTab('structure');
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
@@ -167,7 +178,7 @@ export function App() {
   } else {
     content = (
       <DataAppStage
-        key={`${path}#${revision}`}
+        key={inspector.mount}
         ref={stage}
         path={path}
         datasets={datasets}
@@ -234,6 +245,7 @@ export function App() {
                 <ResizableHandle />
                 <ResizablePanel id="inspect" defaultSize="320px" minSize="220px" maxSize="60%">
                   <Inspector
+                    key={inspector.mount}
                     source={inspector.source}
                     tab={tab}
                     onTab={setTab}

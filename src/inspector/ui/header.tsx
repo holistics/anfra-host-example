@@ -41,7 +41,10 @@ export function InspectorHeader({ title, counts, onShowQueries, report, onClose 
   );
 }
 
-/** Query counts by state, and dirty ones; each opens Data on them. A zero count is left out. */
+/**
+ * Query counts by state, and dirty queries and controls; each opens Data on them. A zero count is
+ * left out.
+ */
 function StatusBar({
   counts,
   onClick,
@@ -54,7 +57,7 @@ function StatusBar({
     { n: counts.error, label: 'error', dot: stateDot.error, filter: 'errors' },
     { n: counts.executing, label: 'running', dot: stateDot.executing, filter: 'all' },
     { n: counts.idle, label: 'idle', dot: stateDot.idle, filter: 'all' },
-    { n: counts.dirty, label: 'dirty', dot: 'bg-amber-500', filter: 'dirty' },
+    { n: counts.dirty + counts.dirtyControls, label: 'dirty', dot: 'bg-amber-500', filter: 'dirty' },
   ] as const;
   const shown = items.filter((item) => item.n > 0);
   return (

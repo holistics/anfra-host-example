@@ -12,6 +12,7 @@ import { type ReactNode, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import type { Check } from '../../model/checks';
 import { formatTime } from '../../model/format';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
@@ -26,6 +27,8 @@ interface Props {
   snapshot: InspectorSnapshot | undefined;
   env: InspectorEnv;
   requests: readonly RequestEntry[];
+  /** Each app's wiring checks, by index. */
+  checks: Check[][];
   onReveal: (target: RevealTarget) => void;
 }
 
@@ -33,10 +36,10 @@ interface Props {
 const FIRST_ISSUES = 5;
 
 /** The landing tab: is this app healthy, and where to look. See SPEC.md §4.3. */
-export function OverviewTab({ snapshot, env, requests, onReveal }: Props) {
+export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props) {
   if (!snapshot) return <Note>Waiting for the Data App…</Note>;
   const { apps } = snapshot;
-  const issues = issuesOf(snapshot);
+  const issues = issuesOf(snapshot, checks);
 
   return (
     <div className="space-y-4 p-2">
@@ -115,7 +118,7 @@ function Stats({
   const errors = issues.filter((i) => i.level === 'error').length;
   const warnings = issues.length - errors;
   const controls = apps.flatMap((app) => Object.values(app.controls));
-  const unapplied = controls.filter((c) => c.isDirty).length;
+  const unapplied = counts.dirtyControls;
   const last = requests.findLast((r) => r.method === 'submitQuery' && r.status !== 'pending');
   const lastQuery = last?.aql ? queriesOf({ ...last, aql: last.aql }, apps)[0] : undefined;
   const firstIssue = issues[0];

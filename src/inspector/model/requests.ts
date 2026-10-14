@@ -56,8 +56,15 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
   let entries: readonly RequestEntry[] = [];
   let nextId = 1;
   const listeners = new Set<() => void>();
+  // A listener that throws mustn't reach the frame's request.
   const changed = () => {
-    for (const listener of listeners) listener();
+    for (const listener of listeners) {
+      try {
+        listener();
+      } catch (err) {
+        console.error(err);
+      }
+    }
   };
   const add = (entry: RequestEntry) => {
     entries = [...entries.slice(Math.max(0, entries.length - limit + 1)), entry];
@@ -78,10 +85,9 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
     const started = performance.now();
     add({ ...entry, id, at: new Date().toISOString(), status: 'pending' });
     const durationMs = () => Math.round(performance.now() - started);
+    let result: T;
     try {
-      const result = await call();
-      settle(id, { status: 'ok', durationMs: durationMs(), ...summary(result) });
-      return result;
+      result = await call();
     } catch (err) {
       settle(id, {
         status: signal.aborted ? 'aborted' : 'error',
@@ -90,6 +96,15 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
       });
       throw err;
     }
+    // The result is the frame's whatever the log makes of it: one it can't summarize is still ok.
+    let details: Partial<RequestEntry> = {};
+    try {
+      details = summary(result);
+    } catch (err) {
+      console.error(err);
+    }
+    settle(id, { status: 'ok', durationMs: durationMs(), ...details });
+    return result;
   }
 
   return {

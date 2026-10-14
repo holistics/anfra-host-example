@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { entityKey, usageOf } from '../../model/format';
 import { controlTargets, queryInputs } from '../../model/inputs';
+import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
 import type { DataFilter, RevealTarget } from '../../model/types';
 import { Note } from '../shared/fields';
@@ -115,14 +116,8 @@ export function DataTab({
   if (!apps) return <Note>Waiting for the Data App…</Note>;
   if (apps.length === 0) return <Note>This Data App hasn't created an SDK app.</Note>;
 
-  const counts = { errors: 0, dirty: 0 };
-  for (const app of apps) {
-    for (const query of Object.values(app.queries)) {
-      if (query.state === 'error') counts.errors++;
-      if (query.isDirty) counts.dirty++;
-    }
-    for (const control of Object.values(app.controls)) if (control.isDirty) counts.dirty++;
-  }
+  const all = queryCounts(apps);
+  const counts = { errors: all.error, dirty: all.dirty + all.dirtyControls };
   const filtering = view.search.trim() !== '' || view.filter !== 'all';
 
   return (
