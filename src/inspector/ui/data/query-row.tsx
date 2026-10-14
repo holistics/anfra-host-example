@@ -121,7 +121,14 @@ export function QueryRow({
           </span>
         </Field>
         <Field label="Drawn">
-          <Drawn kind="query" app={props.app} name={props.name} usage={props.usage} />
+          <Drawn
+            kind="query"
+            app={props.app}
+            name={props.name}
+            usage={props.usage}
+            blockKey={props.blockKey}
+            onReveal={onReveal}
+          />
         </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
         {query.debug && (

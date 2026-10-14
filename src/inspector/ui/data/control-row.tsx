@@ -74,7 +74,14 @@ export function ControlRow({
           )}
         </Field>
         <Field label="Drawn">
-          <Drawn kind="control" app={props.app} name={props.name} usage={props.usage} />
+          <Drawn
+            kind="control"
+            app={props.app}
+            name={props.name}
+            usage={props.usage}
+            blockKey={props.blockKey}
+            onReveal={onReveal}
+          />
         </Field>
       </Fields>
     </EntityRow>

@@ -1,9 +1,10 @@
 import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk/common';
 import { ChevronRight, LocateFixed } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { entityAttribute, plural } from '../../model/format';
+import type { RevealTarget } from '../../model/types';
 import { CopyButton } from '../shared/copy-button';
 
 /** What every query and control row takes. */
@@ -14,6 +15,8 @@ export interface RowProps {
   app: number;
   name: string;
   usage: EntityUsage | undefined;
+  /** The structure node key of a block this entity is drawn in, to open it in the Structure tab. */
+  blockKey: (block: string) => string | undefined;
   onLocate: (target: LocateTarget) => void;
 }
 
@@ -69,18 +72,41 @@ export function Drawn({
   app,
   name,
   usage,
+  blockKey,
+  onReveal,
 }: {
   kind: LocateKind;
   app: number;
   name: string;
   usage?: EntityUsage;
+  blockKey: RowProps['blockKey'];
+  onReveal: (target: RevealTarget) => void;
 }) {
   const text = !usage
     ? 'Not drawn yet'
-    : `In ${plural(usage.markers, 'place')}${usage.blocks.length ? `: ${usage.blocks.join(', ')}` : ', outside any block'}`;
+    : `In ${plural(usage.markers, 'place')}${usage.blocks.length ? ': ' : ', outside any block'}`;
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex flex-wrap items-center gap-x-1">
       {text}
+      {usage?.blocks.map((block, i) => {
+        const key = blockKey(block);
+        return (
+          <Fragment key={block}>
+            {i > 0 && ', '}
+            {key ? (
+              <button
+                type="button"
+                className="font-mono hover:underline"
+                onClick={() => onReveal({ node: key })}
+              >
+                {block}
+              </button>
+            ) : (
+              block
+            )}
+          </Fragment>
+        );
+      })}
       <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
     </span>
   );

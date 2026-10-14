@@ -21,7 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, toggleIn } from '@/lib/utils';
-import { entityKey, usageOf } from '../../model/format';
+import { blockNodeKey, entityKey, usageOf } from '../../model/format';
 import { controlTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
@@ -154,6 +154,7 @@ export function DataTab({
               app: index,
               name,
               usage: usageOf(structure, kind, index, name),
+              blockKey: (block: string) => blockNodeKey(structure, block, kind, index, name),
               onLocate,
             };
           };
