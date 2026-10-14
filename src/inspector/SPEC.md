@@ -49,10 +49,13 @@ There is no modal or backdrop.
 
 **Host toolbar** (owned by the host, documented here because the inspector depends on it):
 - **Inspect**: toggles the panel. Closing the panel also ends picking.
-- **Pick**: enters pick mode in the frame and opens the panel on Structure. Picking a node selects
-  and reveals it in the tree. The frame leaves pick mode after a pick or on Escape.
+- **Prompt**: toggles the prompt panel, in the same slot as the inspector.
 - **Reload**: remounts the frame. The snapshot, request log and transient UI state reset. The
   selected tab and panel width are kept.
+
+**Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
+Picking a node selects and reveals it in the tree. The frame leaves pick mode after a pick or on
+Escape.
 
 The inspector state also resets when the path changes or the repo revision changes (live reload).
 

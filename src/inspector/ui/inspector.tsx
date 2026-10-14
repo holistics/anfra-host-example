@@ -23,9 +23,11 @@ interface Props {
   onTab: (tab: InspectorTab) => void;
   /**
    * The node picked on the page, to select and reveal in the tree; a new nonce repeats a pick of
-   * the same node. The host owns pick mode.
+   * the same node. The host owns pick mode; the header's Pick button toggles it.
    */
   picked: NodeRequest | undefined;
+  picking: boolean;
+  onTogglePicking: () => void;
   onClose: () => void;
 }
 
@@ -33,7 +35,7 @@ interface Props {
  * A devtool over the running Data App: its health at a glance, the page's parts as its markup
  * declares them, and every app's queries, controls and selection. See SPEC.md.
  */
-export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
+export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking, onClose }: Props) {
   const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot);
   const apps = snapshot?.apps;
   const structure = snapshot?.structure;
@@ -84,6 +86,8 @@ export function Inspector({ source, tab, onTab, picked, onClose }: Props) {
         <InspectorHeader
           title={title}
           counts={counts}
+          picking={picking}
+          onTogglePicking={onTogglePicking}
           onShowQueries={(filter) => {
             setView({ search: '', filter });
             onTab('data');
