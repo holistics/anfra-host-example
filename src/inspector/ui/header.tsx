@@ -1,4 +1,4 @@
-import { Check, ClipboardCopy, SquareMousePointer, X } from 'lucide-react';
+import { Check, ClipboardCopy, Locate, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -45,7 +45,7 @@ export function InspectorHeader({
               onClick={onTogglePicking}
               aria-pressed={picking}
             >
-              <SquareMousePointer />
+              <Locate />
               Pick
             </Button>
           </TooltipTrigger>

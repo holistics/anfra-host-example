@@ -1,5 +1,5 @@
 import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk/common';
-import { ChevronRight, LocateFixed, Network } from 'lucide-react';
+import { ChevronRight, Locate, Network } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -44,25 +44,27 @@ export function EntityRow({
         >
           {summary}
         </button>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
-            <span className="inline-flex">
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                disabled={!props.usage}
-                aria-label="Locate"
-                onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
-              >
-                <LocateFixed />
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
-          </TooltipContent>
-        </Tooltip>
+        {kind === 'control' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
+              <span className="inline-flex">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={!props.usage}
+                  aria-label="Locate"
+                  onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
+                >
+                  <Locate />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
+            </TooltipContent>
+          </Tooltip>
+        )}
         {/* The row button already carries the expanded state; this one is the same click, closer to hand. */}
         <Button variant="ghost" size="icon-xs" tabIndex={-1} aria-hidden onClick={props.onToggle}>
           <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />
@@ -117,7 +119,7 @@ export function Drawn({
             <li className="flex items-center gap-1">
               <span className="flex-1 text-muted-foreground">Outside any block</span>
               <IconButton label="Highlight on the page" onClick={() => onLocate({ app, kind, name })}>
-                <LocateFixed />
+                <Locate />
               </IconButton>
             </li>
           )}
@@ -129,7 +131,7 @@ export function Drawn({
                 {key && (
                   <>
                     <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>
-                      <LocateFixed />
+                      <Locate />
                     </IconButton>
                     <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
                       <Network />
