@@ -2,6 +2,8 @@ import type { InspectedApp } from '@holistics/anfra-sdk/common';
 import { CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { type Check, type CheckLevel, controlMappings, crossFilters } from '../../model/checks';
@@ -41,7 +43,7 @@ export function WiringTab({ apps, checks, focus, onFocused, onReveal }: Props) {
         // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
         <section key={index} className="space-y-4">
           {apps.length > 1 && (
-            <p className="px-1 text-xs font-medium">
+            <p className="px-1 text-sm font-medium">
               App {index + 1} · {app.title || 'Untitled'}
             </p>
           )}
@@ -66,7 +68,7 @@ function Counts({ app }: { app: InspectedApp }) {
   return (
     <div className="flex flex-wrap gap-1 px-1">
       {counts.map(([n, label]) => (
-        <Badge key={label} variant="outline" className="font-normal">
+        <Badge key={label} variant="outline">
           {n} {label}
         </Badge>
       ))}
@@ -97,31 +99,27 @@ function Matrix({
   return (
     <div>
       <SectionTitle>Wiring</SectionTitle>
-      <div className="mt-1 overflow-x-auto rounded-md border">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b bg-muted/50 text-muted-foreground">
-              <th className="sticky left-0 bg-muted px-2 py-1 text-left font-medium">query</th>
+      <div className="mt-1 rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>query</TableHead>
               {controls.map((name) => (
-                <th key={name} className="px-2 py-1 font-medium whitespace-nowrap">
-                  {link('control', name)}
-                </th>
+                <TableHead key={name}>{link('control', name)}</TableHead>
               ))}
-              <th className="px-2 py-1 text-left font-medium whitespace-nowrap">cross-filtered by</th>
-            </tr>
-          </thead>
-          <tbody>
+              <TableHead>cross-filtered by</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {queries.map((query) => {
               const by = crosses.filter((c) => c.to.name === query).map((c) => c.from.name);
               return (
-                <tr key={query} className="border-b last:border-0 hover:bg-muted/40">
-                  <td className="sticky left-0 bg-background px-2 py-1 whitespace-nowrap">
-                    {link('query', query)}
-                  </td>
+                <TableRow key={query}>
+                  <TableCell>{link('query', query)}</TableCell>
                   {controls.map((control) => {
                     const m = mappings.find((x) => x.from.name === control && x.to.name === query);
                     return (
-                      <td key={control} className="px-2 py-1 text-center">
+                      <TableCell key={control} className="text-center">
                         {m ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -135,17 +133,15 @@ function Matrix({
                         ) : (
                           <span className="text-muted-foreground/50">·</span>
                         )}
-                      </td>
+                      </TableCell>
                     );
                   })}
-                  <td className="px-2 py-1 whitespace-nowrap text-muted-foreground">
-                    {by.length ? by.join(', ') : '—'}
-                  </td>
-                </tr>
+                  <TableCell className="text-muted-foreground">{by.length ? by.join(', ') : '—'}</TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -175,18 +171,23 @@ function Checks({
         <ul className="mt-1 space-y-px">
           {checks.map((check, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: a check's index is how the panel links to it
-            <li key={i} data-check={`${index}:${i}`} className="rounded-md">
-              <button
-                type="button"
+            <li key={i} data-check={`${index}:${i}`}>
+              <Item
+                asChild
+                size="sm"
                 className={cn(
-                  'flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent',
+                  'w-full cursor-pointer text-left hover:bg-accent',
                   check.level === 'info' && 'text-muted-foreground',
                 )}
-                onClick={() => onReveal({ entity: check.about.entity, app: index, name: check.about.name })}
               >
-                {checkIcon[check.level]}
-                <span className="min-w-0 break-words">{check.message}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onReveal({ entity: check.about.entity, app: index, name: check.about.name })}
+                >
+                  <ItemMedia variant="default">{checkIcon[check.level]}</ItemMedia>
+                  <ItemContent className="break-words">{check.message}</ItemContent>
+                </button>
+              </Item>
             </li>
           ))}
         </ul>

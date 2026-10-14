@@ -8,17 +8,20 @@ import type {
 } from '@holistics/anfra-sdk/common';
 import {
   ChevronRight,
-  Database,
   type LucideIcon,
   MousePointerClick,
   Network,
   Search,
   SlidersHorizontal,
+  Table2,
 } from 'lucide-react';
 import { type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, toggleIn } from '@/lib/utils';
-import { entityKey, usageOf } from '../../model/format';
+import { blockNodeKey, entityKey, usageOf } from '../../model/format';
 import { controlTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
@@ -132,7 +135,7 @@ export function DataTab({
   return (
     <div>
       <Toolbar view={view} onView={onView} counts={counts} />
-      <div className="space-y-5 p-2">
+      <div className="space-y-6 p-3">
         {apps.map((app, index) => {
           const queries = Object.entries(app.queries);
           const controls = Object.entries(app.controls);
@@ -151,6 +154,7 @@ export function DataTab({
               app: index,
               name,
               usage: usageOf(structure, kind, index, name),
+              blockKey: (block: string) => blockNodeKey(structure, block, kind, index, name),
               onLocate,
             };
           };
@@ -158,7 +162,7 @@ export function DataTab({
             view.search.trim() ? `No ${what} match "${view.search.trim()}".` : `No ${what} match the filter.`;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
-            <section key={index} className="space-y-3">
+            <section key={index} className="space-y-5">
               <p className="px-1 text-xs text-muted-foreground">
                 {apps.length > 1 && <span className="font-medium text-foreground">App {index + 1} · </span>}
                 {app.title || 'Untitled'} · {app.timezone || 'tenant timezone'} ·{' '}
@@ -171,7 +175,7 @@ export function DataTab({
 
               <Section
                 title="Queries"
-                icon={Database}
+                icon={Table2}
                 count={queries.length}
                 shown={filtering ? shownQueries.length : undefined}
                 empty={filtering ? none('queries') : 'None.'}
@@ -265,8 +269,8 @@ function Toolbar({
     { value: 'dirty', label: `Dirty (${counts.dirty})` },
   ];
   return (
-    <div className="sticky top-0 z-10 space-y-1.5 border-b bg-background p-2">
-      <div className="relative">
+    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b bg-background px-3 py-2.5">
+      <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={view.search}
@@ -274,25 +278,23 @@ function Toolbar({
           onKeyDown={(event) => event.key === 'Escape' && onView({ ...view, search: '' })}
           placeholder="Search names, datasets, labels"
           aria-label="Search queries and controls"
-          className="h-7 pl-7 text-xs md:text-xs"
+          className="pl-7"
         />
       </div>
-      <div className="flex gap-1">
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        value={view.filter}
+        // Clicking the pressed item clears a single group; a filter is always one of the three.
+        onValueChange={(value) => value && onView({ ...view, filter: value as DataFilter['filter'] })}
+      >
         {filters.map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            aria-pressed={view.filter === filter.value}
-            onClick={() => onView({ ...view, filter: filter.value })}
-            className={cn(
-              'rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground',
-              view.filter === filter.value && 'bg-accent font-medium text-foreground',
-            )}
-          >
+          <ToggleGroupItem key={filter.value} value={filter.value}>
             {filter.label}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }
@@ -310,23 +312,20 @@ function Section(props: {
 }) {
   const visible = props.shown ?? props.count;
   return (
-    <div>
-      <button
-        type="button"
-        className="flex w-full items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
-        onClick={props.onToggle}
-        aria-expanded={props.open}
-      >
-        <ChevronRight className={cn('size-3 transition-transform', props.open && 'rotate-90')} />
-        <props.icon className="size-3.5" />
-        {props.title}
-        <span className="font-normal">
-          {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
-        </span>
-      </button>
-      {props.open && (
-        <div className="mt-1 space-y-px">{visible === 0 ? <Note>{props.empty}</Note> : props.children}</div>
-      )}
-    </div>
+    <Collapsible open={props.open} onOpenChange={props.onToggle}>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-full justify-start">
+          <props.icon />
+          {props.title}
+          <span className="font-normal text-muted-foreground">
+            {props.shown === undefined ? props.count : `${props.shown} of ${props.count}`}
+          </span>
+          <ChevronRight className={cn('ml-auto transition-transform', props.open && 'rotate-90')} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-2">
+        {visible === 0 ? <Note>{props.empty}</Note> : props.children}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

@@ -4,7 +4,7 @@ import { Field, Fields } from '../shared/fields';
 
 export function SelectionCard({ label, selection }: { label: string; selection: InspectedSelection }) {
   return (
-    <div className="rounded-md bg-muted/50 px-2 py-1.5">
+    <div className="rounded-md bg-muted/50 px-3 py-2">
       <p className="text-sm font-medium">
         {label}
         {selection.lossy && (

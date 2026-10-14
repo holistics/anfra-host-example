@@ -166,7 +166,7 @@ shows. When nothing matches: "No queries match '…'."
 - Opened, it shows:
   - **Fields**:
     - Dataset, as declared
-    - Drawn: "In N places: blocks …" plus copy handle
+    - On the page: expandable "In N places", each block with highlight and show-in-Structure buttons, plus copy handle
     - Selected rows
     - Page and "more available"
     - Source: cache or database, at time
@@ -195,7 +195,7 @@ shows. When nothing matches: "No queries match '…'."
   - Default, from the declaration
   - Options: fixed, loaded, or not loaded
   - **Maps to**: links to the queries it maps to, with field and aggregation
-  - Drawn
+  - On the page
 
 **Selection**: Current and Applied, each showing the source query, row count, conditions,
 expression, and a "lossy" warning that explains that some selected values can't be expressed as a

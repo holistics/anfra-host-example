@@ -1,15 +1,19 @@
 import type { InspectedApp } from '@holistics/anfra-sdk/common';
 import {
+  ArrowUpRight,
   ChevronRight,
-  CircleAlert,
   Clock,
-  Database,
   Info,
+  OctagonAlert,
   SlidersHorizontal,
+  Table2,
+  Timer,
   TriangleAlert,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Check } from '../../model/checks';
@@ -32,6 +36,12 @@ interface Props {
   onReveal: (target: RevealTarget) => void;
 }
 
+/** The space between widgets, at every level of the tab. */
+const gap = 'gap-3';
+
+/** The soft, borderless tile every Overview widget sits in. */
+const tile = 'rounded-xl bg-muted/50 p-4';
+
 /** How many issues the list shows before "Show all". */
 const FIRST_ISSUES = 5;
 
@@ -42,7 +52,7 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
   const issues = issuesOf(snapshot, checks);
 
   return (
-    <div className="space-y-4 p-2">
+    <div className={cn('flex flex-col p-2', gap)}>
       {apps.length === 0 ? (
         <Note>This Data App hasn't created an SDK app.</Note>
       ) : (
@@ -61,41 +71,46 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
 function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
   const trust = appTrust(app);
   return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-center gap-2">
-        <p className="text-xs text-muted-foreground">
-          {label && <span className="font-medium text-foreground">{label} · </span>}
-          Trust level
-        </p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="About trust levels"
-            >
-              <Info className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
-            {LEVELS.map((level) => (
-              <p key={level}>
-                <span className="font-medium">
-                  {level}. {TRUST_LEVELS[level].name}
-                </span>
-                : {TRUST_LEVELS[level].hint}
-              </p>
-            ))}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2.5">
-        <TrustBars trust={trust} />
-        <div>
-          <p className={cn('text-sm font-medium', toneText[trust.tone])}>
-            Level {trust.level} · {TRUST_LEVELS[trust.level].name}
+    <div className={tile}>
+      <div>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted-foreground">
+            {label && <span className="font-medium text-foreground">{label} · </span>}
+            Trust level
           </p>
-          <p className="text-xs text-muted-foreground">{trust.text}</p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to reach the tooltip
+                tabIndex={0}
+                role="img"
+                aria-label="About trust levels"
+                className="text-muted-foreground [&_svg]:size-3.5"
+              >
+                <Info />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
+              {LEVELS.map((level) => (
+                <p key={level}>
+                  <span className="font-medium">
+                    {level}. {TRUST_LEVELS[level].name}
+                  </span>
+                  : {TRUST_LEVELS[level].hint}
+                </p>
+              ))}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <TrustBars trust={trust} size="lg" />
+          <div>
+            <p className={cn('text-xl leading-tight font-semibold', toneText[trust.tone])}>
+              Level {trust.level}
+              <span className="block text-sm font-medium">{TRUST_LEVELS[trust.level].name}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">{trust.text}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -123,54 +138,73 @@ function Stats({
   const firstIssue = issues[0];
 
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <Stat
-        icon={<CircleAlert />}
-        title="Issues"
-        value={issues.length}
-        tone={errors ? 'error' : warnings ? 'warn' : undefined}
-        detail={issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'}
-        onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
-      />
-      <Stat
-        icon={<Database />}
-        title="Queries"
-        value={counts.total}
-        tone={counts.error ? 'error' : undefined}
-        detail={[
-          `${counts.success} ok`,
-          counts.error && `${counts.error} failed`,
-          counts.executing && `${counts.executing} running`,
-          counts.idle && `${counts.idle} idle`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        onClick={() => onReveal({ tab: 'data' })}
-      />
-      <Stat
-        icon={<SlidersHorizontal />}
-        title="Controls"
-        value={controls.length}
-        tone={unapplied ? 'warn' : undefined}
-        detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
-        onClick={() => onReveal({ tab: 'data' })}
-      />
-      <Stat
-        icon={<Clock />}
-        title="Last request"
-        value={last ? formatTime(last.at) : '—'}
-        tone={last?.status === 'error' ? 'error' : undefined}
-        detail={
-          last
-            ? [
-                lastQuery?.name ?? 'no query',
-                `${last.durationMs} ms`,
-                last.status === 'ok' ? (last.fromCache ? 'cache' : 'database') : last.status,
-              ].join(' · ')
-            : 'Nothing has run yet'
-        }
-        onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
-      />
+    <div className={cn('flex flex-col', gap)}>
+      <div className={cn('grid grid-cols-3', gap)}>
+        <Stat
+          icon={<OctagonAlert />}
+          title="Issues"
+          value={issues.length}
+          tone={errors ? 'error' : warnings ? 'warn' : undefined}
+          detail={
+            issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'
+          }
+          onClick={
+            // Failed queries are what the Data tab's Errors filter lists; warnings have no such list.
+            counts.error
+              ? () => onReveal({ tab: 'data', filter: 'errors' })
+              : firstIssue
+                ? () => onReveal(firstIssue.target)
+                : undefined
+          }
+        />
+        <Stat
+          icon={<Table2 />}
+          title="Queries"
+          value={counts.total}
+          tone={counts.error ? 'error' : undefined}
+          detail={[
+            `${counts.success} ok`,
+            counts.error && `${counts.error} failed`,
+            counts.executing && `${counts.executing} running`,
+            counts.idle && `${counts.idle} idle`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
+        />
+        <Stat
+          icon={<SlidersHorizontal />}
+          title="Controls"
+          value={controls.length}
+          tone={unapplied ? 'warn' : undefined}
+          detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
+          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
+        />
+      </div>
+      <div className={cn('grid grid-cols-2', gap)}>
+        <Stat
+          icon={<Clock />}
+          title="Last request"
+          value={last ? formatTime(last.at) : '—'}
+          tone={last?.status === 'error' ? 'error' : undefined}
+          detail={last ? (lastQuery?.name ?? 'no query') : 'Nothing has run yet'}
+          onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
+        />
+        <Stat
+          icon={<Timer />}
+          title="Last run duration"
+          value={last ? `${last.durationMs} ms` : '—'}
+          detail={
+            last
+              ? last.status === 'ok'
+                ? last.fromCache
+                  ? 'from cache'
+                  : 'from database'
+                : last.status
+              : '—'
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -188,16 +222,22 @@ function Stat(props: {
       type="button"
       disabled={!props.onClick}
       onClick={props.onClick}
-      className="flex min-w-0 flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none"
+      className={cn(
+        tile,
+        'group relative flex min-w-0 flex-col items-start gap-1 text-left enabled:hover:bg-muted',
+      )}
     >
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground [&_svg]:size-3.5">
+      <span className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
         {props.icon}
         {props.title}
       </span>
-      <span className={cn('text-lg font-semibold tabular-nums', props.tone && toneText[props.tone])}>
+      <span className={cn('text-xl font-semibold tabular-nums', props.tone && toneText[props.tone])}>
         {props.value}
       </span>
       <span className="w-full truncate text-xs text-muted-foreground">{props.detail}</span>
+      {props.onClick && (
+        <ArrowUpRight className="absolute top-3.5 right-3.5 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+      )}
     </button>
   );
 }
@@ -213,29 +253,25 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
         {shown.map((issue, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: issues have no identity of their own
           <li key={i}>
-            <button
-              type="button"
-              onClick={() => onReveal(issue.target)}
-              className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-xs hover:bg-accent"
-            >
-              {issue.level === 'error' ? (
-                <CircleAlert className="mt-px size-3.5 shrink-0 text-destructive" />
-              ) : (
-                <TriangleAlert className="mt-px size-3.5 shrink-0 text-amber-500" />
-              )}
-              <span className="min-w-0 break-words">{issue.message}</span>
-            </button>
+            <Item asChild size="sm" className="w-full cursor-pointer text-left hover:bg-accent">
+              <button type="button" onClick={() => onReveal(issue.target)}>
+                <ItemMedia variant="default">
+                  {issue.level === 'error' ? (
+                    <OctagonAlert className="text-destructive" />
+                  ) : (
+                    <TriangleAlert className="text-amber-500" />
+                  )}
+                </ItemMedia>
+                <ItemContent className="break-words">{issue.message}</ItemContent>
+              </button>
+            </Item>
           </li>
         ))}
       </ul>
       {issues.length > FIRST_ISSUES && (
-        <button
-          type="button"
-          className="mt-1 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => setAll(!all)}
-        >
+        <Button variant="link" size="xs" onClick={() => setAll(!all)}>
           {all ? 'Show fewer' : `Show all ${issues.length}`}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -249,12 +285,14 @@ function Environment({ apps, env, requests }: { apps: InspectedApp[]; env: Inspe
     .map((app, index) => ({ app, label: apps.length > 1 ? `App ${index + 1}` : 'the app' }))
     .filter(({ app }) => app.timezone && app.timezone !== reader.timezone);
   return (
-    <Collapsible>
-      <CollapsibleTrigger className="group flex w-full items-center gap-1 rounded px-1 py-0.5 hover:text-foreground">
-        <ChevronRight className="size-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-        <SectionTitle className="inline">Environment</SectionTitle>
+    <Collapsible className={cn(tile, 'p-2')}>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="group w-full justify-start hover:bg-muted">
+          <ChevronRight className="transition-transform group-data-[state=open]:rotate-90" />
+          Environment
+        </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2 px-1 pt-1.5">
+      <CollapsibleContent className="space-y-3 px-2 pt-3 pb-2">
         {mismatched.length > 0 && (
           <p className="flex gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
             <TriangleAlert className="mt-px size-3.5 shrink-0" />

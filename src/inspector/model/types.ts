@@ -27,7 +27,10 @@ export interface DataExpansion {
 
 /** Where a link in the panel goes. Every link resolves to one of these; see SPEC.md §4.8. */
 export type RevealTarget =
-  | { tab: InspectorTab }
+  | {
+      tab: InspectorTab /** Opens the Data tab with its filter set, and its search cleared. */;
+      filter?: DataFilter['filter'];
+    }
   | { entity: 'query' | 'control'; app: number; name: string }
   | { check: number; app: number }
   | { node: string };

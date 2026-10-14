@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { type Lang, type TokenKind, tokenize } from '../../model/highlight';
 import { CopyButton } from './copy-button';
@@ -39,30 +41,41 @@ export function CodeBlock<T extends string>({
   const { label, code, lang, empty } = sources[shown];
   return (
     <div className="overflow-hidden rounded-md border bg-background">
-      <div className="flex items-center border-b">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            disabled={!sources[t].code}
-            className={cn(
-              '-mb-px border-b-2 border-transparent px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
-              t === shown && 'border-foreground font-medium text-foreground',
-            )}
-            onClick={() => onTab(t)}
-            title={sources[t].code ? undefined : sources[t].empty}
-          >
-            {sources[t].label}
-          </button>
-        ))}
-        {code && <CopyButton text={code} label={`Copy the ${label}`} className="mr-1 ml-auto size-6" />}
+      <div className="flex items-center border-b px-1">
+        <Tabs value={shown} onValueChange={(value) => onTab(value as T)}>
+          <TabsList variant="line">
+            {tabs.map((t) => {
+              const trigger = (
+                <TabsTrigger value={t} disabled={!sources[t].code}>
+                  {sources[t].label}
+                </TabsTrigger>
+              );
+              if (sources[t].code) return <Fragment key={t}>{trigger}</Fragment>;
+              return (
+                <Tooltip key={t}>
+                  {/* A disabled tab swallows pointer events, so the span carries the tooltip. */}
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{trigger}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-64">{sources[t].empty}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+        {code && <CopyButton text={code} label={`Copy the ${label}`} className="ml-auto" />}
       </div>
       {code ? (
-        <pre className={cn('max-h-56 overflow-auto p-2 font-mono text-[11px] leading-snug', className)}>
+        <pre
+          className={cn(
+            'max-h-56 overflow-auto bg-code px-4 py-3 font-mono text-xs leading-relaxed',
+            className,
+          )}
+        >
           <Highlighted code={code} lang={lang} />
         </pre>
       ) : (
-        <p className="p-2 text-xs text-muted-foreground">{empty}</p>
+        <p className="bg-code px-4 py-3 text-xs text-muted-foreground">{empty}</p>
       )}
     </div>
   );

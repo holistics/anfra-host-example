@@ -1,9 +1,11 @@
 import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk/common';
-import { ChevronRight, LocateFixed } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ChevronRight, Locate, Network } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { entityAttribute, plural } from '../../model/format';
+import type { RevealTarget } from '../../model/types';
 import { CopyButton } from '../shared/copy-button';
 
 /** What every query and control row takes. */
@@ -14,6 +16,8 @@ export interface RowProps {
   app: number;
   name: string;
   usage: EntityUsage | undefined;
+  /** The structure node key of a block this entity is drawn in, to open it in the Structure tab. */
+  blockKey: (block: string) => string | undefined;
   onLocate: (target: LocateTarget) => void;
 }
 
@@ -27,59 +31,139 @@ export function EntityRow({
 }: RowProps & { kind: LocateKind; summary: ReactNode; below?: ReactNode; children: ReactNode }) {
   const attribute = entityAttribute(kind, props.app, props.name);
   return (
-    <div data-entity={props.entityKey} className={cn('rounded-md', props.open && 'bg-muted/50')}>
-      <div className="group flex h-7 items-center gap-1.5 rounded-md pr-1 hover:bg-accent">
+    <div
+      data-entity={props.entityKey}
+      className={cn('rounded-md border', props.open ? 'bg-muted/50' : 'bg-card')}
+    >
+      <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <button
           type="button"
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 pl-1 text-left text-sm"
+          className="flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 text-left text-sm"
           onClick={props.onToggle}
           aria-expanded={props.open}
         >
-          <ChevronRight
-            className={cn(
-              'size-3.5 shrink-0 text-muted-foreground transition-transform',
-              props.open && 'rotate-90',
-            )}
-          />
           {summary}
         </button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6 shrink-0 text-muted-foreground"
-          disabled={!props.usage}
-          title={props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
-          aria-label="Locate"
-          onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
-        >
-          <LocateFixed className="size-3.5" />
+        {kind === 'control' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
+              <span className="inline-flex">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={!props.usage}
+                  aria-label="Locate"
+                  onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
+                >
+                  <Locate />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {/* The row button already carries the expanded state; this one is the same click, closer to hand. */}
+        <Button variant="ghost" size="icon-xs" tabIndex={-1} aria-hidden onClick={props.onToggle}>
+          <ChevronRight className={cn('transition-transform', props.open && 'rotate-90')} />
         </Button>
       </div>
       {below}
-      {props.open && <div className="space-y-2 px-2 pt-1 pb-2 pl-6">{children}</div>}
+      {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3">{children}</div>}
     </div>
   );
 }
 
-/** Where an entity is drawn on the page, with its handle to copy. */
+/** Where an entity shows up on the page: a count that opens into its blocks, each with locate and reveal buttons. */
 export function Drawn({
   kind,
   app,
   name,
   usage,
+  blockKey,
+  onReveal,
+  onLocate,
 }: {
   kind: LocateKind;
   app: number;
   name: string;
   usage?: EntityUsage;
+  blockKey: RowProps['blockKey'];
+  onReveal: (target: RevealTarget) => void;
+  onLocate: RowProps['onLocate'];
 }) {
-  const text = !usage
-    ? 'Not drawn yet'
-    : `In ${plural(usage.markers, 'place')}${usage.blocks.length ? `: ${usage.blocks.join(', ')}` : ', outside any block'}`;
+  const [open, setOpen] = useState(false);
+  if (!usage) {
+    return <span className="text-muted-foreground">Not on the page yet</span>;
+  }
   return (
-    <span className="inline-flex items-center gap-1">
-      {text}
-      <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1 size-5" />
-    </span>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 hover:underline"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
+          In {plural(usage.markers, 'place')}
+          {!usage.blocks.length && ', outside any block'}
+        </button>
+        <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
+      </div>
+      {open && (
+        <ul className="space-y-0.5 pl-1">
+          {usage.blocks.length === 0 && (
+            <li className="flex items-center gap-1">
+              <span className="flex-1 text-muted-foreground">Outside any block</span>
+              <IconButton label="Highlight on the page" onClick={() => onLocate({ app, kind, name })}>
+                <Locate />
+              </IconButton>
+            </li>
+          )}
+          {usage.blocks.map((block) => {
+            const key = blockKey(block);
+            return (
+              <li key={block} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
+                <span className="min-w-0 flex-1 truncate font-mono">{block}</span>
+                {key && (
+                  <>
+                    <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>
+                      <Locate />
+                    </IconButton>
+                    <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
+                      <Network />
+                    </IconButton>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon-xs" aria-label={label} onClick={onClick}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

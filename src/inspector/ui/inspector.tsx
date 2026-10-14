@@ -56,6 +56,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
 
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
+      if (target.filter) setView({ search: '', filter: target.filter });
       onTab(target.tab);
     } else if ('entity' in target) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });
@@ -96,19 +97,17 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           onClose={onClose}
         />
         <div className="shrink-0 overflow-x-auto border-b px-2 py-1.5">
-          <TabsList className="h-8">
-            <TabsTrigger value="overview" className="px-2.5 text-xs">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="structure" className="px-2.5 text-xs">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="structure">
               Structure
               <Count n={problems} />
             </TabsTrigger>
-            <TabsTrigger value="data" className="px-2.5 text-xs">
+            <TabsTrigger value="data">
               Data
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
-            <TabsTrigger value="wiring" className="px-2.5 text-xs">
+            <TabsTrigger value="wiring">
               Wiring
               <Count n={warnings} />
             </TabsTrigger>
@@ -195,9 +194,5 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
 /** An issue count on a tab; nothing when there are none. */
 function Count({ n }: { n: number }) {
   if (n === 0) return null;
-  return (
-    <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
-      {n}
-    </Badge>
-  );
+  return <Badge variant="destructive">{n}</Badge>;
 }

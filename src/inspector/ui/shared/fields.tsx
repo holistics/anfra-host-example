@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 
 /** Label / value pairs, two columns. */
 export function Fields({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">{children}</dl>;
+  return <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">{children}</dl>;
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -20,7 +21,7 @@ export function SectionTitle({ children, className }: { children: ReactNode; cla
   return (
     <span
       className={cn(
-        'block px-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase',
+        'block px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
         className,
       )}
     >
@@ -31,5 +32,9 @@ export function SectionTitle({ children, className }: { children: ReactNode; cla
 
 /** A line saying what is missing, and why. */
 export function Note({ children }: { children: ReactNode }) {
-  return <p className="p-1 text-sm text-muted-foreground">{children}</p>;
+  return (
+    <Empty>
+      <EmptyDescription>{children}</EmptyDescription>
+    </Empty>
+  );
 }

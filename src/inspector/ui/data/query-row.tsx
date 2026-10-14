@@ -1,6 +1,7 @@
 import type { ColumnMeta, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import {
   Binary,
+  Boxes,
   Braces,
   Calendar,
   CalendarClock,
@@ -9,11 +10,13 @@ import {
   Hash,
   Info,
   type LucideIcon,
+  Sigma,
   SlidersHorizontal,
   ToggleLeft,
   Type,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
@@ -82,7 +85,7 @@ export function QueryRow({
       </span>
       {query.isDirty && <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>}
       {query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>}
-      <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
+      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <span role="img" className="flex h-3 shrink-0 items-end" aria-label={`Trust level ${trust.level}`}>
@@ -97,7 +100,7 @@ export function QueryRow({
   );
   // An error shows open or not: it is what a failing app is inspected for.
   const below = query.error && (
-    <p className="px-2 pb-1.5 pl-6 text-xs break-words text-destructive" role="alert">
+    <p className="px-3 pb-1.5 text-xs break-words text-destructive" role="alert">
       {query.error.name}
       {query.error.status !== undefined && ` (${query.error.status})`}: {query.error.message}
     </p>
@@ -112,9 +115,22 @@ export function QueryRow({
           </span>
           <span className="block text-muted-foreground">{trust.text}</span>
         </Field>
-        <Field label="Dataset">{declaration?.dataset || 'none declared'}</Field>
-        <Field label="Drawn">
-          <Drawn kind="query" app={props.app} name={props.name} usage={props.usage} />
+        <Field label="Dataset">
+          <span className="inline-flex items-center gap-1.5">
+            <Boxes className="size-3.5 shrink-0 text-muted-foreground" />
+            {declaration?.dataset || 'none declared'}
+          </span>
+        </Field>
+        <Field label="On the page">
+          <Drawn
+            kind="query"
+            app={props.app}
+            name={props.name}
+            usage={props.usage}
+            blockKey={props.blockKey}
+            onReveal={onReveal}
+            onLocate={props.onLocate}
+          />
         </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
         {query.debug && (
@@ -132,58 +148,49 @@ export function QueryRow({
         )}
       </Fields>
 
-      <Definition>
+      <Section title="Definition" info="The metrics and dimensions the query returns.">
         {query.columns.length === 0 ? (
           <p className="px-1 text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
         ) : (
           <MiniTable
-            caption={`Fields (${query.columns.length})`}
-            head={['name', 'label', 'kind']}
+            head={['', 'name', 'label']}
             rows={query.columns.map((column) => {
-              const Icon = typeIcon[column.semantic_type] ?? CircleHelp;
+              const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+              const title = column.isMeasure
+                ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
+                : `dimension · ${column.semantic_type}`;
               return {
                 key: column.name,
                 cells: [
-                  <span key="name" className="inline-flex items-center gap-1.5 font-mono">
-                    <Icon
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-label={column.semantic_type}
-                    >
-                      <title>{column.semantic_type}</title>
-                    </Icon>
+                  <TypeIcon key="type" icon={Icon} label={title} />,
+                  <span key="name" className="font-mono text-xs leading-5">
                     {column.name}
-                  </span>,
-                  column.label,
-                  <span key="kind" className="whitespace-nowrap text-muted-foreground">
-                    {column.isMeasure
-                      ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
-                      : 'dimension'}
                     {column.adhoc && <span className="ml-1 text-amber-600 dark:text-amber-400">ad hoc</span>}
                   </span>,
+                  column.label,
                 ],
               };
             })}
           />
         )}
+      </Section>
 
-        {inputs.length > 0 && (
+      {inputs.length > 0 && (
+        <Section title="Inputs" info="The controls and cross-filters that filter the query.">
           <MiniTable
-            caption={`Inputs (${inputs.length})`}
-            head={['from · on', 'applied']}
+            head={['', 'from · on', 'applied']}
             rows={inputs.map((input) => {
               const Icon = input.kind === 'control' ? SlidersHorizontal : ChartColumn;
               const from = input.kind === 'control' ? 'From a control' : 'Cross-filter from a chart';
               return {
                 key: `${input.kind}:${input.source}`,
                 cells: [
+                  <TypeIcon key="type" icon={Icon} label={from} />,
                   // The field goes under its source, so the value keeps the width a narrow panel has.
                   <div key="from" className="min-w-0">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-label={from}>
-                        <title>{from}</title>
-                      </Icon>
+                    <span className="text-xs leading-5">
                       {input.self ? (
                         <span className="text-muted-foreground">itself</span>
                       ) : (
@@ -195,9 +202,7 @@ export function QueryRow({
                         />
                       )}
                     </span>
-                    <div className="pl-5 font-mono text-[11px] break-all text-muted-foreground">
-                      {input.field}
-                    </div>
+                    <div className="font-mono text-xs break-all text-muted-foreground">{input.field}</div>
                   </div>,
                   <div key="applied" className="min-w-0">
                     <span
@@ -210,7 +215,7 @@ export function QueryRow({
                       {input.value}
                     </span>
                     {input.pending && (
-                      <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                      <div className="text-xs text-amber-600 dark:text-amber-400">
                         pending: {input.pending}
                       </div>
                     )}
@@ -219,22 +224,22 @@ export function QueryRow({
               };
             })}
           />
-        )}
-      </Definition>
+        </Section>
+      )}
 
       <CodeBlock
         tab={codeTab}
         onTab={setCodeTab}
         sources={{
           declared: {
-            label: 'Declared',
+            label: 'Declared AQL',
             code: declaration?.aql && dedent(declaration.aql),
             lang: 'aql',
             empty: 'Not declared.',
           },
-          aql: { label: 'AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
+          aql: { label: 'Executed AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
           sql: {
-            label: 'SQL',
+            label: 'Executed SQL',
             code: query.debug?.executedSql,
             lang: 'sql',
             empty: canViewSql ? notRun : 'Needs canViewGeneratedSql.',
@@ -245,7 +250,7 @@ export function QueryRow({
 
       {requests.length > 0 && (
         <div>
-          <p className="mb-0.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
+          <p className="mb-1.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
           <RequestList items={requests} />
         </div>
       )}
@@ -253,29 +258,38 @@ export function QueryRow({
   );
 }
 
-/** How the query is defined: its fields, then what filters it. */
-function Definition({ children }: { children: ReactNode }) {
+/** A titled part of an opened query, with a hint on what it holds. */
+function Section({ title, info, children }: { title: string; info: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 px-1 text-xs font-medium">
-        Definition
+      <div className="flex items-center gap-1 px-1 text-sm font-medium">
+        {title}
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="About the definition"
-            >
-              <Info className="size-3.5" />
-            </button>
+            <Button variant="ghost" size="icon-xs" aria-label={`About ${title.toLowerCase()}`}>
+              <Info />
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-64">
-            How the query is defined: the metrics and dimensions it returns, and the controls and
-            cross-filters that filter it.
+            {info}
           </TooltipContent>
         </Tooltip>
       </div>
       {children}
     </div>
+  );
+}
+
+/** An icon that says what it stands for on hover. */
+function TypeIcon({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} className="inline-flex h-5 items-center text-muted-foreground">
+          <Icon className="size-3.5 shrink-0" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }

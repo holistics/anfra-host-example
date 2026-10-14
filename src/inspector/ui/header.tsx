@@ -1,4 +1,4 @@
-import { Check, ClipboardCopy, SquareMousePointer, X } from 'lucide-react';
+import { Check, ClipboardCopy, Locate, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,24 +41,18 @@ export function InspectorHeader({
             <Button
               variant="ghost"
               size="sm"
-              className={cn('h-7 px-2', picking && 'bg-accent text-accent-foreground')}
+              className={cn(picking && 'bg-accent text-accent-foreground')}
               onClick={onTogglePicking}
               aria-pressed={picking}
             >
-              <SquareMousePointer />
+              <Locate />
               Pick
             </Button>
           </TooltipTrigger>
           <TooltipContent>{picking ? 'Stop picking' : 'Pick an element on the page'}</TooltipContent>
         </Tooltip>
         <CopyReport report={report} />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          onClick={onClose}
-          aria-label="Close the inspect panel"
-        >
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close the inspect panel">
           <X />
         </Button>
       </div>
@@ -90,15 +84,16 @@ function StatusBar({
     <div className="flex flex-wrap items-center gap-x-1 px-0.5 text-xs text-muted-foreground">
       {shown.length === 0 && <span className="px-1">No queries</span>}
       {shown.map((item) => (
-        <button
+        <Button
           key={item.label}
-          type="button"
-          className="inline-flex items-center gap-1 rounded px-1 tabular-nums hover:bg-accent hover:text-foreground"
+          variant="ghost"
+          size="xs"
+          className="tabular-nums"
           onClick={() => onClick(item.filter)}
         >
           <span className={cn('size-1.5 rounded-full', item.dot)} />
           {item.n} {item.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -129,7 +124,7 @@ function CopyReport({ report }: { report: () => string }) {
   return (
     <Tooltip open={status ? true : undefined}>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-7" onClick={copy} aria-label={label}>
+        <Button variant="ghost" size="icon-sm" onClick={copy} aria-label={label}>
           {status === 'copied' ? <Check /> : <ClipboardCopy />}
         </Button>
       </TooltipTrigger>

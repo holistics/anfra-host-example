@@ -63,6 +63,32 @@ export function usageOf(
   return structure?.usage[entityKey(kind, app, name)];
 }
 
+/**
+ * The structure node of a block by its id. Where an id repeats, the one that holds the entity
+ * wins, since that is the block the entity is drawn in.
+ */
+export function blockNodeKey(
+  structure: InspectedStructure | undefined,
+  id: string,
+  kind: LocateKind,
+  app: number,
+  name: string,
+): string | undefined {
+  const blocks: StructureNode[] = [];
+  const holds = (node: StructureNode): boolean =>
+    node.children.some(
+      (child) => (child.kind === kind && (child.app ?? 0) === app && child.name === name) || holds(child),
+    );
+  const walk = (nodes: StructureNode[]) => {
+    for (const node of nodes) {
+      if (node.kind === 'block' && node.id === id) blocks.push(node);
+      walk(node.children);
+    }
+  };
+  walk(structure?.nodes ?? []);
+  return (blocks.find(holds) ?? blocks[0])?.key;
+}
+
 export function countProblems(nodes: StructureNode[]): number {
   return nodes.reduce((n, node) => n + node.problems.length + countProblems(node.children), 0);
 }

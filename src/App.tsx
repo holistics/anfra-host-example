@@ -5,7 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
 import { PromptPanel } from '@/components/prompt-panel';
-import { storedSidebarWidth } from '@/components/sidebar-resizer';
+import { storedSidebarOpen, storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 
 // Read once: while dragging, the resizer sets the width on the wrapper itself.
 const sidebarWidth = storedSidebarWidth();
+const sidebarOpen = storedSidebarOpen();
 const sidebarStyle = (sidebarWidth ? { '--sidebar-width': sidebarWidth } : {}) as CSSProperties;
 
 // Numbers each mount of a Data App: the stage and the inspect panel are keyed on it.
@@ -244,7 +245,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <SidebarProvider className="h-full" style={sidebarStyle}>
+      <SidebarProvider className="h-full" style={sidebarStyle} defaultOpen={sidebarOpen}>
         <AppSidebar entries={entries} selected={path} onSelect={select} />
         <SidebarInset className="min-w-0 overflow-hidden md:peer-data-[variant=inset]:border">
           <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
