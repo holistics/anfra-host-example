@@ -2,12 +2,12 @@ import type { InspectedStructure, RenderFormat, StructureNode } from '@holistics
 import {
   ArrowRight,
   ChevronRight,
-  Database,
   Download,
-  LayoutPanelTop,
+  Frame,
   type LucideIcon,
   Shapes,
   SlidersHorizontal,
+  Table2,
   TriangleAlert,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -48,9 +48,9 @@ const pills: Record<StructureNode['kind'], string> = {
 
 /** Each kind's icon, shown in its colored badge. */
 const icons: Record<StructureNode['kind'], LucideIcon> = {
-  container: LayoutPanelTop,
+  container: Frame,
   block: Shapes,
-  query: Database,
+  query: Table2,
   control: SlidersHorizontal,
 };
 
