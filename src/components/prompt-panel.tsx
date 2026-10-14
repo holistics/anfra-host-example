@@ -10,25 +10,27 @@ interface Props {
   onClose: () => void;
 }
 
-/** The prompt that made the open Data App, read like a note: with the model that answered it and when. */
+/** The prompt that made the open Data App, boxed like a note, with the model that answered it and when. */
 export function PromptPanel({ prompt, onClose }: Props) {
   return (
-    <div className="flex h-full flex-col border-l bg-paper font-sans text-paper-foreground">
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-paper-border px-2">
+    <div className="flex h-full flex-col border-l">
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b px-2">
         <h2 className="min-w-0 flex-1 truncate pl-2 text-sm font-medium">Prompt</h2>
         <CopyPrompt text={prompt.prompt} />
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-paper-muted hover:bg-paper-foreground/5"
+          className="size-7"
           onClick={onClose}
           aria-label="Close the prompt panel"
         >
           <X />
         </Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div className="space-y-3 text-[15px] leading-[1.7] break-words">{blocksOf(prompt.prompt)}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="space-y-3 rounded-lg border border-paper-border bg-paper px-4 py-3 font-sans text-[15px] leading-[1.7] break-words text-paper-foreground">
+          {blocksOf(prompt.prompt)}
+        </div>
         <Footer prompt={prompt} />
       </div>
     </div>
@@ -45,7 +47,7 @@ function Footer({ prompt }: { prompt: AppPrompt }) {
   }
   if (parts.length === 0) return null;
   return (
-    <p className="mt-6 flex flex-wrap gap-x-2 gap-y-1 border-t border-paper-border pt-3 text-xs text-paper-muted [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']">
+    <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 px-1 text-xs text-muted-foreground [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']">
       {parts}
     </p>
   );
@@ -171,7 +173,7 @@ function CopyPrompt({ text }: { text: string }) {
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-paper-muted hover:bg-paper-foreground/5"
+          className="size-7"
           onClick={async () => setCopied(await copyText(text))}
           aria-label={label}
         >
