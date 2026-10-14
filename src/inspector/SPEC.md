@@ -108,7 +108,7 @@ The landing tab. It answers "is this app healthy, and where do I look?"
    3. *Semantic layer verified*. If some result columns are `adhoc`, it adds "· N ad hoc fields".
 
    The app's level is its lowest query's level. An app with no queries is level 1 ("No queries
-   found"). The old inspector's level 4 ("Endorsed") is dropped until the SDK reports endorsement.
+   found"). Level 4 ("Endorsed") is defined but never reached until the SDK reports endorsement.
 2. **Stat cards**, in a 2-column grid. Each one is a button that jumps somewhere:
    - **Issues** (errors · warnings): goes to the first place with issues, in this order: Data with
      the Errors filter, then Wiring checks, then Structure.
