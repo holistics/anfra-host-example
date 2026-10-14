@@ -12,44 +12,62 @@ export interface QueryInput {
   self: boolean;
   /** The field it filters on, with its aggregation; for a cross-filter, the selected fields. */
   field: string;
-  /** What it filters by right now, in words. */
+  /** What the query was last run with, in words: the applied value, not the one being edited. */
   value: string;
+  /** The changed value not yet applied, in words, when it differs from `value`. */
+  pending?: string;
 }
+
+type Selection = NonNullable<InspectedApp['appliedSelection']>;
 
 /** The field a mapping filters on, with its aggregation. */
 const mappingField = (m: ReturnType<typeof controlMappings>[number]) =>
   m.aggregation ? `${m.aggregation}(${m.field})` : m.field;
+
+const conditionText = (condition: InspectedApp['controls'][string]['condition'] | undefined) =>
+  condition?.values?.length ? formatCondition(condition) : 'not set';
+
+const selectionText = (selection: Selection | undefined) =>
+  selection
+    ? selection.conditions
+        .map((condition) => `${condition.field} ${formatCondition(condition)}`)
+        .join('; ') ||
+      selection.expression ||
+      `${selection.rowCount} rows`
+    : 'no selection';
 
 export function queryInputs(app: InspectedApp, query: string): QueryInput[] {
   const controls: QueryInput[] = controlMappings(app)
     .filter((m) => m.to.name === query)
     .map((m) => {
       const control = app.controls[m.from.name];
-      const set = control?.condition.values?.length ? formatCondition(control.condition) : 'not set';
+      const value = conditionText(control?.appliedCondition);
+      const current = conditionText(control?.condition);
       return {
         kind: 'control',
         source: m.from.name,
         self: false,
         field: mappingField(m),
-        value: set,
+        value,
+        pending: control?.isDirty && current !== value ? current : undefined,
       };
     });
   const crosses: QueryInput[] = crossFilters(app)
     .filter((c) => c.to.name === query)
     .map((c) => {
-      const selection = app.selection?.source === c.from.name ? app.selection : undefined;
+      const from = (selection: Selection | undefined) =>
+        selection?.source === c.from.name ? selection : undefined;
+      const applied = from(app.appliedSelection);
+      const current = from(app.selection);
+      const value = selectionText(applied);
+      const next = selectionText(current);
       return {
         kind: 'crossFilter',
         source: c.from.name,
         self: c.from.name === query,
-        field: selection?.fields.join(', ') || '—',
-        value: selection
-          ? selection.conditions
-              .map((condition) => `${condition.field} ${formatCondition(condition)}`)
-              .join('; ') ||
-            selection.expression ||
-            `${selection.rowCount} rows`
-          : 'no selection',
+        field: (applied ?? current)?.fields.join(', ') || '—',
+        value,
+        pending: next !== value ? next : undefined,
       };
     });
   return [...controls, ...crosses];
