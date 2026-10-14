@@ -2,6 +2,7 @@ import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk
 import { ChevronRight, LocateFixed } from 'lucide-react';
 import { Fragment, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { entityAttribute, plural } from '../../model/format';
 import type { RevealTarget } from '../../model/types';
@@ -49,16 +50,25 @@ export function EntityRow({
             )}
           />
         </button>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          disabled={!props.usage}
-          title={props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
-          aria-label="Locate"
-          onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
-        >
-          <LocateFixed />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
+            <span className="inline-flex">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                disabled={!props.usage}
+                aria-label="Locate"
+                onClick={() => props.onLocate({ app: props.app, kind, name: props.name })}
+              >
+                <LocateFixed />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {props.usage ? 'Scroll to it on the page' : `No element is marked ${attribute} yet`}
+          </TooltipContent>
+        </Tooltip>
       </div>
       {below}
       {props.open && <div className="space-y-3 px-3 pt-1.5 pb-3">{children}</div>}

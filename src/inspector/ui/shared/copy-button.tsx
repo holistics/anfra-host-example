@@ -1,6 +1,7 @@
 import { Check, Copy } from 'lucide-react';
 import { type MouseEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /** Copy text, reporting whether the clipboard took it. */
 export async function copyText(text: string): Promise<boolean> {
@@ -27,15 +28,21 @@ export function CopyButton({ text, label, className }: { text: string; label: st
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-xs"
-      className={className}
-      title={copied ? 'Copied' : `${label}: ${text}`}
-      aria-label={copied ? 'Copied' : label}
-      onClick={onClick}
-    >
-      {copied ? <Check /> : <Copy />}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className={className}
+          aria-label={copied ? 'Copied' : label}
+          onClick={onClick}
+        >
+          {copied ? <Check /> : <Copy />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-72 break-all">
+        {copied ? 'Copied' : `${label}: ${text}`}
+      </TooltipContent>
+    </Tooltip>
   );
 }

@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { type Lang, type TokenKind, tokenize } from '../../model/highlight';
 import { CopyButton } from './copy-button';
@@ -43,16 +44,23 @@ export function CodeBlock<T extends string>({
       <div className="flex items-center border-b px-1">
         <Tabs value={shown} onValueChange={(value) => onTab(value as T)}>
           <TabsList variant="line">
-            {tabs.map((t) => (
-              <TabsTrigger
-                key={t}
-                value={t}
-                disabled={!sources[t].code}
-                title={sources[t].code ? undefined : sources[t].empty}
-              >
-                {sources[t].label}
-              </TabsTrigger>
-            ))}
+            {tabs.map((t) => {
+              const trigger = (
+                <TabsTrigger value={t} disabled={!sources[t].code}>
+                  {sources[t].label}
+                </TabsTrigger>
+              );
+              if (sources[t].code) return <Fragment key={t}>{trigger}</Fragment>;
+              return (
+                <Tooltip key={t}>
+                  {/* A disabled tab swallows pointer events, so the span carries the tooltip. */}
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{trigger}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-64">{sources[t].empty}</TooltipContent>
+                </Tooltip>
+              );
+            })}
           </TabsList>
         </Tabs>
         {code && <CopyButton text={code} label={`Copy the ${label}`} className="ml-auto" />}

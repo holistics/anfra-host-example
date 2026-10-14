@@ -164,40 +164,55 @@ export function StructureTree({
             <span className="min-w-0 flex-1 truncate text-muted-foreground">{node.label}</span>
           )}
           {node.problems.length > 0 && (
-            <span title={node.problems.join('\n')} className="shrink-0">
-              <TriangleAlert className="size-3.5 text-amber-500" />
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="shrink-0">
+                  <TriangleAlert className="size-3.5 text-amber-500" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-72 whitespace-pre-line">
+                {node.problems.join('\n')}
+              </TooltipContent>
+            </Tooltip>
           )}
           <span className="ml-auto" />
           {(node.kind === 'query' || node.kind === 'control') && node.problems.length === 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-              title="Show in Data"
-              aria-label="Show in Data"
-              onClick={(event) => {
-                event.stopPropagation();
-                onShowInData(node);
-              }}
-            >
-              <ArrowRight className="size-3.5" />
-            </Button>
-          )}
-          {onDownload && (node.kind === 'container' || node.kind === 'block') && node.id && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                  title="Download a picture"
-                  aria-label="Download a picture"
-                  onClick={(event) => event.stopPropagation()}
+                  className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+                  aria-label="Show in Data"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onShowInData(node);
+                  }}
                 >
-                  <Download className="size-3.5" />
+                  <ArrowRight className="size-3.5" />
                 </Button>
-              </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top">Show in Data</TooltipContent>
+            </Tooltip>
+          )}
+          {onDownload && (node.kind === 'container' || node.kind === 'block') && node.id && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                      aria-label="Download a picture"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Download className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">Download a picture</TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
                 <DropdownMenuItem onSelect={() => onDownload(node, 'png')}>PNG</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onDownload(node, 'pdf')}>PDF</DropdownMenuItem>
