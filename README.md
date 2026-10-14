@@ -102,6 +102,30 @@ A link to a Data App shared in Slack, a chat app or a social site shows the app'
 
 Set `ANFRA_SITE_URL` to this host's public origin, as for anfra, so the links in the tags point there.
 
+## Folder and app metadata
+
+A repo can say how its folders and Data Apps are shown in an optional `apps/_meta.yaml`. Keys are paths relative to `apps/` (a Data App's with its `.html`), so renaming something here never changes a URL. Every field is optional; without the file, folders are named by their directory, apps by their `<title>`, and everything is open and alphabetical.
+
+```yaml
+folders:
+  sales/:
+    name: Sales & Revenue   # shown in place of the directory name
+    icon: wallet
+    tags: [finance, weekly]
+    collapsed: true         # starts closed (open anyway if it holds the open app)
+    order: 1                # before the unordered, lowest first
+apps:
+  sales/overview.html:
+    name: Revenue overview  # shown in place of the <title>
+    icon: chart-line
+    tags: [kpi]
+    order: 1
+```
+
+- `icon` is one of the names in `src/lib/icons.ts` (lucide, kebab-case); an unknown one falls back to the default.
+- The sidebar's filter matches names and tags.
+- Unknown fields and keys that match no folder or app are logged once by the server.
+
 ## MCP
 
 With `MCP=1`, the server passes anfra's MCP endpoint (streamable HTTP) through at `/mcp`, so an agent can connect to `https://<this host>/mcp`. It is a plain passthrough, for demos: unlike `/api`, it has no allowlist, no rate limit and no auth spot. Every op anfra serves as a tool is reachable, except `core.ingest`, which rebuilds the search catalog and is refused here.
