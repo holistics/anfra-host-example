@@ -6,7 +6,7 @@ import { type Meta, type MetaFile, readMeta, startRead, warnOnce } from './meta.
 export type { Entry };
 
 const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
-const metadataRe = /<script\b[^>]*\bid\s*=\s*["']?data-app-metadata["']?[^>]*>([\s\S]*?)<\/script>/i;
+const metadataRe = /<script\b[^>]*\sid\s*=\s*["']?data-app-metadata["']?[^>]*>([\s\S]*?)<\/script>/i;
 
 // The named entities a title or description is likely to hold; numeric ones are all decoded.
 const entities: Record<string, string> = {

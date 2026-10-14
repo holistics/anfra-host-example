@@ -148,9 +148,12 @@ export function App() {
     if (inspecting) setPicking(false);
     setPanel(inspecting ? undefined : 'inspect');
   };
+  // The prompt panel stays chosen across apps, like the inspector, but shows only for an app with a
+  // prompt; one without leaves the button off rather than stuck on and disabled.
+  const prompting = panel === 'prompt' && !!app?.prompt;
   const togglePrompt = () => {
     setPicking(false);
-    setPanel(panel === 'prompt' ? undefined : 'prompt');
+    setPanel(prompting ? undefined : 'prompt');
   };
 
   const onPick = (node: string | null) => {
@@ -243,13 +246,13 @@ export function App() {
               <ToolbarButton
                 label={
                   !app || app.prompt
-                    ? panel === 'prompt'
+                    ? prompting
                       ? 'Close the prompt panel'
                       : 'Show the prompt that made this app'
                     : 'No prompt recorded for this app'
                 }
                 disabled={!app?.prompt}
-                active={panel === 'prompt'}
+                active={prompting}
                 onClick={togglePrompt}
               >
                 <ScrollText />
@@ -283,7 +286,7 @@ export function App() {
                 </ResizablePanel>
               </>
             )}
-            {panel === 'prompt' && app?.prompt && (
+            {prompting && app?.prompt && (
               <>
                 <ResizableHandle />
                 <ResizablePanel id="prompt" defaultSize="320px" minSize="220px" maxSize="60%">
