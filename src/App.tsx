@@ -21,8 +21,8 @@ import {
   type RenderFormat,
   type RenderRequest,
   reader,
-  sdkVersion,
   type StructureNode,
+  sdkVersion,
 } from '@/data-app';
 import { createInspectorStore, createRequestLog, Inspector, type InspectorTab } from '@/inspector';
 import { catalog, type Entry, findApp, onRepoEvent, pathOf, urlOf } from '@/lib/host';
