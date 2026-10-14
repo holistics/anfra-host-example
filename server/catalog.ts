@@ -1,11 +1,12 @@
 import { type Dirent, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { Entry } from './entry.js';
+import type { AppPrompt, Entry } from './entry.js';
 import { type Meta, type MetaFile, readMeta, startRead, warnOnce } from './meta.js';
 
 export type { Entry };
 
 const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
+const metadataRe = /<script\b[^>]*\bid\s*=\s*["']?data-app-metadata["']?[^>]*>([\s\S]*?)<\/script>/i;
 
 // The named entities a title or description is likely to hold; numeric ones are all decoded.
 const entities: Record<string, string> = {
@@ -47,6 +48,32 @@ export function textOf(html: string): string {
 export function titleOf(html: string): string | undefined {
   const raw = titleRe.exec(html)?.[1];
   return raw ? textOf(raw) || undefined : undefined;
+}
+
+/** The prompt that made a definition, from its `data-app-metadata` script, or none. */
+export function promptOf(html: string, rel: string): AppPrompt | undefined {
+  const raw = metadataRe.exec(html)?.[1];
+  if (raw === undefined) return undefined;
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    warnOnce(`"${rel}": its data-app-metadata isn't valid JSON; ignored.`);
+    return undefined;
+  }
+  if (typeof data !== 'object' || data === null) return undefined;
+  const fields = data as Record<string, unknown>;
+  const text = (key: string) =>
+    typeof fields[key] === 'string' && fields[key].trim() ? fields[key] : undefined;
+  const prompt = text('prompt');
+  if (!prompt) return undefined;
+  return {
+    prompt,
+    model: text('model'),
+    effort: text('effort'),
+    createdAt: text('createdAt'),
+    updatedAt: text('updatedAt'),
+  };
 }
 
 /**
@@ -123,6 +150,7 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
           icon: meta.icon,
           tags: meta.tags,
           endorsed: meta.endorsed ?? false,
+          prompt: promptOf(html, childRel),
         },
       });
     }

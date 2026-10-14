@@ -1,8 +1,9 @@
-import { Crosshair, Download, PanelRight, RotateCw } from 'lucide-react';
+import { Crosshair, Download, PanelRight, RotateCw, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
+import { PromptPanel } from '@/components/prompt-panel';
 import { storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,7 +49,9 @@ export function App() {
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
   // Bumped to remount the Data App: the reload button, and live reload.
   const [revision, setRevision] = useState(0);
-  const [inspecting, setInspecting] = useState(false);
+  // The right-hand panel: the inspector, or the prompt that made the app. One at a time.
+  const [panel, setPanel] = useState<'inspect' | 'prompt'>();
+  const inspecting = panel === 'inspect';
   const [picking, setPicking] = useState(false);
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
@@ -136,14 +139,18 @@ export function App() {
   // the panel, and closing the panel ends picking.
   const togglePicking = () => {
     if (!picking) {
-      setInspecting(true);
+      setPanel('inspect');
       setTab('structure');
     }
     setPicking(!picking);
   };
   const toggleInspecting = () => {
     if (inspecting) setPicking(false);
-    setInspecting(!inspecting);
+    setPanel(inspecting ? undefined : 'inspect');
+  };
+  const togglePrompt = () => {
+    setPicking(false);
+    setPanel(panel === 'prompt' ? undefined : 'prompt');
   };
 
   const onPick = (node: string | null) => {
@@ -234,6 +241,20 @@ export function App() {
                 <Crosshair />
               </ToolbarButton>
               <ToolbarButton
+                label={
+                  !app || app.prompt
+                    ? panel === 'prompt'
+                      ? 'Close the prompt panel'
+                      : 'Show the prompt that made this app'
+                    : 'No prompt recorded for this app'
+                }
+                disabled={!app?.prompt}
+                active={panel === 'prompt'}
+                onClick={togglePrompt}
+              >
+                <ScrollText />
+              </ToolbarButton>
+              <ToolbarButton
                 label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
                 disabled={!app}
                 active={inspecting}
@@ -259,6 +280,14 @@ export function App() {
                     picked={picked}
                     onClose={toggleInspecting}
                   />
+                </ResizablePanel>
+              </>
+            )}
+            {panel === 'prompt' && app?.prompt && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel id="prompt" defaultSize="320px" minSize="220px" maxSize="60%">
+                  <PromptPanel prompt={app.prompt} onClose={togglePrompt} />
                 </ResizablePanel>
               </>
             )}

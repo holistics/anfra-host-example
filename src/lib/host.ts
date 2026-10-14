@@ -1,8 +1,8 @@
 // What the page asks this host's own server (server/app.ts), apart from the core API.
 
-import type { Entry } from '../../server/entry';
+import type { AppPrompt, Entry } from '../../server/entry';
 
-export type { Entry };
+export type { AppPrompt, Entry };
 
 export type AppEntry = Extract<Entry, { kind: 'app' }>;
 export type FolderEntry = Extract<Entry, { kind: 'folder' }>;
