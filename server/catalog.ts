@@ -8,15 +8,40 @@ export type Entry =
 
 const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/i;
 
-const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'" };
+// The named entities a title or description is likely to hold; numeric ones are all decoded.
+const entities: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+  ndash: '–',
+  mdash: '—',
+  hellip: '…',
+  lsquo: '‘',
+  rsquo: '’',
+  ldquo: '“',
+  rdquo: '”',
+  middot: '·',
+  bull: '•',
+  copy: '©',
+  reg: '®',
+  trade: '™',
+};
 
-/** Text from HTML, as one line: whitespace collapsed, the common entities decoded. */
+const entityRe = /&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi;
+
+/** An entity's character, or the entity as written when it names none. */
+function decodeEntity(entity: string, dec?: string, hex?: string, name?: string): string {
+  if (name) return entities[name] ?? entity;
+  const code = dec ? Number.parseInt(dec, 10) : Number.parseInt(hex as string, 16);
+  return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+}
+
+/** Text from HTML, as one line: whitespace collapsed, entities decoded. */
 export function textOf(html: string): string {
-  return html
-    .split(/\s+/)
-    .filter(Boolean)
-    .join(' ')
-    .replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, name: string) => entities[name] ?? '');
+  return html.split(/\s+/).filter(Boolean).join(' ').replace(entityRe, decodeEntity);
 }
 
 /** A definition's `<title>`, as text, or none. */
