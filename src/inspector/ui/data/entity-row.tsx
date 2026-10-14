@@ -31,10 +31,10 @@ export function EntityRow({
       data-entity={props.entityKey}
       className={cn('rounded-md border', props.open ? 'bg-muted/50' : 'bg-card')}
     >
-      <div className="group flex h-8 items-center gap-1.5 rounded-md pr-1 hover:bg-accent">
+      <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <button
           type="button"
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 pl-2 text-left text-sm"
+          className="flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 text-left text-sm"
           onClick={props.onToggle}
           aria-expanded={props.open}
         >
