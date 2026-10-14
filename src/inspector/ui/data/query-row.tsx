@@ -13,6 +13,7 @@ import {
   Rows3,
   Sigma,
   SlidersHorizontal,
+  Table2,
   ToggleLeft,
   Type,
 } from 'lucide-react';
@@ -22,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
 import { formatTime, plural, prettyJson } from '../../model/format';
-import type { QueryInput } from '../../model/inputs';
+import { declaredFilters, type QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { RevealTarget } from '../../model/types';
@@ -76,6 +77,7 @@ export function QueryRow({
   const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
+  const filters = [...declaredFilters(declaration?.aql), ...inputs];
 
   const summary = (
     <>
@@ -169,62 +171,45 @@ export function QueryRow({
         )}
       </Fields>
 
-      <Section title="Definition" info="The metrics and dimensions the query returns.">
-        {query.columns.length === 0 ? (
+      {query.columns.length === 0 ? (
+        <Section title="Definition" info="The metrics and dimensions the query returns.">
           <p className="px-1 text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
-        ) : (
-          <MiniTable
-            head={['', 'name', 'label']}
-            rows={query.columns.map((column) => {
-              const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
-              const title = column.isMeasure
-                ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
-                : `dimension · ${column.semantic_type}`;
-              return {
-                key: column.name,
-                cells: [
-                  <TypeIcon key="type" icon={Icon} label={title} />,
-                  <span key="name">
-                    {column.name}
-                    {column.adhoc && <span className="ml-1 text-amber-600 dark:text-amber-400">ad hoc</span>}
-                  </span>,
-                  column.label,
-                ],
-              };
-            })}
-          />
-        )}
-      </Section>
+        </Section>
+      ) : (
+        <>
+          <FieldList title="Metrics" columns={query.columns.filter((column) => column.isMeasure)} />
+          <FieldList title="Dimensions" columns={query.columns.filter((column) => !column.isMeasure)} />
+        </>
+      )}
 
-      {inputs.length > 0 && (
-        <Section title="Inputs" info="The controls and cross-filters that filter the query.">
+      {filters.length > 0 && (
+        <Section
+          title="Filters"
+          info="The filters the query declares, and the controls and cross-filters applied to it."
+        >
           <MiniTable
-            head={['', 'from · on', 'applied']}
-            rows={inputs.map((input) => {
-              const Icon = input.kind === 'control' ? SlidersHorizontal : ChartColumn;
-              const from = input.kind === 'control' ? 'From a control' : 'Cross-filter from a chart';
+            head={['field', '', 'from']}
+            rows={filters.map((input) => {
+              const Icon =
+                input.kind === 'declared'
+                  ? Table2
+                  : input.kind === 'control'
+                    ? SlidersHorizontal
+                    : ChartColumn;
+              const from =
+                input.kind === 'declared'
+                  ? 'Declared in the query'
+                  : input.kind === 'control'
+                    ? 'From a control'
+                    : 'Cross-filter from a chart';
               return {
-                key: `${input.kind}:${input.source}`,
+                key: `${input.kind}:${input.source}:${input.field}`,
                 cells: [
-                  <TypeIcon key="type" icon={Icon} label={from} />,
-                  // The field goes under its source, so the value keeps the width a narrow panel has.
-                  <div key="from" className="min-w-0">
-                    <span>
-                      {input.self ? (
-                        <span className="text-muted-foreground">itself</span>
-                      ) : (
-                        <EntityLink
-                          entity={input.kind === 'control' ? 'control' : 'query'}
-                          app={props.app}
-                          name={input.source}
-                          onReveal={onReveal}
-                        />
-                      )}
-                    </span>
-                    <div className="break-all text-muted-foreground">{input.field}</div>
-                  </div>,
+                  <span key="field" className="font-medium break-all">
+                    {input.field}
+                  </span>,
                   <div key="applied" className="min-w-0">
                     <span
                       className={cn(
@@ -239,6 +224,21 @@ export function QueryRow({
                       <div className="text-xs text-amber-600 dark:text-amber-400">
                         pending: {input.pending}
                       </div>
+                    )}
+                  </div>,
+                  <div key="from" className="flex min-w-0 items-center gap-1.5">
+                    <TypeIcon icon={Icon} label={from} />
+                    {input.kind === 'declared' ? (
+                      <span className="text-muted-foreground">query</span>
+                    ) : input.self ? (
+                      <span className="text-muted-foreground">itself</span>
+                    ) : (
+                      <EntityLink
+                        entity={input.kind === 'control' ? 'control' : 'query'}
+                        app={props.app}
+                        name={input.source}
+                        onReveal={onReveal}
+                      />
                     )}
                   </div>,
                 ],
@@ -312,5 +312,42 @@ function TypeIcon({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** The metrics or dimensions a query returns, one card row each; nothing renders when there are none. */
+function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] }) {
+  if (columns.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <p className="px-1 text-sm font-medium">
+        {title} <span className="font-normal text-muted-foreground">· {columns.length}</span>
+      </p>
+      <ul className="divide-y rounded-lg border bg-background">
+        {columns.map((column) => {
+          const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+          const kind = column.isMeasure
+            ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
+            : `dimension · ${column.semantic_type}`;
+          const unlabelled = !column.label || column.label === column.name;
+          return (
+            <li key={column.name} className="flex items-center gap-2.5 px-3 py-2 text-xs">
+              <TypeIcon icon={Icon} label={kind} />
+              <span className="min-w-0 truncate font-medium">{column.name}</span>
+              {column.adhoc && <span className="shrink-0 text-amber-600 dark:text-amber-400">ad hoc</span>}
+              <span className="ml-auto flex min-w-0 items-center pl-2">
+                {unlabelled ? (
+                  <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-900 dark:bg-amber-400/20 dark:text-amber-300">
+                    no label
+                  </span>
+                ) : (
+                  <span className="truncate text-muted-foreground">{column.label}</span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

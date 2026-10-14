@@ -16,13 +16,13 @@ export function MiniTable({
     <div>
       {caption && <div className="mb-0.5 px-1 text-xs text-muted-foreground">{caption}</div>}
       <div className="rounded-md border bg-background">
-        <Table>
+        <Table className="text-xs">
           <TableHeader>
             <TableRow>
               {head.map((label, i) => (
                 <TableHead
                   key={label}
-                  className={cn(!label && 'w-6 pr-0', i === 1 && head[0] === '' && 'pl-1')}
+                  className={cn(!label && i === 0 && 'w-6 pr-0', i === 1 && head[0] === '' && 'pl-1')}
                 >
                   {label}
                 </TableHead>
