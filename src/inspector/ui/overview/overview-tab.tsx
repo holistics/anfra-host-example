@@ -87,22 +87,22 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
         </Tooltip>
       </div>
       <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="flex gap-0.5" aria-hidden>
+        <div className="flex items-end gap-0.5" aria-hidden>
           {levels.map((level) => (
             <span
               key={level}
-              className={cn(
-                'h-3.5 w-1.5 rounded-sm',
-                level <= trust.level ? toneFill[trust.tone] : 'bg-muted',
-              )}
+              style={{ height: `${12 + ((level - 1) * 16) / (levels.length - 1)}px` }}
+              className={cn('w-2 rounded-sm', level <= trust.level ? toneFill[trust.tone] : 'bg-muted')}
             />
           ))}
         </div>
-        <p className={cn('text-sm font-medium', toneText[trust.tone])}>
-          {trust.level} · {TRUST_LEVELS[trust.level].name}
-        </p>
+        <div>
+          <p className={cn('text-sm font-medium', toneText[trust.tone])}>
+            Level {trust.level} · {TRUST_LEVELS[trust.level].name}
+          </p>
+          <p className="text-xs text-muted-foreground">{trust.text}</p>
+        </div>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{trust.text}</p>
     </div>
   );
 }
