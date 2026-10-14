@@ -10,18 +10,21 @@ import {
   Hash,
   Info,
   type LucideIcon,
+  Rows3,
   Sigma,
   SlidersHorizontal,
+  Table2,
   ToggleLeft,
   Type,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
 import { formatTime, plural, prettyJson } from '../../model/format';
-import type { QueryInput } from '../../model/inputs';
+import { declaredFilters, type QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { RevealTarget } from '../../model/types';
@@ -72,29 +75,65 @@ export function QueryRow({
   const latest = requests.find(
     ({ entry, shared }) => !shared && entry.method === 'submitQuery' && entry.status !== 'pending',
   )?.entry;
-  const rows = query.state === 'success' ? plural(query.rowCount, 'row') : '—';
+  const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
+  // When it ran, where its rows came from, and how long that took: one line, whichever parts are known.
+  const lastRun = [
+    query.debug?.executedAt && formatTime(query.debug.executedAt),
+    query.debug && (query.debug.fromCache ? 'cache' : 'database'),
+    latest?.durationMs !== undefined && `${latest.durationMs} ms`,
+  ].filter(Boolean);
+  const allFilters = [...declaredFilters(declaration?.aql), ...inputs];
+  const activeFilters = allFilters.filter(isActive);
+  // Opens on the filters that narrow the query now; the rest is one click away.
+  const [filterView, setFilterView] = useState<'active' | 'all'>('active');
+  const filters = filterView === 'active' ? activeFilters : allFilters;
 
   const summary = (
     <>
-      <span className="truncate font-medium">{props.name}</span>
-      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-        <span className={cn('size-1.5 rounded-full', stateDot[query.state])} />
-        {query.state}
-      </span>
-      {query.isDirty && <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>}
-      {query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>}
-      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
+      <span className="min-w-0 truncate font-medium">{props.name}</span>
+      {/* A flag takes room only when there is one. */}
+      {query.isDirty ? (
+        <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>
+      ) : (
+        query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>
+      )}
+      <span className="flex-1" />
       <Tooltip>
         <TooltipTrigger asChild>
-          <span role="img" className="flex h-3 shrink-0 items-end" aria-label={`Trust level ${trust.level}`}>
+          <span className="flex w-11 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
+            {rows}
+            <Rows3 className="size-3.5 shrink-0" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {query.state === 'success' ? plural(query.rowCount, 'row') : 'No rows yet'}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            className="flex h-3 w-6 shrink-0 items-end justify-end"
+            aria-label={`Trust level ${trust.level}`}
+          >
             <TrustBars trust={trust} size="sm" />
           </span>
         </TooltipTrigger>
         <TooltipContent side="left">
           Level {trust.level} · {TRUST_LEVELS[trust.level].name}
         </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            aria-label={`State: ${query.state}`}
+            className={cn('size-2 shrink-0 rounded-full', stateDot[query.state])}
+          />
+        </TooltipTrigger>
+        <TooltipContent>{query.state}</TooltipContent>
       </Tooltip>
     </>
   );
@@ -133,13 +172,7 @@ export function QueryRow({
           />
         </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
-        {query.debug && (
-          <Field label="Source">
-            {query.debug.fromCache ? 'cache' : 'database'}
-            {query.debug.executedAt && ` at ${formatTime(query.debug.executedAt)}`}
-          </Field>
-        )}
-        {latest?.durationMs !== undefined && <Field label="Took">{latest.durationMs} ms</Field>}
+        {lastRun.length > 0 && <Field label="Last run">{lastRun.join(' · ')}</Field>}
         {(query.hasMore || query.page > 1) && (
           <Field label="Page">
             {query.page}
@@ -148,109 +181,150 @@ export function QueryRow({
         )}
       </Fields>
 
-      <Section title="Definition" info="The metrics and dimensions the query returns.">
-        {query.columns.length === 0 ? (
-          <p className="px-1 text-xs text-muted-foreground">
+      {query.columns.length === 0 ? (
+        <Section title="Definition" info="The metrics and dimensions the query returns.">
+          <p className="text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
-        ) : (
-          <MiniTable
-            head={['', 'name', 'label']}
-            rows={query.columns.map((column) => {
-              const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
-              const title = column.isMeasure
-                ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
-                : `dimension · ${column.semantic_type}`;
-              return {
-                key: column.name,
-                cells: [
-                  <TypeIcon key="type" icon={Icon} label={title} />,
-                  <span key="name" className="font-mono text-xs leading-5">
-                    {column.name}
-                    {column.adhoc && <span className="ml-1 text-amber-600 dark:text-amber-400">ad hoc</span>}
-                  </span>,
-                  column.label,
-                ],
-              };
-            })}
-          />
-        )}
-      </Section>
+        </Section>
+      ) : (
+        <>
+          <FieldList title="Metrics" columns={query.columns.filter((column) => column.isMeasure)} />
+          <FieldList title="Dimensions" columns={query.columns.filter((column) => !column.isMeasure)} />
+        </>
+      )}
 
-      {inputs.length > 0 && (
-        <Section title="Inputs" info="The controls and cross-filters that filter the query.">
-          <MiniTable
-            head={['', 'from · on', 'applied']}
-            rows={inputs.map((input) => {
-              const Icon = input.kind === 'control' ? SlidersHorizontal : ChartColumn;
-              const from = input.kind === 'control' ? 'From a control' : 'Cross-filter from a chart';
-              return {
-                key: `${input.kind}:${input.source}`,
-                cells: [
-                  <TypeIcon key="type" icon={Icon} label={from} />,
-                  // The field goes under its source, so the value keeps the width a narrow panel has.
-                  <div key="from" className="min-w-0">
-                    <span className="text-xs leading-5">
-                      {input.self ? (
-                        <span className="text-muted-foreground">itself</span>
-                      ) : (
-                        <EntityLink
-                          entity={input.kind === 'control' ? 'control' : 'query'}
-                          app={props.app}
-                          name={input.source}
-                          onReveal={onReveal}
-                        />
+      {allFilters.length > 0 && (
+        <Section
+          title="Filters"
+          info="The filters the query declares, and the controls and cross-filters applied to it."
+          action={
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={filterView}
+              // Clicking the pressed item clears a single group; a view is always one of the two.
+              onValueChange={(value) => value && setFilterView(value as 'active' | 'all')}
+            >
+              <ToggleGroupItem value="active" className="h-6 min-w-0 px-2 text-xs">
+                Active ({activeFilters.length})
+              </ToggleGroupItem>
+              <ToggleGroupItem value="all" className="h-6 min-w-0 px-2 text-xs">
+                All ({allFilters.length})
+              </ToggleGroupItem>
+            </ToggleGroup>
+          }
+        >
+          {filters.length === 0 && <p className="text-xs text-muted-foreground">No active filters.</p>}
+          {filters.length > 0 && (
+            <MiniTable
+              rows={filters.map((input, index) => {
+                const Icon =
+                  input.kind === 'declared'
+                    ? Table2
+                    : input.kind === 'control'
+                      ? SlidersHorizontal
+                      : ChartColumn;
+                const column = filteredColumn(query.columns, input.field);
+                const fieldType = column?.semantic_type ?? input.type;
+                const FieldIcon = column?.isMeasure
+                  ? Sigma
+                  : (typeIcon[fieldType ?? 'unknown'] ?? CircleHelp);
+                const fieldKind = column?.isMeasure ? 'metric' : `dimension · ${fieldType ?? 'unknown type'}`;
+                const from =
+                  input.kind === 'declared'
+                    ? "Declared in this query's AQL filters block"
+                    : input.kind === 'control'
+                      ? `Applied from the control "${input.source}"`
+                      : input.self
+                        ? "Cross-filter from selecting rows in this query's own result"
+                        : `Cross-filter from selecting rows in "${input.source}"`;
+                return {
+                  key: `${input.kind}:${input.source}:${input.field}:${index}`,
+                  cells: [
+                    <div key="field" className="flex min-w-0 items-start gap-2.5">
+                      <TypeIcon icon={FieldIcon} label={fieldKind} />
+                      <span className="font-medium break-all">{input.field}</span>
+                    </div>,
+                    <div key="applied" className="min-w-0">
+                      <span
+                        className={cn(
+                          input.value === 'not set' || input.value === 'no selection'
+                            ? 'text-muted-foreground'
+                            : '',
+                        )}
+                      >
+                        {input.value}
+                      </span>
+                      {input.pending && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400">
+                          pending: {input.pending}
+                        </div>
                       )}
-                    </span>
-                    <div className="font-mono text-xs break-all text-muted-foreground">{input.field}</div>
-                  </div>,
-                  <div key="applied" className="min-w-0">
-                    <span
-                      className={cn(
-                        input.value === 'not set' || input.value === 'no selection'
-                          ? 'text-muted-foreground'
-                          : '',
-                      )}
-                    >
-                      {input.value}
-                    </span>
-                    {input.pending && (
-                      <div className="text-xs text-amber-600 dark:text-amber-400">
-                        pending: {input.pending}
-                      </div>
-                    )}
-                  </div>,
-                ],
-              };
-            })}
-          />
+                    </div>,
+                    // The tooltip covers the icon and the source's name, so hovering either shows it.
+                    <Tooltip key="from">
+                      <TooltipTrigger asChild>
+                        <div className="flex min-w-0 items-start gap-2.5">
+                          <span
+                            role="img"
+                            aria-label={from}
+                            className="inline-flex h-5 items-center text-muted-foreground"
+                          >
+                            <Icon className="size-3.5 shrink-0" />
+                          </span>
+                          {input.kind === 'declared' ? (
+                            <span className="text-muted-foreground">query</span>
+                          ) : input.self ? (
+                            <span className="text-muted-foreground">itself</span>
+                          ) : (
+                            <EntityLink
+                              entity={input.kind === 'control' ? 'control' : 'query'}
+                              app={props.app}
+                              name={input.source}
+                              onReveal={onReveal}
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{from}</TooltipContent>
+                    </Tooltip>,
+                  ],
+                };
+              })}
+            />
+          )}
         </Section>
       )}
 
-      <CodeBlock
-        tab={codeTab}
-        onTab={setCodeTab}
-        sources={{
-          declared: {
-            label: 'Declared AQL',
-            code: declaration?.aql && dedent(declaration.aql),
-            lang: 'aql',
-            empty: 'Not declared.',
-          },
-          aql: { label: 'Executed AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
-          sql: {
-            label: 'Executed SQL',
-            code: query.debug?.executedSql,
-            lang: 'sql',
-            empty: canViewSql ? notRun : 'Needs canViewGeneratedSql.',
-          },
-          signature: { label: 'Signature', code: prettyJson(query.signature), empty: 'No signature.' },
-        }}
-      />
+      {/* Set apart from the fields and filters above: it is code, not a list of them. */}
+      <div className="pt-2">
+        <CodeBlock
+          tab={codeTab}
+          onTab={setCodeTab}
+          sources={{
+            declared: {
+              label: 'Declared AQL',
+              code: declaration?.aql && dedent(declaration.aql),
+              lang: 'aql',
+              empty: 'Not declared.',
+            },
+            aql: { label: 'Executed AQL', code: query.debug?.executedAql, lang: 'aql', empty: notRun },
+            sql: {
+              label: 'Executed SQL',
+              code: query.debug?.executedSql,
+              lang: 'sql',
+              empty: canViewSql ? notRun : 'Needs canViewGeneratedSql.',
+            },
+            signature: { label: 'Signature', code: prettyJson(query.signature), empty: 'No signature.' },
+          }}
+        />
+      </div>
 
       {requests.length > 0 && (
         <div>
-          <p className="mb-1.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
+          <p className="mb-1.5 text-xs text-muted-foreground">Requests ({requests.length})</p>
           <RequestList items={requests} />
         </div>
       )}
@@ -258,11 +332,34 @@ export function QueryRow({
   );
 }
 
+/** The returned column a filter's field names, if the query returns it: its type is then known for sure. */
+function filteredColumn(columns: ColumnMeta[], field: string): ColumnMeta | undefined {
+  // An aggregated mapping reads `sum(model.field)`; the field is what's inside.
+  const bare = /^\w+\((.*)\)$/.exec(field)?.[1] ?? field;
+  return columns.find(
+    (column) => (column.modelId ? `${column.modelId}.${column.fieldName}` : column.fieldName) === bare,
+  );
+}
+
+/** Whether a filter narrows the query now: a declared one always does, an input only once it has a value. */
+const isActive = (input: QueryInput) =>
+  input.kind === 'declared' || (input.value !== 'not set' && input.value !== 'no selection');
+
 /** A titled part of an opened query, with a hint on what it holds. */
-function Section({ title, info, children }: { title: string; info: string; children: ReactNode }) {
+function Section({
+  title,
+  info,
+  action,
+  children,
+}: {
+  title: string;
+  info: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 px-1 text-sm font-medium">
+      <div className="flex items-center gap-1 text-sm font-medium">
         {title}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -274,6 +371,7 @@ function Section({ title, info, children }: { title: string; info: string; child
             {info}
           </TooltipContent>
         </Tooltip>
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       {children}
     </div>
@@ -281,15 +379,56 @@ function Section({ title, info, children }: { title: string; info: string; child
 }
 
 /** An icon that says what it stands for on hover. */
-function TypeIcon({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function TypeIcon({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span role="img" aria-label={label} className="inline-flex h-5 items-center text-muted-foreground">
+        <span
+          role="img"
+          aria-label={label}
+          className={cn('inline-flex h-5 items-center text-muted-foreground', className)}
+        >
           <Icon className="size-3.5 shrink-0" />
         </span>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** The metrics or dimensions a query returns, one card row each; nothing renders when there are none. */
+function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] }) {
+  if (columns.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">
+        {title} <span className="font-normal text-muted-foreground">· {columns.length}</span>
+      </p>
+      <ul className="divide-y rounded-lg border bg-background">
+        {columns.map((column) => {
+          const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+          const kind = column.isMeasure
+            ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
+            : `dimension · ${column.semantic_type}`;
+          const unlabelled = !column.label || column.label === column.name;
+          return (
+            <li key={column.name} className="flex items-center gap-2.5 px-3 py-2 text-xs">
+              <TypeIcon icon={Icon} label={kind} />
+              <span className="min-w-0 truncate font-medium">{column.name}</span>
+              {column.adhoc && <span className="shrink-0 text-amber-600 dark:text-amber-400">ad hoc</span>}
+              <span className="ml-auto flex min-w-0 items-center pl-2">
+                {unlabelled ? (
+                  <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-900 dark:bg-amber-400/20 dark:text-amber-300">
+                    no label
+                  </span>
+                ) : (
+                  <span className="truncate text-muted-foreground">{column.label}</span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

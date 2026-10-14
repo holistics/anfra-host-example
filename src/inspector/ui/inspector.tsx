@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { wiringChecks } from '../model/checks';
-import { countProblems, entityKey } from '../model/format';
+import { countProblems, entityKey, firstEntityUnder } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
+import { appTrust } from '../model/trust';
 import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
@@ -43,6 +44,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const attributed = useMemo(() => attributeRequests(requests, apps ?? []), [requests, apps]);
   const problems = structure ? countProblems(structure.nodes) : 0;
   const counts = apps && queryCounts(apps);
+  const trust = apps?.length
+    ? apps.map(appTrust).reduce((lowest, t) => (t.level < lowest.level ? t : lowest))
+    : undefined;
   const checks = useMemo(() => (apps ?? []).map(wiringChecks), [apps]);
   const warnings = checks.flat().filter((c) => c.level !== 'info').length;
 
@@ -52,7 +56,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
-  useEffect(() => setNode(picked), [picked]);
+
+  const handledPick = useRef(picked?.nonce);
 
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
@@ -69,6 +74,21 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
       onTab('structure');
     }
   };
+
+  // A pick lands on its node in Structure, or with Shift on the first query or control in it, in Data.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
+  useEffect(() => {
+    if (!picked) return setNode(undefined);
+    // A pick already handled before this mount (the panel was closed and reopened) isn't a new one.
+    if (picked.nonce === handledPick.current) return;
+    handledPick.current = picked.nonce;
+    const entity = picked.inData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
+    if (entity) reveal(entity);
+    else {
+      setNode(picked);
+      onTab('structure');
+    }
+  }, [picked]);
 
   const title =
     !apps || apps.length === 0
@@ -87,6 +107,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
         <InspectorHeader
           title={title}
           counts={counts}
+          trust={trust}
           picking={picking}
           onTogglePicking={onTogglePicking}
           onShowQueries={(filter) => {
@@ -96,8 +117,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           report={() => JSON.stringify(buildReport(snapshot, source.env, requests), null, 2)}
           onClose={onClose}
         />
-        <div className="shrink-0 overflow-x-auto border-b px-2 py-1.5">
-          <TabsList>
+        <div className="shrink-0 overflow-x-auto border-b px-2 pt-1.5">
+          <TabsList variant="line">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="structure">
               Structure
@@ -132,9 +153,11 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               {!structure && <Note>Waiting for the Data App…</Note>}
               {structure?.nodes.length === 0 && (
                 <Note>
-                  Nothing is marked yet. Add <code>data-anfra-container</code>, <code>data-anfra-block</code>,{' '}
-                  <code>data-anfra-query</code> and <code>data-anfra-control</code> to the page's elements and
-                  they show up here.
+                  Nothing is marked yet. Add <code className="font-sans">data-anfra-container</code>,{' '}
+                  <code className="font-sans">data-anfra-block</code>,{' '}
+                  <code className="font-sans">data-anfra-query</code> and{' '}
+                  <code className="font-sans">data-anfra-control</code> to the page's elements and they show
+                  up here.
                 </Note>
               )}
               {structure && structure.nodes.length > 0 && (

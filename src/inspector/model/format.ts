@@ -92,3 +92,29 @@ export function blockNodeKey(
 export function countProblems(nodes: StructureNode[]): number {
   return nodes.reduce((n, node) => n + node.problems.length + countProblems(node.children), 0);
 }
+
+/**
+ * The first query or control at or below the node with `key`, in document order: what a pick of a
+ * container or block leads to in Data. Undefined when the node isn't there or holds none.
+ */
+export function firstEntityUnder(
+  nodes: StructureNode[],
+  key: string,
+): { entity: LocateKind; app: number; name: string } | undefined {
+  const find = (list: StructureNode[]): StructureNode | undefined => {
+    for (const node of list) {
+      if (node.key === key) return node;
+      const found = find(node.children);
+      if (found) return found;
+    }
+  };
+  const first = (node: StructureNode): StructureNode | undefined =>
+    node.kind === 'query' || node.kind === 'control'
+      ? node
+      : node.children.map(first).find((entity) => entity !== undefined);
+  const root = find(nodes);
+  const entity = root && first(root);
+  return entity && (entity.kind === 'query' || entity.kind === 'control')
+    ? { entity: entity.kind, app: entity.app ?? 0, name: entity.name ?? '' }
+    : undefined;
+}

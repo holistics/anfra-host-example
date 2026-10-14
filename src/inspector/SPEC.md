@@ -54,8 +54,11 @@ There is no modal or backdrop.
   selected tab and panel width are kept.
 
 **Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
-Picking a node selects and reveals it in the tree. The frame leaves pick mode after a pick or on
-Escape.
+Picking a node selects and reveals it in the tree. **Shift-click** instead opens the first query or
+control at or below the picked node (the node itself, if it is one) in Data, switching to that tab;
+a node with none lands in Structure as usual. The frame's pick report doesn't carry modifier keys,
+so the host's injected script posts each click's Shift state just before it. The frame leaves pick
+mode after a pick or on Escape.
 
 The inspector state also resets when the path changes or the repo revision changes (live reload).
 
@@ -140,7 +143,8 @@ The page's marked elements as a tree, the same as today:
 - **Click or Enter** selects the node and scrolls it into view in the frame (locate).
 - On hover or focus, a row shows **Copy handle** (`[Label](data-anfra-block="id")`, or just the
   attribute), and for queries and controls with no problems, **Show in Data**.
-- **Picked** node: it is selected, its ancestors expand and it scrolls into view.
+- **Picked** node: it is selected, its ancestors expand and it scrolls into view. A Shift pick goes
+  to Data instead, when the node holds a query or control.
 - Collapsed nodes stay collapsed across snapshots.
 - **Empty**: "Nothing is marked yet. Add data-anfra-container, … and they show up here."
 

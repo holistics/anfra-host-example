@@ -66,14 +66,19 @@ export const focusFilterMessage = 'anfra-host:focus-filter';
 export const toggleSidebarMessage = 'anfra-host:toggle-sidebar';
 export const togglePromptMessage = 'anfra-host:toggle-prompt';
 export const toggleInspectMessage = 'anfra-host:toggle-inspect';
+/**
+ * Posted for every click in a frame, with whether Shift was held: the frame's pick report doesn't
+ * say, and a click's message always comes first, as the frame's listener sits on the window.
+ */
+export const clickMessage = 'anfra-host:click';
 
 /**
  * Appended to each definition: the frame is sandboxed, so the host can't listen for keys in it. It
  * forwards the host's shortcuts (Cmd/Ctrl+K and `/` for the filter, Cmd/Ctrl+B for the sidebar,
  * Alt+Shift+P for the prompt, Alt+Shift+I for inspect),
- * which the host answers.
+ * which the host answers, and reports each click's Shift state for picking.
  */
-const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'||e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true)</script>`;
+const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'||e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true);addEventListener('click',function(e){parent.postMessage({type:'${clickMessage}',shift:e.shiftKey},'*')},true)</script>`;
 
 /** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
 export async function definition(path: string): Promise<{ html: string; baseHref: string }> {

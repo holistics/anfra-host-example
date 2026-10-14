@@ -74,7 +74,7 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
     <div className={tile}>
       <div>
         <div className="flex items-center gap-2">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {label && <span className="font-medium text-foreground">{label} · </span>}
             Trust level
           </p>
