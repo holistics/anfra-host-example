@@ -54,7 +54,11 @@ export function InspectorHeader({
               Pick
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{picking ? 'Stop picking' : 'Pick an element on the page'}</TooltipContent>
+          <TooltipContent>
+            {picking
+              ? 'Stop picking'
+              : 'Pick an element on the page · Shift-click to open its query or control in Data'}
+          </TooltipContent>
         </Tooltip>
         <CopyReport report={report} />
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close the inspect panel">

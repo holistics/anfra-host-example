@@ -8,6 +8,8 @@ export type InspectorTab = 'overview' | 'structure' | 'data' | 'wiring';
 export interface NodeRequest {
   key: string;
   nonce: number;
+  /** Go to the first query or control in the node, in the Data tab, rather than to the node in Structure. */
+  inData?: boolean;
 }
 
 /** What the Data tab shows: a search over names, datasets and labels, and a filter. */

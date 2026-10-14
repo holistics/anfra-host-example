@@ -1,5 +1,5 @@
 import type { EntityUsage, LocateKind, LocateTarget } from '@holistics/anfra-sdk/common';
-import { ChevronRight, Locate, Network } from 'lucide-react';
+import { ArrowRight, ChevronRight, Locate } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -112,7 +112,7 @@ export function Drawn({
                       <Locate />
                     </IconButton>
                     <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
-                      <Network />
+                      <ArrowRight />
                     </IconButton>
                   </>
                 )}

@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  clickMessage,
   type DatasetDescriptor,
   datasets as loadDatasets,
   type RenderFormat,
@@ -61,6 +62,8 @@ export function App() {
   const [picking, setPicking] = useState(false);
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
+  // Whether the last click in the frame held Shift; a pick's click is reported just before the pick.
+  const shiftClick = useRef(false);
   const [toast, setToast] = useState<Toast>();
   const stage = useRef<StageHandle>(null);
 
@@ -182,6 +185,7 @@ export function App() {
     const onMessage = (event: MessageEvent) => {
       if (event.data === togglePromptMessage) run('prompt');
       if (event.data === toggleInspectMessage) run('inspect');
+      if (event.data?.type === clickMessage) shiftClick.current = !!event.data.shift;
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('message', onMessage);
@@ -193,8 +197,10 @@ export function App() {
 
   const onPick = (node: string | null) => {
     if (node) {
-      setPicked({ key: node, nonce: Date.now() });
-      setTab('structure');
+      // Shift goes to the node's first query or control in Data; the inspector picks the tab.
+      const inData = shiftClick.current;
+      setPicked({ key: node, nonce: Date.now(), inData });
+      if (!inData) setTab('structure');
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
     setPicking(false);

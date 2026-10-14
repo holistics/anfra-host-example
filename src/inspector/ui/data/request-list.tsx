@@ -2,6 +2,7 @@ import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatTime, plural } from '../../model/format';
 import type { RequestEntry } from '../../model/requests';
@@ -63,25 +64,35 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
   const title = entry.method === 'fieldSuggestions' ? entry.field : entry.dataset;
   return (
     <li className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}>
-      <button
-        type="button"
-        className="flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-left text-sm hover:bg-accent"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <span className="truncate font-medium">{title || methodLabel[entry.method]}</span>
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <span className={cn('size-1.5 rounded-full', statusColor[entry.status])} />
-          {entry.status}
-        </span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">{summaryOf(entry)}</span>
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-          {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
-        </span>
-        <ChevronRight
-          className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')}
-        />
-      </button>
+      {/* The same shell as a query row: one clickable line, the state as a dot, a chevron at the end. */}
+      <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
+        <button
+          type="button"
+          className="flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 text-left text-sm"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+        >
+          <span className="min-w-0 truncate font-medium">{title || methodLabel[entry.method]}</span>
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{summaryOf(entry)}</span>
+          <span className="flex-1" />
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+            {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                role="img"
+                aria-label={`Status: ${entry.status}`}
+                className={cn('size-2 shrink-0 rounded-full', statusColor[entry.status])}
+              />
+            </TooltipTrigger>
+            <TooltipContent>{entry.status}</TooltipContent>
+          </Tooltip>
+        </button>
+        <Button variant="ghost" size="icon-xs" tabIndex={-1} aria-hidden onClick={() => setOpen(!open)}>
+          <ChevronRight className={cn('transition-transform', open && 'rotate-90')} />
+        </Button>
+      </div>
       {entry.error && (
         <p className="px-3 pb-1.5 text-xs break-words text-destructive" role="alert">
           {entry.error}

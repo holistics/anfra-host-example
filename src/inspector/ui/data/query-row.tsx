@@ -78,6 +78,12 @@ export function QueryRow({
   const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
+  // When it ran, where its rows came from, and how long that took: one line, whichever parts are known.
+  const lastRun = [
+    query.debug?.executedAt && formatTime(query.debug.executedAt),
+    query.debug && (query.debug.fromCache ? 'cache' : 'database'),
+    latest?.durationMs !== undefined && `${latest.durationMs} ms`,
+  ].filter(Boolean);
   const allFilters = [...declaredFilters(declaration?.aql), ...inputs];
   const activeFilters = allFilters.filter(isActive);
   // Opens on the filters that narrow the query now; the rest is one click away.
@@ -166,13 +172,7 @@ export function QueryRow({
           />
         </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
-        {query.debug && (
-          <Field label="Source">
-            {query.debug.fromCache ? 'cache' : 'database'}
-            {query.debug.executedAt && ` at ${formatTime(query.debug.executedAt)}`}
-          </Field>
-        )}
-        {latest?.durationMs !== undefined && <Field label="Took">{latest.durationMs} ms</Field>}
+        {lastRun.length > 0 && <Field label="Last run">{lastRun.join(' · ')}</Field>}
         {(query.hasMore || query.page > 1) && (
           <Field label="Page">
             {query.page}
@@ -183,7 +183,7 @@ export function QueryRow({
 
       {query.columns.length === 0 ? (
         <Section title="Definition" info="The metrics and dimensions the query returns.">
-          <p className="px-1 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
         </Section>
@@ -216,7 +216,7 @@ export function QueryRow({
             </ToggleGroup>
           }
         >
-          {filters.length === 0 && <p className="px-1 text-xs text-muted-foreground">No active filters.</p>}
+          {filters.length === 0 && <p className="text-xs text-muted-foreground">No active filters.</p>}
           {filters.length > 0 && (
             <MiniTable
               rows={filters.map((input) => {
@@ -324,7 +324,7 @@ export function QueryRow({
 
       {requests.length > 0 && (
         <div>
-          <p className="mb-1.5 px-1 text-xs text-muted-foreground">Requests ({requests.length})</p>
+          <p className="mb-1.5 text-xs text-muted-foreground">Requests ({requests.length})</p>
           <RequestList items={requests} />
         </div>
       )}
@@ -359,7 +359,7 @@ function Section({
 }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 px-1 text-sm font-medium">
+      <div className="flex items-center gap-1 text-sm font-medium">
         {title}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -401,7 +401,7 @@ function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] })
   if (columns.length === 0) return null;
   return (
     <div className="space-y-2">
-      <p className="px-1 text-sm font-medium">
+      <p className="text-sm font-medium">
         {title} <span className="font-normal text-muted-foreground">· {columns.length}</span>
       </p>
       <ul className="divide-y rounded-lg border bg-background">

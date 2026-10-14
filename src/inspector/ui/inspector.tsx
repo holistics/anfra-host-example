@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { wiringChecks } from '../model/checks';
-import { countProblems, entityKey } from '../model/format';
+import { countProblems, entityKey, firstEntityUnder } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
@@ -56,7 +56,6 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
-  useEffect(() => setNode(picked), [picked]);
 
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
@@ -73,6 +72,18 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
       onTab('structure');
     }
   };
+
+  // A pick lands on its node in Structure, or with Shift on the first query or control in it, in Data.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
+  useEffect(() => {
+    if (!picked) return setNode(undefined);
+    const entity = picked.inData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
+    if (entity) reveal(entity);
+    else {
+      setNode(picked);
+      onTab('structure');
+    }
+  }, [picked]);
 
   const title =
     !apps || apps.length === 0
