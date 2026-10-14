@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { formatTime } from '../../model/format';
 import type { RequestEntry } from '../../model/requests';
@@ -112,30 +113,31 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
             : `${rows.length} row${rows.length === 1 ? '' : 's'}`}
       </p>
       {rows.length > 0 && (
-        <div className="max-h-60 overflow-auto rounded-md border">
-          <table className="text-[11px]">
-            <thead className="sticky top-0 bg-muted">
-              <tr>
+        // The table scrolls within its own container, so the cap goes there for the header to stick.
+        <div className="rounded-md border bg-background [&_[data-slot=table-container]]:max-h-60 [&_[data-slot=table-container]]:overflow-auto">
+          <Table className="text-[11px]">
+            <TableHeader className="sticky top-0 bg-muted">
+              <TableRow className="hover:bg-transparent">
                 {columns.map((column) => (
-                  <th key={column} className="px-2 py-1 text-left font-medium whitespace-nowrap">
+                  <TableHead key={column} className="h-6 px-2">
                     {column}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="font-mono">
+              </TableRow>
+            </TableHeader>
+            <TableBody className="font-mono">
               {rows.map((row, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
-                <tr key={i} className="border-t">
+                <TableRow key={i}>
                   {columns.map((column, j) => (
-                    <td key={column} className="max-w-48 truncate px-2 py-0.5 whitespace-nowrap">
+                    <TableCell key={column} className="max-w-48 truncate px-2 py-0.5">
                       {cell(row[j])}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

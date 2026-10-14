@@ -19,7 +19,8 @@ import { appTrust, TRUST_LEVELS, type TrustLevel } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
 import { Field, Fields, Note, SectionTitle } from '../shared/fields';
-import { toneFill, toneText } from '../shared/tone';
+import { toneText } from '../shared/tone';
+import { TrustBars } from '../shared/trust-bars';
 
 interface Props {
   snapshot: InspectorSnapshot | undefined;
@@ -87,15 +88,7 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
         </Tooltip>
       </div>
       <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="flex items-end gap-0.5" aria-hidden>
-          {levels.map((level) => (
-            <span
-              key={level}
-              style={{ height: `${12 + ((level - 1) * 16) / (levels.length - 1)}px` }}
-              className={cn('w-2 rounded-sm', level <= trust.level ? toneFill[trust.tone] : 'bg-muted')}
-            />
-          ))}
-        </div>
+        <TrustBars trust={trust} />
         <div>
           <p className={cn('text-sm font-medium', toneText[trust.tone])}>
             Level {trust.level} · {TRUST_LEVELS[trust.level].name}
