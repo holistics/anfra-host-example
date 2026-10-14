@@ -8,12 +8,12 @@ import type {
 } from '@holistics/anfra-sdk/common';
 import {
   ChevronRight,
-  Database,
   type LucideIcon,
   MousePointerClick,
   Network,
   Search,
   SlidersHorizontal,
+  Table2,
 } from 'lucide-react';
 import { type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -174,7 +174,7 @@ export function DataTab({
 
               <Section
                 title="Queries"
-                icon={Database}
+                icon={Table2}
                 count={queries.length}
                 shown={filtering ? shownQueries.length : undefined}
                 empty={filtering ? none('queries') : 'None.'}
@@ -268,8 +268,8 @@ function Toolbar({
     { value: 'dirty', label: `Dirty (${counts.dirty})` },
   ];
   return (
-    <div className="sticky top-0 z-10 space-y-1.5 border-b bg-background p-2">
-      <div className="relative">
+    <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b bg-background p-2">
+      <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={view.search}

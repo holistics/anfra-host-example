@@ -1,11 +1,12 @@
 import type { InspectedApp } from '@holistics/anfra-sdk/common';
 import {
   ChevronRight,
-  CircleAlert,
   Clock,
-  Database,
   Info,
+  OctagonAlert,
   SlidersHorizontal,
+  Table2,
+  Timer,
   TriangleAlert,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -73,9 +74,15 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
           </p>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-xs" aria-label="About trust levels">
+              <span
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to reach the tooltip
+                tabIndex={0}
+                role="img"
+                aria-label="About trust levels"
+                className="text-muted-foreground [&_svg]:size-3.5"
+              >
                 <Info />
-              </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-72 space-y-1.5 py-2">
               {LEVELS.map((level) => (
@@ -124,54 +131,66 @@ function Stats({
   const firstIssue = issues[0];
 
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <Stat
-        icon={<CircleAlert />}
-        title="Issues"
-        value={issues.length}
-        tone={errors ? 'error' : warnings ? 'warn' : undefined}
-        detail={issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'}
-        onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
-      />
-      <Stat
-        icon={<Database />}
-        title="Queries"
-        value={counts.total}
-        tone={counts.error ? 'error' : undefined}
-        detail={[
-          `${counts.success} ok`,
-          counts.error && `${counts.error} failed`,
-          counts.executing && `${counts.executing} running`,
-          counts.idle && `${counts.idle} idle`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        onClick={() => onReveal({ tab: 'data' })}
-      />
-      <Stat
-        icon={<SlidersHorizontal />}
-        title="Controls"
-        value={controls.length}
-        tone={unapplied ? 'warn' : undefined}
-        detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
-        onClick={() => onReveal({ tab: 'data' })}
-      />
-      <Stat
-        icon={<Clock />}
-        title="Last request"
-        value={last ? formatTime(last.at) : '—'}
-        tone={last?.status === 'error' ? 'error' : undefined}
-        detail={
-          last
-            ? [
-                lastQuery?.name ?? 'no query',
-                `${last.durationMs} ms`,
-                last.status === 'ok' ? (last.fromCache ? 'cache' : 'database') : last.status,
-              ].join(' · ')
-            : 'Nothing has run yet'
-        }
-        onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
-      />
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
+        <Stat
+          icon={<OctagonAlert />}
+          title="Issues"
+          value={issues.length}
+          tone={errors ? 'error' : warnings ? 'warn' : undefined}
+          detail={
+            issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'
+          }
+          onClick={firstIssue ? () => onReveal(firstIssue.target) : undefined}
+        />
+        <Stat
+          icon={<Table2 />}
+          title="Queries"
+          value={counts.total}
+          tone={counts.error ? 'error' : undefined}
+          detail={[
+            `${counts.success} ok`,
+            counts.error && `${counts.error} failed`,
+            counts.executing && `${counts.executing} running`,
+            counts.idle && `${counts.idle} idle`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          onClick={() => onReveal({ tab: 'data' })}
+        />
+        <Stat
+          icon={<SlidersHorizontal />}
+          title="Controls"
+          value={controls.length}
+          tone={unapplied ? 'warn' : undefined}
+          detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
+          onClick={() => onReveal({ tab: 'data' })}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Stat
+          icon={<Clock />}
+          title="Last request"
+          value={last ? formatTime(last.at) : '—'}
+          tone={last?.status === 'error' ? 'error' : undefined}
+          detail={last ? (lastQuery?.name ?? 'no query') : 'Nothing has run yet'}
+          onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
+        />
+        <Stat
+          icon={<Timer />}
+          title="Last run duration"
+          value={last ? `${last.durationMs} ms` : '—'}
+          detail={
+            last
+              ? last.status === 'ok'
+                ? last.fromCache
+                  ? 'from cache'
+                  : 'from database'
+                : last.status
+              : '—'
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -220,7 +239,7 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
               <button type="button" onClick={() => onReveal(issue.target)}>
                 <ItemMedia variant="default">
                   {issue.level === 'error' ? (
-                    <CircleAlert className="text-destructive" />
+                    <OctagonAlert className="text-destructive" />
                   ) : (
                     <TriangleAlert className="text-amber-500" />
                   )}
