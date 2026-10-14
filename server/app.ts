@@ -45,7 +45,7 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
   // reads them once.
   const previews = new Map<string, Preview>();
   const tree: Entry[] | undefined = production
-    ? catalog(apps, (rel, html) => previews.set(rel, appPreview(rel, html)))
+    ? catalog(apps, (rel, html, name) => previews.set(rel, appPreview(rel, html, name)))
     : undefined;
   app.get('/host/apps', (c) => c.json(tree ?? catalog(apps), 200, { 'Cache-Control': 'no-store' }));
 

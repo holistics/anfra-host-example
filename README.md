@@ -126,7 +126,8 @@ apps:
 - `icon` is one of the names in `src/lib/icons.ts` (lucide, kebab-case); an unknown one falls back to the default.
 - `endorsed: true` (Data Apps) puts a small green check on the icon's bottom right.
 - The sidebar's filter matches names and tags.
-- Unknown fields and keys that match no folder or app are logged once by the server.
+- `order` puts entries first, lowest first; the rest follow by file name.
+- The server logs each problem once: unknown fields, a field on the wrong kind (`endorsed` on a folder), a key written twice (`sales` and `sales/`), a key under the wrong section, and keys that match nothing.
 
 ## MCP
 

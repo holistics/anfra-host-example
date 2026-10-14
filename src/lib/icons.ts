@@ -46,7 +46,7 @@ const icons: Record<string, LucideIcon> = {
   wallet: Wallet,
 };
 
-/** The icon a name stands for, else the fallback. */
+/** The icon a name stands for, else the fallback. Own keys only: `constructor` is no icon. */
 export function iconOf(name: string | undefined, fallback: LucideIcon): LucideIcon {
-  return (name && icons[name]) || fallback;
+  return (name && Object.hasOwn(icons, name) && icons[name]) || fallback;
 }

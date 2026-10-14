@@ -1,6 +1,7 @@
-import { AppWindowMac, Check, ChevronRight, Folder } from 'lucide-react';
-import { type MouseEvent, useState } from 'react';
+import { ChevronRight, Folder } from 'lucide-react';
+import { type MouseEvent, useEffect, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
+import { AppIcon } from '@/components/app-icon';
 import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
 } from '@/components/ui/sidebar';
-import { type Entry, filterEntries, holds, urlOf } from '@/lib/host';
+import { type Entry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
 interface Props {
@@ -28,11 +29,39 @@ interface Props {
   onSelect: (path: string) => void;
 }
 
+type FolderEntry = Extract<Entry, { kind: 'folder' }>;
+
+/** Folders opened or closed by hand, by path. */
+type Toggled = Record<string, boolean>;
+
 /** The Data Apps in the repo, as a tree of folders. */
 export function AppSidebar({ entries, selected, onSelect }: Props) {
   const [query, setQuery] = useState('');
   const searching = query.trim() !== '';
   const shown = entries && filterEntries(entries, query);
+  // Kept here, not in each folder, so they last while a folder is filtered out. A search has its
+  // own, dropped when it ends, so browsing comes back as it was left.
+  const [browsed, setBrowsed] = useState<Toggled>({});
+  const [searched, setSearched] = useState<Toggled>({});
+
+  // The open app's folders open when it changes, even ones closed by hand.
+  useEffect(() => {
+    if (!selected) return;
+    setBrowsed((prev) => {
+      const next = { ...prev };
+      for (const folder of foldersOf(selected)) next[folder] = true;
+      return next;
+    });
+  }, [selected]);
+
+  // Open while searching, so what matched shows; else closed when the repo says so, unless it holds the open app.
+  const isOpen = (folder: FolderEntry) =>
+    searching
+      ? (searched[folder.path] ?? true)
+      : (browsed[folder.path] ??
+        (!folder.collapsed || (!!selected && foldersOf(selected).includes(folder.path))));
+  const onToggle = (path: string, open: boolean) =>
+    (searching ? setSearched : setBrowsed)((prev) => ({ ...prev, [path]: open }));
   return (
     <Sidebar variant="inset">
       <SidebarHeader>
@@ -52,7 +81,10 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
             <Input
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (!event.target.value.trim()) setSearched({});
+              }}
               placeholder="Filter by name or tag"
               aria-label="Filter Data Apps"
               className="mb-2 h-8"
@@ -64,7 +96,8 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
                   entry={entry}
                   selected={selected}
                   onSelect={onSelect}
-                  searching={searching}
+                  isOpen={isOpen}
+                  onToggle={onToggle}
                 />
               ))}
               {entries?.length === 0 && (
@@ -86,14 +119,14 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   );
 }
 
-function Item({
-  entry,
-  selected,
-  onSelect,
-  searching,
-}: { entry: Entry; searching: boolean } & Omit<Props, 'entries'>) {
+interface ItemProps extends Omit<Props, 'entries'> {
+  entry: Entry;
+  isOpen: (folder: FolderEntry) => boolean;
+  onToggle: (path: string, open: boolean) => void;
+}
+
+function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
   if (entry.kind === 'app') {
-    const Icon = iconOf(entry.icon, AppWindowMac);
     // A real link, so it opens in a new tab too; a plain click stays in the page.
     const onClick = (event: MouseEvent) => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
@@ -104,22 +137,7 @@ function Item({
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            {entry.endorsed ? (
-              // The check sits on the icon's bottom right, ringed in the sidebar's colour so it reads over it.
-              <span className="relative flex shrink-0">
-                <Icon className="size-4" />
-                <span
-                  role="img"
-                  aria-label="Endorsed"
-                  title="Endorsed"
-                  className="absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-full bg-green-500 text-white ring-2 ring-sidebar"
-                >
-                  <Check className="size-1.5 stroke-[5]" />
-                </span>
-              </span>
-            ) : (
-              <Icon />
-            )}
+            <AppIcon app={entry} />
             <span>{entry.label}</span>
           </a>
         </SidebarMenuButton>
@@ -129,10 +147,9 @@ function Item({
   const FolderIcon = iconOf(entry.icon, Folder);
   return (
     <SidebarMenuItem>
-      {/* Open while searching, so what matched shows; else closed when the repo says so, unless it holds the open app. */}
       <Collapsible
-        key={searching ? 'search' : 'browse'}
-        defaultOpen={searching || !entry.collapsed || holds(entry, selected)}
+        open={isOpen(entry)}
+        onOpenChange={(open) => onToggle(entry.path, open)}
         className="group/folder"
       >
         <CollapsibleTrigger asChild>
@@ -150,7 +167,8 @@ function Item({
                 entry={child}
                 selected={selected}
                 onSelect={onSelect}
-                searching={searching}
+                isOpen={isOpen}
+                onToggle={onToggle}
               />
             ))}
           </SidebarMenuSub>

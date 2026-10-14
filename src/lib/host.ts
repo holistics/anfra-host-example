@@ -1,17 +1,10 @@
 // What the page asks this host's own server (server/app.ts), apart from the core API.
 
-/** One node of the Data App tree. Paths are relative to the apps folder, with their `.html`. */
-export type Entry =
-  | { kind: 'app'; path: string; label: string; icon?: string; tags: string[]; endorsed: boolean }
-  | {
-      kind: 'folder';
-      path: string;
-      name: string;
-      icon?: string;
-      tags: string[];
-      collapsed: boolean;
-      children: Entry[];
-    };
+import type { Entry } from '../../server/entry';
+
+export type { Entry };
+
+export type AppEntry = Extract<Entry, { kind: 'app' }>;
 
 /** The tree cut to what matches a search: a name or a tag. A folder that matches keeps all it holds. */
 export function filterEntries(entries: Entry[], query: string): Entry[] {
@@ -33,9 +26,10 @@ export function filterEntries(entries: Entry[], query: string): Entry[] {
   return result;
 }
 
-/** Whether a folder holds the Data App at a path, at any depth. */
-export function holds(entry: Entry, path: string | undefined): boolean {
-  return entry.kind === 'folder' && !!path && entry.children.some((c) => c.path === path || holds(c, path));
+/** The folders holding a Data App, outermost first: `a/b/c.html` is in `a` and `a/b`. */
+export function foldersOf(path: string): string[] {
+  const parts = path.split('/').slice(0, -1);
+  return parts.map((_, i) => parts.slice(0, i + 1).join('/'));
 }
 
 export async function catalog(): Promise<Entry[]> {
@@ -70,7 +64,7 @@ export function pathOf(pathname: string): string | undefined {
   return rest ? `${rest.split('/').map(decodeURIComponent).join('/')}.html` : undefined;
 }
 
-export function findApp(entries: Entry[], path: string): Extract<Entry, { kind: 'app' }> | undefined {
+export function findApp(entries: Entry[], path: string): AppEntry | undefined {
   for (const entry of entries) {
     if (entry.kind === 'app' && entry.path === path) return entry;
     if (entry.kind === 'folder') {
