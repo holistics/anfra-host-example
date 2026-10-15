@@ -6,6 +6,7 @@ import {
   Calendar,
   CalendarClock,
   ChartColumn,
+  ChevronRight,
   CircleHelp,
   Hash,
   Info,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -189,14 +191,23 @@ export function QueryRow({
         </Section>
       ) : (
         <>
-          <FieldList title="Metrics" columns={query.columns.filter((column) => column.isMeasure)} />
-          <FieldList title="Dimensions" columns={query.columns.filter((column) => !column.isMeasure)} />
+          <FieldList
+            title="Metrics"
+            info="The aggregated values the query returns."
+            columns={query.columns.filter((column) => column.isMeasure)}
+          />
+          <FieldList
+            title="Dimensions"
+            info="The fields the query groups its metrics by."
+            columns={query.columns.filter((column) => !column.isMeasure)}
+          />
         </>
       )}
 
       {allFilters.length > 0 && (
         <Section
           title="Filters"
+          count={filters.length}
           info="The filters the query declares, and the controls and cross-filters applied to it."
           action={
             <ToggleGroup
@@ -298,8 +309,11 @@ export function QueryRow({
         </Section>
       )}
 
-      {/* Set apart from the fields and filters above: it is code, not a list of them. */}
-      <div className="pt-2">
+      <Section
+        title="Query"
+        info="The AQL the query declares and the AQL, SQL and signature of its last run."
+        defaultOpen={false}
+      >
         <CodeBlock
           tab={codeTab}
           onTab={setCodeTab}
@@ -320,13 +334,17 @@ export function QueryRow({
             signature: { label: 'Signature', code: prettyJson(query.signature), empty: 'No signature.' },
           }}
         />
-      </div>
+      </Section>
 
       {requests.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs text-muted-foreground">Requests ({requests.length})</p>
+        <Section
+          title="Requests"
+          info="What the app asked of the data source for this query, newest first."
+          count={requests.length}
+          defaultOpen={false}
+        >
           <RequestList items={requests} />
-        </div>
+        </Section>
       )}
     </EntityRow>
   );
@@ -345,22 +363,30 @@ function filteredColumn(columns: ColumnMeta[], field: string): ColumnMeta | unde
 const isActive = (input: QueryInput) =>
   input.kind === 'declared' || (input.value !== 'not set' && input.value !== 'no selection');
 
-/** A titled part of an opened query, with a hint on what it holds. */
+/** A titled, collapsible part of an opened query, with a hint on what it holds. */
 function Section({
   title,
   info,
+  count,
   action,
+  defaultOpen = true,
   children,
 }: {
   title: string;
   info: string;
+  count?: number;
   action?: ReactNode;
+  defaultOpen?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-2">
+    <Collapsible defaultOpen={defaultOpen} className="group/section space-y-2">
       <div className="flex items-center gap-1 text-sm font-medium">
-        {title}
+        <CollapsibleTrigger className="flex items-center gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/section:rotate-90" />
+          {title}
+          {count !== undefined && <span className="font-normal text-muted-foreground">· {count}</span>}
+        </CollapsibleTrigger>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-xs" aria-label={`About ${title.toLowerCase()}`}>
@@ -373,8 +399,8 @@ function Section({
         </Tooltip>
         {action && <div className="ml-auto">{action}</div>}
       </div>
-      {children}
-    </div>
+      <CollapsibleContent className="space-y-2">{children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -397,13 +423,10 @@ function TypeIcon({ icon: Icon, label, className }: { icon: LucideIcon; label: s
 }
 
 /** The metrics or dimensions a query returns, one card row each; nothing renders when there are none. */
-function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] }) {
+function FieldList({ title, info, columns }: { title: string; info: string; columns: ColumnMeta[] }) {
   if (columns.length === 0) return null;
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium">
-        {title} <span className="font-normal text-muted-foreground">· {columns.length}</span>
-      </p>
+    <Section title={title} info={info} count={columns.length}>
       <ul className="divide-y rounded-lg border bg-background">
         {columns.map((column) => {
           const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
@@ -429,6 +452,6 @@ function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] })
           );
         })}
       </ul>
-    </div>
+    </Section>
   );
 }
