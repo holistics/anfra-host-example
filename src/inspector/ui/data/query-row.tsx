@@ -11,7 +11,6 @@ import {
   Hash,
   ListFilter,
   type LucideIcon,
-  Rows3,
   Sigma,
   SlidersHorizontal,
   Table2,
@@ -98,6 +97,14 @@ export function QueryRow({
   const summary = (
     <>
       <span className="min-w-0 truncate font-medium">{props.name}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{rows}</span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {query.state === 'success' ? plural(query.rowCount, 'row') : 'No rows yet'}
+        </TooltipContent>
+      </Tooltip>
       {/* A flag takes room only when there is one. */}
       {query.isDirty ? (
         <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">dirty</span>
@@ -135,17 +142,6 @@ export function QueryRow({
           </TooltipContent>
         </Tooltip>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex w-11 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
-            {rows}
-            <Rows3 className="size-3.5 shrink-0" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          {query.state === 'success' ? plural(query.rowCount, 'row') : 'No rows yet'}
-        </TooltipContent>
-      </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
