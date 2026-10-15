@@ -370,6 +370,8 @@ export function App() {
           onSelect={select}
           onReload={() => setRevision((n) => n + 1)}
           onDownload={(format) => download({ format })}
+          inspecting={inspecting}
+          prompting={prompting}
           onInspect={toggleInspecting}
           onPrompt={togglePrompt}
         />

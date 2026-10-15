@@ -1,13 +1,18 @@
-import type { DateDrillDeclaration, FilterDeclaration, InspectedControl } from '@holistics/anfra-sdk/common';
-import { ArrowRight, ChevronRight, Table2 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type {
+  ConditionValue,
+  DateDrillDeclaration,
+  FilterDeclaration,
+  InspectedControl,
+} from '@holistics/anfra-sdk/common';
+import { ArrowRight, Table2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatCondition } from '../../model/format';
 import type { controlTargets } from '../../model/inputs';
 import type { RevealTarget } from '../../model/types';
 import { Field, Fields } from '../shared/fields';
-import { Drawn, EntityRow, IconButton, type RowProps } from './entity-row';
+import { Drawn, EntityRow, Expandable, IconButton, type RowProps } from './entity-row';
 
 export function ControlRow({
   control,
@@ -49,12 +54,13 @@ export function ControlRow({
           <TooltipContent>Changed from the default value</TooltipContent>
         </Tooltip>
       )}
-      <TargetCount verb="Applies to" app={props.app} targets={targets} onReveal={onReveal} showZero />
+      <TargetCount verb="Applies to" app={props.app} targets={targets} onReveal={onReveal} />
     </>
   );
   const filter = declaration && 'field' in declaration ? declaration : undefined;
   const fallback = declaration?.default;
   const fixed = filter?.options;
+  const options = fixed ?? control.options;
 
   return (
     <EntityRow kind="control" summary={summary} {...props}>
@@ -70,10 +76,10 @@ export function ControlRow({
         {fallback && (
           <Field label="Default">{typeof fallback === 'string' ? fallback : formatCondition(fallback)}</Field>
         )}
-        {(fixed ?? control.options) ? (
+        {options ? (
           <Field label="Options">
             <Options
-              options={(fixed ?? control.options) as string[]}
+              options={options}
               source={fixed ? 'fixed' : 'loaded'}
               selected={control.condition.values?.map(String) ?? []}
             />
@@ -117,40 +123,33 @@ export function MapsTo({
   /** What stands in when there are no targets. */
   empty?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
   if (targets.length === 0) return empty;
   return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        className="inline-flex items-center gap-1 hover:underline"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
-        {targets.length === 1 ? '1 query' : `${targets.length} queries`}
-      </button>
-      {open && (
-        <ul className="space-y-0.5 pl-1">
-          {targets.map((target) => (
-            <li key={target.query} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
-              <span className="min-w-0 flex-1 truncate">
-                {target.query}
-                {target.field && <span className="text-muted-foreground"> on {target.field}</span>}
-                {target.self && <span className="text-muted-foreground"> (itself)</span>}
-              </span>
-              <IconButton
-                label="Show query"
-                onClick={() => onReveal({ entity: 'query', app, name: target.query })}
-              >
-                <ArrowRight />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Expandable label={targets.length === 1 ? '1 query' : `${targets.length} queries`}>
+      <ul className="space-y-0.5 pl-1">
+        {targets.map((target) => (
+          <li key={targetKey(target)} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
+            <span className="min-w-0 flex-1 truncate">
+              {target.query}
+              {target.field && <span className="text-muted-foreground"> on {target.field}</span>}
+              {target.self && <span className="text-muted-foreground"> (itself)</span>}
+            </span>
+            <IconButton
+              label="Show query"
+              onClick={() => onReveal({ entity: 'query', app, name: target.query })}
+            >
+              <ArrowRight />
+            </IconButton>
+          </li>
+        ))}
+      </ul>
+    </Expandable>
   );
+}
+
+/** A query can be reached more than once (a control mapped on two of its fields), so the field is part of the key. */
+function targetKey(target: { query: string; field?: string }) {
+  return target.field ? `${target.query}/${target.field}` : target.query;
 }
 
 /** A filter's choices: a count that opens into one chip per option, the ones currently picked marked. */
@@ -159,40 +158,28 @@ function Options({
   source,
   selected,
 }: {
-  options: string[];
+  options: ConditionValue[];
   source: 'fixed' | 'loaded';
   selected: string[];
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        className="inline-flex items-center gap-1 hover:underline"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
-        {options.length} {source}
-      </button>
-      {open && (
-        <ul className="flex flex-wrap gap-1 pl-1">
-          {options.map((option) => (
-            <li
-              key={option}
-              className={cn(
-                'max-w-full truncate rounded-md border px-1.5 py-0.5 text-xs',
-                selected.includes(String(option))
-                  ? 'border-primary/40 bg-accent font-medium'
-                  : 'text-muted-foreground',
-              )}
-            >
-              {option}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Expandable label={`${options.length} ${source}`}>
+      <ul className="flex flex-wrap gap-1 pl-1">
+        {options.map((option) => (
+          <li
+            key={String(option)}
+            className={cn(
+              'max-w-full truncate rounded-md border px-1.5 py-0.5 text-xs',
+              selected.includes(String(option))
+                ? 'border-primary/40 bg-accent font-medium'
+                : 'text-muted-foreground',
+            )}
+          >
+            {String(option)}
+          </li>
+        ))}
+      </ul>
+    </Expandable>
   );
 }
 
@@ -216,11 +203,15 @@ function TargetsTip({
       </div>
       <ul>
         {targets.map((target) => (
-          <li key={target.query}>
+          <li key={targetKey(target)}>
             <button
               type="button"
               className="text-left hover:underline"
-              onClick={() => onReveal({ entity: 'query', app, name: target.query })}
+              onClick={(event) => {
+                // The tooltip is portaled, but React still bubbles the click to the row it wraps.
+                event.stopPropagation();
+                onReveal({ entity: 'query', app, name: target.query });
+              }}
             >
               {target.query}
               {target.field && <span className="opacity-70"> on {target.field}</span>}

@@ -23,6 +23,9 @@ interface Props {
   onSelect: (path: string) => void;
   onReload: () => void;
   onDownload: (format: RenderFormat) => void;
+  /** Whether the inspect and prompt panels are open, so their items say they close them. */
+  inspecting: boolean;
+  prompting: boolean;
   onInspect: () => void;
   onPrompt: () => void;
 }
@@ -36,6 +39,8 @@ export function CommandPalette({
   onSelect,
   onReload,
   onDownload,
+  inspecting,
+  prompting,
   onInspect,
   onPrompt,
 }: Props) {
@@ -70,15 +75,18 @@ export function CommandPalette({
               <Download />
               Download PDF
             </CommandItem>
-            <CommandItem value="Inspect" onSelect={run(onInspect)}>
+            <CommandItem value={inspecting ? 'Close the inspect panel' : 'Inspect'} onSelect={run(onInspect)}>
               <ScanSearch />
-              Inspect
+              {inspecting ? 'Close the inspect panel' : 'Inspect'}
               <Shortcut letter="I" />
             </CommandItem>
             {app.prompt && (
-              <CommandItem value="Prompt that made this app" onSelect={run(onPrompt)}>
+              <CommandItem
+                value={prompting ? 'Close the prompt panel' : 'Prompt that made this app'}
+                onSelect={run(onPrompt)}
+              >
                 <ScrollText />
-                Prompt
+                {prompting ? 'Close the prompt panel' : 'Prompt'}
                 <Shortcut letter="P" />
               </CommandItem>
             )}
