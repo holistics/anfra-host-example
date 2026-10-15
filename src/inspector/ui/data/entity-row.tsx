@@ -72,10 +72,62 @@ export function Drawn({
   onReveal: (target: RevealTarget) => void;
   onLocate: RowProps['onLocate'];
 }) {
-  const [open, setOpen] = useState(false);
   if (!usage) {
     return <span className="text-muted-foreground">Not on the page yet</span>;
   }
+  return (
+    <Expandable
+      label={
+        <>
+          In {plural(usage.markers, 'place')}
+          {!usage.blocks.length && ', outside any block'}
+        </>
+      }
+      aside={<CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />}
+    >
+      <ul className="space-y-0.5 pl-1">
+        {usage.blocks.length === 0 && (
+          <li className="flex items-center gap-1">
+            <span className="flex-1 text-muted-foreground">Outside any block</span>
+            <IconButton label="Highlight on the page" onClick={() => onLocate({ app, kind, name })}>
+              <Locate />
+            </IconButton>
+          </li>
+        )}
+        {usage.blocks.map((block) => {
+          const key = blockKey(block);
+          return (
+            <li key={block} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
+              <span className="min-w-0 flex-1 truncate">{block}</span>
+              {key && (
+                <>
+                  <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>
+                    <Locate />
+                  </IconButton>
+                  <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
+                    <ArrowRight />
+                  </IconButton>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Expandable>
+  );
+}
+
+/** A count that opens into its list, with room beside it for an action. */
+export function Expandable({
+  label,
+  aside,
+  children,
+}: {
+  label: ReactNode;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1">
@@ -86,41 +138,11 @@ export function Drawn({
           onClick={() => setOpen(!open)}
         >
           <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
-          In {plural(usage.markers, 'place')}
-          {!usage.blocks.length && ', outside any block'}
+          {label}
         </button>
-        <CopyButton text={entityAttribute(kind, app, name)} label="Copy the handle" className="-my-1" />
+        {aside}
       </div>
-      {open && (
-        <ul className="space-y-0.5 pl-1">
-          {usage.blocks.length === 0 && (
-            <li className="flex items-center gap-1">
-              <span className="flex-1 text-muted-foreground">Outside any block</span>
-              <IconButton label="Highlight on the page" onClick={() => onLocate({ app, kind, name })}>
-                <Locate />
-              </IconButton>
-            </li>
-          )}
-          {usage.blocks.map((block) => {
-            const key = blockKey(block);
-            return (
-              <li key={block} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
-                <span className="min-w-0 flex-1 truncate">{block}</span>
-                {key && (
-                  <>
-                    <IconButton label="Highlight on the page" onClick={() => onLocate({ node: key })}>
-                      <Locate />
-                    </IconButton>
-                    <IconButton label="Show in Structure" onClick={() => onReveal({ node: key })}>
-                      <ArrowRight />
-                    </IconButton>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {open && children}
     </div>
   );
 }
