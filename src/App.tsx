@@ -336,7 +336,7 @@ export function App() {
             {inspecting && app && (
               <>
                 <ResizableHandle />
-                <ResizablePanel id="inspect" defaultSize="320px" minSize="220px" maxSize="60%">
+                <ResizablePanel id="inspect" defaultSize="440px" minSize="220px" maxSize="60%">
                   <Inspector
                     key={inspector.mount}
                     source={inspector.source}

@@ -44,7 +44,7 @@ Status: **built**, except what is marked _(not built yet)_.
 ## 3. Layout and entry points
 
 The inspector is a **docked, resizable panel** to the right of the stage. Its default width is
-320px, with a minimum of 220px and a maximum of 60%. The app stays usable while the panel is open.
+440px, with a minimum of 220px and a maximum of 60%. The app stays usable while the panel is open.
 There is no modal or backdrop.
 
 **Host toolbar** (owned by the host, documented here because the inspector depends on it):
