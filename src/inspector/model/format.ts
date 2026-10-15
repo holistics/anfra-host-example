@@ -20,6 +20,18 @@ export function formatTime(value: Date | string | undefined): string {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleTimeString();
 }
 
+/** A moment in short natural terms: `< 1m ago`, `3m ago`, `2h ago`, `4d ago`. */
+export function formatAgo(value: Date | string | undefined, now: number = Date.now()): string {
+  if (!value) return '';
+  const time = (value instanceof Date ? value : new Date(value)).getTime();
+  if (Number.isNaN(time)) return String(value);
+  const seconds = Math.max(0, Math.floor((now - time) / 1000));
+  if (seconds < 60) return '< 1m ago';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
 /** A count and its noun: `1 row`, `2 rows`. */
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
