@@ -85,8 +85,12 @@ export function App() {
   const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
   // The node being commented on, and where its card is anchored; `tracked` while the frame reports its rect.
   const [comment, setComment] = useState<Commented>();
-  const commenting = pickFor === 'comment' || !!comment;
+  // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the card.
+  const [pendingComment, setPendingComment] = useState<PendingComment>();
+  const commenting = pickFor === 'comment' || !!comment || !!pendingComment;
   const commentButton = useRef<HTMLButtonElement>(null);
+  // While set, the comment owns the frame outline: the Structure tree's hover/clear must not steal it.
+  const heldHighlight = useRef<string | null>(null);
   const [toast, setToast] = useState<Toast>();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const stage = useRef<StageHandle>(null);
@@ -144,7 +148,11 @@ export function App() {
     const store = createInspectorStore({
       env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
       requests: requests.log,
-      highlight: (node) => stage.current?.highlight(node),
+      // Comment holds the outline until its card closes; ignore the tree's hover and clear meanwhile.
+      highlight: (node) => {
+        if (heldHighlight.current) return;
+        stage.current?.highlight(node);
+      },
       locate: (target) => stage.current?.locate(target),
       download: (node, format) => downloadNode(node, format),
     });
@@ -155,6 +163,8 @@ export function App() {
     setPicked(undefined);
     setPickFor(undefined);
     setComment(undefined);
+    setPendingComment(undefined);
+    heldHighlight.current = null;
   }, [inspector.mount]);
 
   // Live reload, in development: a changed Data App reloads if it is the one open; a changed AML
@@ -202,16 +212,18 @@ export function App() {
 
   // Commenting: pick a node, then a card beside it, with the node held highlighted until it closes.
   const closeComment = useCallback(() => {
+    heldHighlight.current = null;
     stage.current?.highlight(null);
     stage.current?.track(false);
     setComment(undefined);
+    setPendingComment(undefined);
   }, []);
   const closeCard = useCallback(() => {
     closeComment();
     commentButton.current?.focus();
   }, [closeComment]);
   const toggleCommenting = () => {
-    if (comment) closeComment();
+    if (comment || pendingComment) closeComment();
     else setPickFor(pickFor === 'comment' ? undefined : 'comment');
   };
   // The prompt panel stays chosen across apps, like the inspector, but shows only for an app with a
@@ -296,9 +308,10 @@ export function App() {
         lastClick.current = { at: 0 };
         if (mode === 'comment') {
           // Comment mode ends with the card opening, in one update: in between, the frame would stop
-          // being inspected and drop the structure the highlight needs.
+          // being inspected and drop the structure the highlight needs. The structure may still be
+          // on its way; pendingComment waits for it (see the effect below).
           setPickFor(undefined);
-          commentOn(node, recent);
+          setPendingComment({ key: node, click: recent });
           return;
         }
         // Shift goes to the node's first query or control in Data; the inspector picks the tab.
@@ -315,19 +328,44 @@ export function App() {
   // otherwise to the click point, or with no click, the top of the stage (SPEC §4.3).
   const commentOn = (key: string, click: FrameClick | undefined) => {
     const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
-    if (!found) {
-      setToast({ tone: 'error', text: "Couldn't find that element in the page's structure." });
-      return;
-    }
+    if (!found) return false;
     const tracked = !!click?.rect && click.attr === attributeFor(found.node);
     const rect = tracked ? click?.rect : click ? { x: click.x, y: click.y, width: 0, height: 0 } : undefined;
+    setPendingComment(undefined);
     setComment({ ...found, rect, tracked });
+    return true;
   };
+  // A pick can land before the frame's first snapshot; wait for one, then give up.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
+  useEffect(() => {
+    if (!pendingComment) return;
+    const { key, click } = pendingComment;
+    if (commentOn(key, click)) return;
+    let done = false;
+    const undo = inspector.source.subscribe(() => {
+      if (done || !commentOn(key, click)) return;
+      done = true;
+      clearTimeout(timer);
+    });
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      undo();
+      setPendingComment(undefined);
+      setToast({ tone: 'error', text: "Couldn't find that element in the page's structure." });
+    }, 2000);
+    return () => {
+      done = true;
+      undo();
+      clearTimeout(timer);
+    };
+  }, [pendingComment, inspector.source]);
   // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
   const commentKey = comment?.node.key;
   const commentTracked = comment?.tracked;
   useEffect(() => {
     if (!commentKey) return;
+    heldHighlight.current = commentKey;
     stage.current?.highlight(commentKey);
     if (commentTracked) stage.current?.track(true);
   }, [commentKey, commentTracked]);
@@ -530,6 +568,11 @@ interface Commented {
   rect: AnchorRect | undefined;
   /** Whether the frame reports the node's rect as it moves. */
   tracked: boolean;
+}
+
+interface PendingComment {
+  key: string;
+  click: FrameClick | undefined;
 }
 
 interface Toast {
