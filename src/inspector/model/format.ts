@@ -58,11 +58,15 @@ export function entityAttribute(kind: LocateKind, app: number, name: string): st
  * attribute alone. Either is one search away in the definition.
  */
 export function handleFor(node: StructureNode): string {
-  const attribute =
-    node.kind === 'container' || node.kind === 'block'
-      ? `data-anfra-${node.kind}="${node.id ?? ''}"`
-      : entityAttribute(node.kind, node.app ?? 0, node.name ?? '');
+  const attribute = attributeFor(node);
   return node.label ? `[${node.label}](${attribute})` : attribute;
+}
+
+/** The attribute that marks a node, as the definition writes it: `data-anfra-block="river"`. */
+export function attributeFor(node: StructureNode): string {
+  return node.kind === 'container' || node.kind === 'block'
+    ? `data-anfra-${node.kind}="${node.id ?? ''}"`
+    : entityAttribute(node.kind, node.app ?? 0, node.name ?? '');
 }
 
 /** Where an entity is drawn, from the structure: how many marked elements, in which blocks. */

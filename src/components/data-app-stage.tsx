@@ -1,5 +1,6 @@
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
+  cursorMessage,
   type DataApp,
   type DatasetDescriptor,
   type InspectedApp,
@@ -9,6 +10,7 @@ import {
   mount,
   type Rendering,
   type RenderRequest,
+  trackMessage,
 } from '@/data-app';
 
 /** What the inspect panel and the toolbar do to the page in the stage. */
@@ -16,6 +18,10 @@ export interface StageHandle {
   highlight: (node: string | null) => void;
   locate: (target: LocateTarget) => void;
   render: (request: RenderRequest) => Promise<Rendering>;
+  /** Have the frame report the last clicked marked element's rect as it moves, or stop. */
+  track: (on: boolean) => void;
+  /** Whether a message came from this stage's frame. */
+  owns: (source: MessageEventSource | null) => boolean;
 }
 
 interface Props {
@@ -23,18 +29,33 @@ interface Props {
   datasets: Record<string, DatasetDescriptor>;
   inspecting: boolean;
   picking: boolean;
+  /** The pointer to show over the frame: the comment cursor while picking a node to comment on. */
+  cursor?: 'comment';
   onInspect: (apps: InspectedApp[], structure: InspectedStructure) => void;
   onPick: (node: string | null) => void;
   /** Read once per mount. */
   record?: MountOptions['record'];
   ref?: Ref<StageHandle>;
+  /** Drawn over the frame, in its coordinates: the comment card's anchor. */
+  children?: ReactNode;
 }
 
 /**
  * The stage: one Data App, mounted in its frame. It is mounted once per path and datasets; the
  * page remounts it (with a new key) to reload it.
  */
-export function DataAppStage({ path, datasets, inspecting, picking, onInspect, onPick, record, ref }: Props) {
+export function DataAppStage({
+  path,
+  datasets,
+  inspecting,
+  picking,
+  cursor,
+  onInspect,
+  onPick,
+  record,
+  ref,
+  children,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [app, setApp] = useState<DataApp>();
   const [error, setError] = useState<string>();
@@ -74,6 +95,10 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
 
   useEffect(() => app?.setInspecting(inspecting), [app, inspecting]);
   useEffect(() => app?.setPicking(picking), [app, picking]);
+  useEffect(
+    () => app?.frame.contentWindow?.postMessage({ type: cursorMessage, on: cursor === 'comment' }, '*'),
+    [app, cursor],
+  );
 
   useImperativeHandle(
     ref,
@@ -82,6 +107,8 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
       locate: (target) => app?.locate(target),
       render: (request) =>
         app ? app.render(request) : Promise.reject(new Error('The Data App has not loaded yet.')),
+      track: (on) => app?.frame.contentWindow?.postMessage({ type: trackMessage, on }, '*'),
+      owns: (source) => !!source && source === app?.frame.contentWindow,
     }),
     [app],
   );
@@ -89,6 +116,7 @@ export function DataAppStage({ path, datasets, inspecting, picking, onInspect, o
   return (
     <div className="relative size-full">
       <div ref={container} className="size-full" />
+      {children}
       {error && (
         <div className="absolute inset-0 grid place-items-center bg-background p-6 text-center text-sm text-muted-foreground">
           {error}

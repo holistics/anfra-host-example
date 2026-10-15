@@ -1,5 +1,6 @@
-import { Download, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import { Download, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { type AnchorRect, buildCommentPrompt, CommentCard, findNode } from '@/comments';
 import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
@@ -22,17 +23,21 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   clickMessage,
   type DatasetDescriptor,
+  type FrameClick,
   datasets as loadDatasets,
   openPaletteMessage,
   type RenderFormat,
   type RenderRequest,
   reader,
+  rectMessage,
   type StructureNode,
   sdkVersion,
+  toggleCommentMessage,
   toggleInspectMessage,
   togglePromptMessage,
 } from '@/data-app';
 import {
+  attributeFor,
   createInspectorStore,
   createRequestLog,
   Inspector,
@@ -71,11 +76,17 @@ export function App() {
   // The right-hand panel: the inspector, or the prompt that made the app. One at a time.
   const [panel, setPanel] = useState<'inspect' | 'prompt'>();
   const inspecting = panel === 'inspect';
-  const [picking, setPicking] = useState(false);
+  // The frame has one pick mode: for the inspector, or to comment on a node (src/comments/SPEC.md).
+  const [pickFor, setPickFor] = useState<'inspect' | 'comment'>();
+  const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
-  // Whether the last click in the frame held Shift; a pick's click is reported just before the pick.
-  const shiftClick = useRef({ shift: false, at: 0 });
+  // The last click in the frame: whether it held Shift, and where; a pick's click is reported just before the pick.
+  const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
+  // The node being commented on, and where its card is anchored; `tracked` while the frame reports its rect.
+  const [comment, setComment] = useState<Commented>();
+  const commenting = pickFor === 'comment' || !!comment;
+  const commentButton = useRef<HTMLButtonElement>(null);
   const [toast, setToast] = useState<Toast>();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const stage = useRef<StageHandle>(null);
@@ -142,7 +153,8 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each mount
   useEffect(() => {
     setPicked(undefined);
-    setPicking(false);
+    setPickFor(undefined);
+    setComment(undefined);
   }, [inspector.mount]);
 
   // Live reload, in development: a changed Data App reloads if it is the one open; a changed AML
@@ -179,30 +191,59 @@ export function App() {
     if (!picking) {
       setPanel('inspect');
       setTab('structure');
+      closeComment();
     }
-    setPicking(!picking);
+    setPickFor(picking ? undefined : 'inspect');
   };
   const toggleInspecting = () => {
-    if (inspecting) setPicking(false);
+    if (inspecting && picking) setPickFor(undefined);
     setPanel(inspecting ? undefined : 'inspect');
+  };
+
+  // Commenting: pick a node, then a card beside it, with the node held highlighted until it closes.
+  const closeComment = useCallback(() => {
+    stage.current?.highlight(null);
+    stage.current?.track(false);
+    setComment(undefined);
+  }, []);
+  const closeCard = useCallback(() => {
+    closeComment();
+    commentButton.current?.focus();
+  }, [closeComment]);
+  const toggleCommenting = () => {
+    if (comment) closeComment();
+    else setPickFor(pickFor === 'comment' ? undefined : 'comment');
   };
   // The prompt panel stays chosen across apps, like the inspector, but shows only for an app with a
   // prompt; one without leaves the button off rather than stuck on and disabled.
   const prompting = panel === 'prompt' && !!app?.prompt;
   const togglePrompt = () => {
-    setPicking(false);
+    if (picking) setPickFor(undefined);
     setPanel(prompting ? undefined : 'prompt');
   };
 
   // Cmd/Ctrl+K for the palette, Alt+Shift+P and Alt+Shift+I, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
   // a ref, so the listeners don't change with every render.
-  const shortcuts = useRef({ togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt });
-  shortcuts.current = { togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt };
+  const shortcuts = useRef({
+    togglePrompt,
+    toggleInspecting,
+    toggleCommenting,
+    hasApp: !!app,
+    hasPrompt: !!app?.prompt,
+  });
+  shortcuts.current = {
+    togglePrompt,
+    toggleInspecting,
+    toggleCommenting,
+    hasApp: !!app,
+    hasPrompt: !!app?.prompt,
+  };
   useEffect(() => {
-    const run = (shortcut: 'prompt' | 'inspect') => {
-      const { togglePrompt, toggleInspecting, hasApp, hasPrompt } = shortcuts.current;
+    const run = (shortcut: 'prompt' | 'inspect' | 'comment') => {
+      const { togglePrompt, toggleInspecting, toggleCommenting, hasApp, hasPrompt } = shortcuts.current;
       if (shortcut === 'prompt' && hasPrompt) togglePrompt();
       if (shortcut === 'inspect' && hasApp) toggleInspecting();
+      if (shortcut === 'comment' && hasApp) toggleCommenting();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
@@ -211,7 +252,14 @@ export function App() {
         return;
       }
       if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
-      const shortcut = event.code === 'KeyP' ? 'prompt' : event.code === 'KeyI' ? 'inspect' : undefined;
+      const shortcut =
+        event.code === 'KeyP'
+          ? 'prompt'
+          : event.code === 'KeyI'
+            ? 'inspect'
+            : event.code === 'KeyC'
+              ? 'comment'
+              : undefined;
       if (!shortcut) return;
       event.preventDefault();
       run(shortcut);
@@ -220,8 +268,14 @@ export function App() {
       if (event.data === openPaletteMessage) setPaletteOpen(true);
       if (event.data === togglePromptMessage) run('prompt');
       if (event.data === toggleInspectMessage) run('inspect');
-      if (event.data?.type === clickMessage)
-        shiftClick.current = { shift: !!event.data.shift, at: Date.now() };
+      if (event.data === toggleCommentMessage) run('comment');
+      if (event.data?.type === clickMessage && stage.current?.owns(event.source)) {
+        lastClick.current = { click: event.data as FrameClick, at: Date.now() };
+      }
+      if (event.data?.type === rectMessage && stage.current?.owns(event.source)) {
+        const rect = event.data.rect as AnchorRect;
+        setComment((current) => (current?.tracked ? { ...current, rect } : current));
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('message', onMessage);
@@ -232,21 +286,51 @@ export function App() {
   }, []);
 
   const onPick = (node: string | null) => {
+    const mode = pickFor;
     if (node) {
-      // Shift goes to the node's first query or control in Data; the inspector picks the tab.
       // The frame's click message may land just after the pick report, so read it a moment later, and
-      // only if it is that click's: a pick that isn't from a click doesn't inherit an old Shift.
+      // only if it is that click's: a pick that isn't from a click doesn't inherit an old Shift or rect.
       setTimeout(() => {
-        const { shift, at } = shiftClick.current;
-        const inData = shift && Date.now() - at < 500;
-        shiftClick.current = { shift: false, at: 0 };
+        const { click, at } = lastClick.current;
+        const recent = click && Date.now() - at < 500 ? click : undefined;
+        lastClick.current = { at: 0 };
+        if (mode === 'comment') {
+          // Comment mode ends with the card opening, in one update: in between, the frame would stop
+          // being inspected and drop the structure the highlight needs.
+          setPickFor(undefined);
+          commentOn(node, recent);
+          return;
+        }
+        // Shift goes to the node's first query or control in Data; the inspector picks the tab.
+        const inData = !!recent?.shift;
         setPicked({ key: node, nonce: Date.now(), inData });
         if (!inData) setTab('structure');
       }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
-    setPicking(false);
+    if (!node || mode !== 'comment') setPickFor(undefined);
   };
+
+  // The card anchors to the clicked element's rect when it is the picked node's, and follows it;
+  // otherwise to the click point, or with no click, the top of the stage (SPEC §4.3).
+  const commentOn = (key: string, click: FrameClick | undefined) => {
+    const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
+    if (!found) {
+      setToast({ tone: 'error', text: "Couldn't find that element in the page's structure." });
+      return;
+    }
+    const tracked = !!click?.rect && click.attr === attributeFor(found.node);
+    const rect = tracked ? click?.rect : click ? { x: click.x, y: click.y, width: 0, height: 0 } : undefined;
+    setComment({ ...found, rect, tracked });
+  };
+  // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
+  const commentKey = comment?.node.key;
+  const commentTracked = comment?.tracked;
+  useEffect(() => {
+    if (!commentKey) return;
+    stage.current?.highlight(commentKey);
+    if (commentTracked) stage.current?.track(true);
+  }, [commentKey, commentTracked]);
 
   // A picture of the app, or of one node. The browser's own download says it worked; a failure, or
   // images left blank for want of CORS, is told in a toast.
@@ -282,12 +366,31 @@ export function App() {
         ref={stage}
         path={path}
         datasets={datasets}
-        inspecting={inspecting}
-        picking={picking}
+        // Commenting needs the structure, which the frame posts only while it is inspected.
+        inspecting={inspecting || commenting}
+        picking={!!pickFor}
+        cursor={pickFor === 'comment' ? 'comment' : undefined}
         onInspect={inspector.publish}
         record={inspector.record}
         onPick={onPick}
-      />
+      >
+        {comment && app && (
+          <CommentCard
+            key={comment.node.key}
+            node={comment.node}
+            rect={comment.rect}
+            prompt={(text) =>
+              buildCommentPrompt({
+                app: { label: app.label, file: `apps/${path}` },
+                node: comment.node,
+                ancestors: comment.ancestors,
+                comment: text,
+              })
+            }
+            onClose={closeCard}
+          />
+        )}
+      </DataAppStage>
     );
   }
 
@@ -345,6 +448,17 @@ export function App() {
                   <ScrollText />
                 </ToolbarButton>
                 <ToolbarButton
+                  ref={commentButton}
+                  label={commenting ? 'Stop commenting' : 'Comment on an element'}
+                  disabled={!app}
+                  active={commenting}
+                  onClick={toggleCommenting}
+                  text="Comment"
+                  shortcut="C"
+                >
+                  <MessageCircle />
+                </ToolbarButton>
+                <ToolbarButton
                   label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
                   disabled={!app}
                   active={inspecting}
@@ -400,11 +514,22 @@ export function App() {
           prompting={prompting}
           onInspect={toggleInspecting}
           onPrompt={togglePrompt}
+          commenting={commenting}
+          onComment={toggleCommenting}
         />
       </SidebarProvider>
       {toast && <ToastMessage toast={toast} onDone={() => setToast(undefined)} />}
     </TooltipProvider>
   );
+}
+
+interface Commented {
+  node: StructureNode;
+  /** The nodes it sits in, outermost first. */
+  ancestors: StructureNode[];
+  rect: AnchorRect | undefined;
+  /** Whether the frame reports the node's rect as it moves. */
+  tracked: boolean;
 }
 
 interface Toast {

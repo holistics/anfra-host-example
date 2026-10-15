@@ -67,19 +67,59 @@ export const openPaletteMessage = 'anfra-host:open-palette';
 export const toggleSidebarMessage = 'anfra-host:toggle-sidebar';
 export const togglePromptMessage = 'anfra-host:toggle-prompt';
 export const toggleInspectMessage = 'anfra-host:toggle-inspect';
+export const toggleCommentMessage = 'anfra-host:toggle-comment';
 /**
  * Posted for every click in a frame, with whether Shift was held: the frame's pick report doesn't
- * say, and a click's message always comes first, as the frame's listener sits on the window.
+ * say, and a click's message always comes first, as the frame's listener sits on the window. It
+ * also carries the click point and the closest marked element's attribute and rect, which the
+ * pick report doesn't either: a comment's card is anchored to them.
  */
 export const clickMessage = 'anfra-host:click';
+/** Posted by the host to a frame: keep reporting the last clicked marked element's rect, or stop. */
+export const trackMessage = 'anfra-host:track';
+/** Posted by a frame while tracking, when the tracked element may have moved (scroll, resize). */
+export const rectMessage = 'anfra-host:rect';
+/** Posted by the host to a frame: show the comment cursor (an arrow with a speech bubble), or the usual one. */
+export const cursorMessage = 'anfra-host:cursor';
+
+/** The comment cursor: an arrow, its tip the hotspot, with a speech bubble at its lower right. */
+const commentCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 2v18.5l4.6-4.4 3.2 7.2 3-1.3-3.2-7.1h6.2z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><g transform="translate(13.5 12.5) scale(0.78)"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" fill="#4f46e5" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></svg>`;
+/** Every element's cursor while the frame's root carries `data-anfra-host-cursor`; crosshair where SVG cursors aren't drawn. */
+const commentCursorCss = `html[data-anfra-host-cursor],html[data-anfra-host-cursor] *{cursor:url("data:image/svg+xml,${encodeURIComponent(commentCursorSvg)}") 3 2,crosshair!important}`;
+
+/** A rect in the frame's viewport. */
+export interface FrameRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** What a frame's click message says. */
+export interface FrameClick {
+  type: typeof clickMessage;
+  shift: boolean;
+  x: number;
+  y: number;
+  /** The closest marked element's attribute, as written: `data-anfra-block="river"`. */
+  attr?: string;
+  rect?: FrameRect;
+}
 
 /**
  * Appended to each definition: the frame is sandboxed, so the host can't listen for keys in it. It
  * forwards the host's shortcuts (Cmd/Ctrl+K for the palette, `/` for the filter, Cmd/Ctrl+B for the sidebar,
- * Alt+Shift+P for the prompt, Alt+Shift+I for inspect),
- * which the host answers, and reports each click's Shift state for picking.
+ * Alt+Shift+P for the prompt, Alt+Shift+I for inspect, Alt+Shift+C to comment),
+ * which the host answers, and reports each click for picking (see clickMessage).
  */
-const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'?'${openPaletteMessage}':e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true);addEventListener('click',function(e){parent.postMessage({type:'${clickMessage}',shift:e.shiftKey},'*')},true)</script>`;
+const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':a&&e.code==='KeyC'?'${toggleCommentMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'?'${openPaletteMessage}':e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true);</script>`;
+
+/**
+ * Appended too: reports each click with the closest marked element, and while the host asks
+ * (trackMessage), that element's rect whenever it may have moved, at most once a frame. On
+ * cursorMessage it shows the comment cursor, or stops.
+ */
+const clickReporter = `<script>(function(){var K=['container','block','query','control'],S=K.map(function(k){return'[data-anfra-'+k+']'}).join(','),el=null,on=false,raf=0;function box(n){var r=n.getBoundingClientRect();return{x:r.left,y:r.top,width:r.width,height:r.height}}function attr(n){for(var i=0;i<K.length;i++){var v=n.getAttribute('data-anfra-'+K[i]);if(v!==null)return'data-anfra-'+K[i]+'="'+v+'"'}}addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest(S):null;el=t;parent.postMessage({type:'${clickMessage}',shift:e.shiftKey,x:e.clientX,y:e.clientY,attr:t?attr(t):undefined,rect:t?box(t):undefined},'*')},true);function post(){raf=0;if(on&&el&&el.isConnected)parent.postMessage({type:'${rectMessage}',rect:box(el)},'*')}function queue(){if(on&&!raf)raf=requestAnimationFrame(post)}addEventListener('scroll',queue,true);addEventListener('resize',queue);var css=null;function cursor(show){if(show&&!css){css=document.createElement('style');css.textContent=${JSON.stringify(commentCursorCss)};document.head.appendChild(css)}document.documentElement.toggleAttribute('data-anfra-host-cursor',show)}addEventListener('message',function(e){if(e.source!==parent||!e.data)return;if(e.data.type==='${trackMessage}'){on=!!e.data.on;queue()}if(e.data.type==='${cursorMessage}')cursor(!!e.data.on)})})()</script>`;
 
 /** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
 export async function definition(path: string): Promise<{ html: string; baseHref: string }> {
@@ -89,7 +129,7 @@ export async function definition(path: string): Promise<{ html: string; baseHref
   const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
   // Absolute: the frame's document is a srcdoc, so a relative base would resolve against nothing useful.
   return {
-    html: (await response.text()) + keyForwarder,
+    html: (await response.text()) + keyForwarder + clickReporter,
     baseHref: `${window.location.origin}/host/files/${dir}`,
   };
 }

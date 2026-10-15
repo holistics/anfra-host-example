@@ -1,15 +1,5 @@
 import type { InspectedStructure, RenderFormat, StructureNode } from '@holistics/anfra-sdk/common';
-import {
-  ArrowRight,
-  ChevronRight,
-  Download,
-  Frame,
-  type LucideIcon,
-  Shapes,
-  SlidersHorizontal,
-  Table2,
-  TriangleAlert,
-} from 'lucide-react';
+import { ArrowRight, ChevronRight, Download, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +13,7 @@ import { cn, toggleIn } from '@/lib/utils';
 import { handleFor } from '../../model/format';
 import type { NodeRequest } from '../../model/types';
 import { CopyButton } from '../shared/copy-button';
+import { kindIcons, kindPills } from '../shared/kind';
 
 interface Props {
   structure: InspectedStructure;
@@ -37,22 +28,6 @@ interface Props {
   /** Save a picture of a container or block. The download menu shows only when the host provides it. */
   onDownload?: (node: StructureNode, format: RenderFormat) => void;
 }
-
-/** Each kind's pill, colored so a glance tells containers, blocks, queries and controls apart. */
-const pills: Record<StructureNode['kind'], string> = {
-  container: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  block: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  query: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  control: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
-};
-
-/** Each kind's icon, shown in its colored badge. */
-const icons: Record<StructureNode['kind'], LucideIcon> = {
-  container: Frame,
-  block: Shapes,
-  query: Table2,
-  control: SlidersHorizontal,
-};
 
 /** What the markup names a node by: its id (a container or block) or name (a query or control). */
 function idOf(node: StructureNode): string {
@@ -109,7 +84,7 @@ export function StructureTree({
   const renderNode = (node: StructureNode) => {
     const open = !collapsed.has(node.key);
     const id = idOf(node);
-    const Icon = icons[node.kind];
+    const Icon = kindIcons[node.kind];
     const select = () => {
       setSelected(node.key);
       onLocate(node.key);
@@ -148,7 +123,7 @@ export function StructureTree({
           <Tooltip>
             <TooltipTrigger asChild>
               <span
-                className={cn('grid size-5 shrink-0 place-items-center rounded', pills[node.kind])}
+                className={cn('grid size-5 shrink-0 place-items-center rounded', kindPills[node.kind])}
                 role="img"
                 aria-label={node.kind}
               >
