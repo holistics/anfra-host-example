@@ -39,6 +39,10 @@ function describe(condition: Condition): string {
     : formatCondition(condition);
 }
 
+/** Whether a control's condition differs from the one its declaration starts with. */
+export const isChanged = (app: InspectedApp, name: string, control: InspectedControl) =>
+  !same(originalCondition(app, name, control.kind), control.condition);
+
 export function changesOf(apps: InspectedApp[]): ControlChange[] {
   return apps.flatMap((app, index) =>
     Object.entries(app.controls).flatMap(([name, control]) => {

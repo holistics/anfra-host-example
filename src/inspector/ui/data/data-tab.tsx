@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, toggleIn } from '@/lib/utils';
+import { isChanged } from '../../model/changes';
 import { blockNodeKey, entityKey, usageOf } from '../../model/format';
 import { controlTargets, crossFilterTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
@@ -216,6 +217,7 @@ export function DataTab({
                     control={control}
                     declaration={app.declaration.filters[name] ?? app.declaration.dateDrills[name]}
                     targets={controlTargets(app, name)}
+                    changed={isChanged(app, name, control)}
                     onReveal={onReveal}
                     {...row('control', name)}
                   />
