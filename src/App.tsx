@@ -286,48 +286,50 @@ export function App() {
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
             <h1 className="truncate text-sm font-medium">{app?.label ?? 'anfra demo'}</h1>
             {app && <AppInfo app={app} />}
-            <div className="ml-auto flex items-center gap-1">
-              <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
-                <RotateCw />
-              </ToolbarButton>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <ToolbarButton label="Download a picture of the page" disabled={!app}>
-                    <Download />
-                  </ToolbarButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => download({ format: 'png' })}>PNG</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => download({ format: 'pdf' })}>PDF</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <ToolbarButton
-                label={
-                  !app || app.prompt
-                    ? prompting
-                      ? 'Close the prompt panel'
-                      : 'Show the prompt that made this app'
-                    : 'No prompt recorded for this app'
-                }
-                disabled={!app?.prompt}
-                active={prompting}
-                onClick={togglePrompt}
-                text="Prompt"
-                shortcut="P"
-              >
-                <ScrollText />
-              </ToolbarButton>
-              <ToolbarButton
-                label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
-                disabled={!app}
-                active={inspecting}
-                onClick={toggleInspecting}
-                text="Inspect"
-                shortcut="I"
-              >
-                <ScanSearch />
-              </ToolbarButton>
-            </div>
+            {path && (
+              <div className="ml-auto flex items-center gap-1">
+                <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
+                  <RotateCw />
+                </ToolbarButton>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <ToolbarButton label="Download a picture of the page" disabled={!app}>
+                      <Download />
+                    </ToolbarButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => download({ format: 'png' })}>PNG</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => download({ format: 'pdf' })}>PDF</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <ToolbarButton
+                  label={
+                    !app || app.prompt
+                      ? prompting
+                        ? 'Close the prompt panel'
+                        : 'Show the prompt that made this app'
+                      : 'No prompt recorded for this app'
+                  }
+                  disabled={!app?.prompt}
+                  active={prompting}
+                  onClick={togglePrompt}
+                  text="Prompt"
+                  shortcut="P"
+                >
+                  <ScrollText />
+                </ToolbarButton>
+                <ToolbarButton
+                  label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
+                  disabled={!app}
+                  active={inspecting}
+                  onClick={toggleInspecting}
+                  text="Inspect"
+                  shortcut="I"
+                >
+                  <ScanSearch />
+                </ToolbarButton>
+              </div>
+            )}
           </header>
           <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
             <ResizablePanel id="stage" minSize="30%">
