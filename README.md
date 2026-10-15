@@ -112,6 +112,7 @@ A repo can say how its folders and Data Apps are shown in an optional `apps/_met
 folders:
   sales/:
     name: Sales & Revenue   # shown in place of the directory name
+    description: Revenue, pipeline and forecasts.  # under its header on the home page; on hover in the sidebar
     icon: wallet
     tags: [finance, weekly]
     collapsed: true         # starts closed (open anyway if it holds the open app)
@@ -126,6 +127,7 @@ apps:
 ```
 
 - `icon` is one of the names in `server/entry.ts` (lucide, kebab-case); an unknown one is logged and falls back to the default.
+- `description` (folders) is one line on what the folder holds.
 - `endorsed: true` (Data Apps) puts a small green check on the icon's bottom right.
 - The sidebar's filter matches names and tags.
 - `order` puts entries first, lowest first; the rest follow by file name.

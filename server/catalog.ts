@@ -164,6 +164,7 @@ function scan(root: string, rel: string, ctx: Scan): Entry[] {
           kind: 'folder',
           path: childRel,
           name,
+          description: meta.description,
           icon: meta.icon,
           tags: meta.tags,
           collapsed: meta.collapsed ?? false,

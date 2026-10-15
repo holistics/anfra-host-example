@@ -20,6 +20,8 @@ export type Entry =
       kind: 'folder';
       path: string;
       name: string;
+      /** A line on what the folder holds, from the manifest. */
+      description?: string;
       icon?: string;
       tags: string[];
       collapsed: boolean;
