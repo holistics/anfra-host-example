@@ -34,8 +34,8 @@ Status: **built**.
 
 ## 3. Layout and entry points
 
-**Host toolbar**: a **Comment** button (`MessageCircle` icon, text "Comment"), between Prompt and
-Inspect. It toggles comment mode and shows as pressed while picking or while a card is open.
+**Host toolbar**: a **Comment** button (`MessageCircle` icon, text "Comment"), left of Prompt (then
+Inspect). It toggles comment mode and shows as pressed while picking or while a card is open.
 - Tooltip: "Comment on an element" (or "Stop commenting" while on), with the shortcut.
 - Shortcut: **Alt+Shift+C**, on the page or forwarded from the frame like Alt+Shift+P and
   Alt+Shift+I.
@@ -59,7 +59,10 @@ inspector's own reset.
    elements (the SDK's pick), and the pointer becomes the comment cursor, an arrow with a speech
    bubble, so the mode can't be mistaken for the inspector's Pick. It goes back once picking ends.
 2. **Pick.** A click picks the node under the pointer. The frame leaves pick mode. The node is held
-   highlighted (`highlight(key)`) and the card opens next to it.
+   highlighted (`highlight(key)`) and the card opens next to it. If the structure snapshot has not
+   arrived yet, the host waits briefly for it; if the node never appears, it toasts and gives up.
+   While the card is open the comment owns the outline: the inspector Structure tree's hover and
+   clear do not steal it.
 3. **Write.** The textarea has focus. The node stays highlighted for as long as the card is open,
    and the card follows the node when the frame scrolls or resizes.
 4. **Copy** (or Cmd/Ctrl+Enter). The prompt (§4.4) goes to the clipboard. The Copy button's
