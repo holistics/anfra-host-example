@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,7 @@ export function RequestList({
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <div>
-      <ul className={cards ? 'space-y-2' : 'space-y-0.5'}>
+      <ul className={cards ? 'space-y-2' : 'divide-y rounded-lg border bg-background'}>
         {shown.map(({ entry, shared }) =>
           cards ? (
             <RequestCard key={entry.id} entry={entry} />
@@ -119,29 +120,22 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
   );
 }
 
+/** A request as a row of the same table style as a query's metrics, opened to its input and first rows. */
 function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean }) {
-  const [open, setOpen] = useState(false);
   return (
-    <li className={cn('rounded-md', open && 'bg-background')}>
-      <button
-        type="button"
-        className="flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-sm hover:bg-accent"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <ChevronRight
-          className={cn('size-3 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')}
-        />
-        <span className={cn('size-1.5 shrink-0 rounded-full', statusColor[entry.status])} />
-        <span className="shrink-0 tabular-nums">{formatTime(entry.at)}</span>
-        <span className="min-w-0 truncate text-muted-foreground">{summaryOf(entry)}</span>
-        {shared && <span className="shrink-0 text-muted-foreground">shared</span>}
-        <span className="ml-auto shrink-0 text-muted-foreground tabular-nums">
-          {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
-        </span>
-      </button>
-      {open && (
-        <div className="space-y-2.5 px-1 pt-1.5 pb-2.5 pl-5">
+    <Collapsible asChild>
+      <li className="group/request text-xs">
+        <CollapsibleTrigger className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-accent">
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/request:rotate-90" />
+          <span className={cn('size-2 shrink-0 rounded-full', statusColor[entry.status])} />
+          <span className="shrink-0 font-medium tabular-nums">{formatTime(entry.at)}</span>
+          <span className="min-w-0 truncate text-muted-foreground">{summaryOf(entry)}</span>
+          {shared && <span className="shrink-0 text-muted-foreground">shared</span>}
+          <span className="ml-auto shrink-0 pl-2 text-muted-foreground tabular-nums">
+            {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-2.5 border-t bg-muted/30 px-3 py-2.5">
           {entry.error && <p className="text-xs break-words text-destructive">{entry.error}</p>}
           {entry.preview && entry.columns && (
             <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />
@@ -151,9 +145,9 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
             onTab={() => {}}
             sources={{ input: { label: 'Input', code: inputOf(entry), lang: 'js', empty: 'No input.' } }}
           />
-        </div>
-      )}
-    </li>
+        </CollapsibleContent>
+      </li>
+    </Collapsible>
   );
 }
 
@@ -215,15 +209,12 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
             : plural(rows.length, 'row')}
       </p>
       {rows.length > 0 && (
-        // The table scrolls within its own container, so the cap goes there for the header to stick.
-        <div className="rounded-md border bg-background [&_[data-slot=table-container]]:max-h-60 [&_[data-slot=table-container]]:overflow-auto">
-          <Table className="text-xs">
-            <TableHeader className="sticky top-0 bg-muted">
-              <TableRow className="hover:bg-transparent">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {columns.map((column) => (
-                  <TableHead key={column} className="h-6 px-2">
-                    {column}
-                  </TableHead>
+                  <TableHead key={column}>{column}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -232,9 +223,7 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
                 // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
                 <TableRow key={i}>
                   {columns.map((column, j) => (
-                    <TableCell key={column} className="max-w-48 truncate px-2 py-0.5">
-                      {cell(row[j])}
-                    </TableCell>
+                    <TableCell key={column}>{cell(row[j])}</TableCell>
                   ))}
                 </TableRow>
               ))}
