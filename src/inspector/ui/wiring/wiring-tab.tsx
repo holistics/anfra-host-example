@@ -98,7 +98,9 @@ function Matrix({
 
   return (
     <div>
-      <SectionTitle>Wiring</SectionTitle>
+      <SectionTitle hint="Which controls and cross-filters feed which queries, as declared by the app.">
+        Wiring
+      </SectionTitle>
       <div className="mt-1 rounded-md border">
         <Table>
           <TableHeader>
@@ -164,9 +166,13 @@ function Checks({
 }) {
   return (
     <div>
-      <SectionTitle>Checks</SectionTitle>
+      <SectionTitle hint="Static checks on the declaration for mistakes the SDK reports late or never, such as cross-filters across datasets or controls mapped to no query. Click a row to jump to it.">
+        Checks
+      </SectionTitle>
       {checks.length === 0 ? (
-        <Note>No issues found.</Note>
+        <div className="mt-1.5">
+          <Note>No issues found.</Note>
+        </div>
       ) : (
         <ul className="mt-1 space-y-px">
           {checks.map((check, i) => (
@@ -200,7 +206,9 @@ function Declaration({ app }: { app: InspectedApp }) {
   const code = declarationCode(app);
   return (
     <div>
-      <SectionTitle>Declaration</SectionTitle>
+      <SectionTitle hint="The app's queries, controls and mappings, as code reconstructed from what the Data App declared.">
+        Declaration
+      </SectionTitle>
       <div className="mt-1">
         <CodeBlock
           tab="js"

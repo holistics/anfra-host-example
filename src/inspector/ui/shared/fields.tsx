@@ -1,5 +1,7 @@
+import { Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Empty, EmptyDescription } from '@/components/ui/empty';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 /** Label / value pairs, two columns. */
@@ -16,16 +18,36 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-/** A section's small uppercase title. */
-export function SectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+/** A section's small uppercase title, with an optional (i) hint saying what the section is for. */
+export function SectionTitle({
+  children,
+  hint,
+  className,
+}: {
+  children: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
-        'block px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
+        'flex items-center gap-1 px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
         className,
       )}
     >
       {children}
+      {hint && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" aria-label="About this section" className="cursor-help">
+              <Info className="size-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-64 text-xs font-normal tracking-normal normal-case">
+            {hint}
+          </TooltipContent>
+        </Tooltip>
+      )}
     </span>
   );
 }
