@@ -76,9 +76,6 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
           <span className="min-w-0 truncate font-medium">{title || methodLabel[entry.method]}</span>
           <span className="min-w-0 truncate text-xs text-muted-foreground">{summaryOf(entry)}</span>
           <span className="flex-1" />
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {entry.durationMs === undefined ? '…' : `${entry.durationMs} ms`}
-          </span>
           <Tooltip>
             <TooltipTrigger asChild>
               <span
@@ -105,6 +102,9 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
             <Field label="Type">{methodLabel[entry.method]}</Field>
             <Field label="Dataset">{entry.dataset || 'none'}</Field>
             <Field label="Sent at">{formatTime(entry.at)}</Field>
+            <Field label="Duration">
+              {entry.durationMs === undefined ? 'Still running' : `${entry.durationMs} ms`}
+            </Field>
           </Fields>
           {entry.preview && entry.columns && (
             <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />
