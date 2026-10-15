@@ -18,6 +18,39 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
+/** A small (i) that explains on hover; the tooltip text keeps its own case and weight inside an uppercase title. */
+export function InfoHint({
+  children,
+  label,
+  side,
+  className,
+}: {
+  children: ReactNode;
+  label: string;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className="cursor-help text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Info className="size-3" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side={side}
+        className={cn('max-w-64 text-xs font-normal tracking-normal normal-case', className)}
+      >
+        {children}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 /** A section's small uppercase title, with an optional (i) hint saying what the section is for. */
 export function SectionTitle({
   children,
@@ -36,18 +69,7 @@ export function SectionTitle({
       )}
     >
       {children}
-      {hint && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" aria-label="About this section" className="cursor-help">
-              <Info className="size-3" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-64 text-xs font-normal tracking-normal normal-case">
-            {hint}
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {hint && <InfoHint label="About this section">{hint}</InfoHint>}
     </span>
   );
 }

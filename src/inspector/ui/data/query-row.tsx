@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CircleHelp,
   Hash,
-  Info,
   type LucideIcon,
   Rows3,
   Sigma,
@@ -19,7 +18,6 @@ import {
   Type,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -32,7 +30,7 @@ import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { RevealTarget } from '../../model/types';
 import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
-import { Field, Fields } from '../shared/fields';
+import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
 import { stateDot, toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
@@ -184,23 +182,15 @@ export function QueryRow({
       </Fields>
 
       {query.columns.length === 0 ? (
-        <Section title="Definition" info="The metrics and dimensions the query returns.">
+        <Section title="Definition">
           <p className="text-xs text-muted-foreground">
             {notRun === 'Not run yet.' ? 'Known once it runs.' : 'No fields.'}
           </p>
         </Section>
       ) : (
         <>
-          <FieldList
-            title="Metrics"
-            info="The aggregated values the query returns."
-            columns={query.columns.filter((column) => column.isMeasure)}
-          />
-          <FieldList
-            title="Dimensions"
-            info="The fields the query groups its metrics by."
-            columns={query.columns.filter((column) => !column.isMeasure)}
-          />
+          <FieldList title="Metrics" columns={query.columns.filter((column) => column.isMeasure)} />
+          <FieldList title="Dimensions" columns={query.columns.filter((column) => !column.isMeasure)} />
         </>
       )}
 
@@ -208,7 +198,6 @@ export function QueryRow({
         <Section
           title="Filters"
           count={filters.length}
-          info="The filters the query declares, and the controls and cross-filters applied to it."
           action={
             <ToggleGroup
               type="single"
@@ -373,7 +362,7 @@ function Section({
   children,
 }: {
   title: string;
-  info: string;
+  info?: string;
   count?: number;
   action?: ReactNode;
   defaultOpen?: boolean;
@@ -385,18 +374,13 @@ function Section({
         <CollapsibleTrigger className="flex items-center gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
           <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/section:rotate-90" />
           {title}
-          {count !== undefined && <span className="font-normal text-muted-foreground">· {count}</span>}
         </CollapsibleTrigger>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-xs" aria-label={`About ${title.toLowerCase()}`}>
-              <Info />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-64">
+        {info && (
+          <InfoHint label={`About ${title.toLowerCase()}`} side="bottom">
             {info}
-          </TooltipContent>
-        </Tooltip>
+          </InfoHint>
+        )}
+        {count !== undefined && <span className="font-normal text-muted-foreground">· {count}</span>}
         {action && <div className="ml-auto">{action}</div>}
       </div>
       <CollapsibleContent className="space-y-2">{children}</CollapsibleContent>
@@ -423,10 +407,10 @@ function TypeIcon({ icon: Icon, label, className }: { icon: LucideIcon; label: s
 }
 
 /** The metrics or dimensions a query returns, one card row each; nothing renders when there are none. */
-function FieldList({ title, info, columns }: { title: string; info: string; columns: ColumnMeta[] }) {
+function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] }) {
   if (columns.length === 0) return null;
   return (
-    <Section title={title} info={info} count={columns.length}>
+    <Section title={title} count={columns.length}>
       <ul className="divide-y rounded-lg border bg-background">
         {columns.map((column) => {
           const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
