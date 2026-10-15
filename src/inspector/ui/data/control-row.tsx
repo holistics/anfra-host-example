@@ -1,6 +1,7 @@
 import type { DateDrillDeclaration, FilterDeclaration, InspectedControl } from '@holistics/anfra-sdk/common';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight, Table2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatCondition } from '../../model/format';
 import type { controlTargets } from '../../model/inputs';
@@ -12,6 +13,7 @@ export function ControlRow({
   control,
   declaration,
   targets,
+  changed,
   onReveal,
   ...props
 }: RowProps & {
@@ -19,17 +21,35 @@ export function ControlRow({
   declaration: FilterDeclaration | DateDrillDeclaration | undefined;
   /** The queries it is mapped to. */
   targets: ReturnType<typeof controlTargets>;
+  /** Whether its condition differs from the declared default. */
+  changed: boolean;
   onReveal: (target: RevealTarget) => void;
 }) {
   const summary = (
     <>
       <span className="shrink-0 font-medium">{props.name}</span>
       <span className="truncate text-xs text-muted-foreground">
-        {control.condition.values?.length ? formatCondition(control.condition) : 'not set'}
+        {control.condition.values?.length ? formatCondition(control.condition) : ''}
       </span>
       {control.isDirty && (
         <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">unapplied</span>
       )}
+      <span className="flex-1" />
+      {changed && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              role="img"
+              aria-label="Changed from the default"
+              className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-orange-500/15 text-[10px] leading-none font-semibold text-orange-600 dark:text-orange-400"
+            >
+              M
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Changed from the default value</TooltipContent>
+        </Tooltip>
+      )}
+      <TargetCount verb="Applies to" app={props.app} targets={targets} onReveal={onReveal} showZero />
     </>
   );
   const filter = declaration && 'field' in declaration ? declaration : undefined;
@@ -173,5 +193,78 @@ function Options({
         </ul>
       )}
     </div>
+  );
+}
+
+/** What a tooltip says of the queries an entity reaches: a heading and one link per query. */
+function TargetsTip({
+  verb,
+  app,
+  targets,
+  onReveal,
+}: {
+  verb: string;
+  app: number;
+  targets: { query: string; field?: string; self?: boolean }[];
+  onReveal: (target: RevealTarget) => void;
+}) {
+  if (targets.length === 0) return <>{verb} no query</>;
+  return (
+    <div className="space-y-0.5">
+      <div>
+        {verb} {targets.length === 1 ? '1 query' : `${targets.length} queries`}
+      </div>
+      <ul>
+        {targets.map((target) => (
+          <li key={target.query}>
+            <button
+              type="button"
+              className="text-left hover:underline"
+              onClick={() => onReveal({ entity: 'query', app, name: target.query })}
+            >
+              {target.query}
+              {target.field && <span className="opacity-70"> on {target.field}</span>}
+              {target.self && <span className="opacity-70"> (itself)</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Wraps whatever it is given (one element) so that hovering it lists the queries the entity reaches. */
+export function TargetsTooltip({
+  children,
+  side = 'bottom',
+  ...tip
+}: React.ComponentProps<typeof TargetsTip> & {
+  children: ReactNode;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>
+        <TargetsTip {...tip} />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A row's count of the queries it reaches, with a tooltip listing them. */
+export function TargetCount({
+  targets,
+  ...tip
+}: React.ComponentProps<typeof TargetsTip> & {
+  targets: { query: string; field?: string; self?: boolean }[];
+}) {
+  return (
+    <TargetsTooltip side="left" targets={targets} {...tip}>
+      <span className="flex w-9 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
+        {targets.length}
+        <Table2 className="size-3.5 shrink-0" />
+      </span>
+    </TargetsTooltip>
   );
 }

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleHelp,
   Hash,
+  ListFilter,
   type LucideIcon,
   Rows3,
   Sigma,
@@ -104,6 +105,36 @@ export function QueryRow({
         query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>
       )}
       <span className="flex-1" />
+      {/* An empty slot when nothing narrows the query, so the icons after it stay in line. */}
+      {activeFilters.length === 0 ? (
+        <span className="w-9 shrink-0" aria-hidden />
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex w-9 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
+              {activeFilters.length}
+              <ListFilter className="size-3.5 shrink-0" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <div className="space-y-0.5">
+              <div>{plural(activeFilters.length, 'filter')} applied</div>
+              <ul>
+                {activeFilters.map((input, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: two filters can share a field and source
+                  <li key={`${input.kind}:${input.source}:${input.field}:${index}`}>
+                    {input.field}
+                    <span className="opacity-70">
+                      {' '}
+                      · {input.kind === 'declared' ? 'query' : input.self ? 'itself' : input.source}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="flex w-11 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">

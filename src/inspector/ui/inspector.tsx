@@ -143,6 +143,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               requests={requests}
               checks={checks}
               onReveal={reveal}
+              onLocate={source.locate}
             />
           </div>
         </TabsContent>

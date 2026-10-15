@@ -1,9 +1,10 @@
-import type { InspectedApp } from '@holistics/anfra-sdk/common';
+import type { InspectedApp, InspectedStructure, LocateTarget } from '@holistics/anfra-sdk/common';
 import {
   ArrowRight,
   ArrowUpRight,
   ChevronRight,
   Clock,
+  Locate,
   OctagonAlert,
   SlidersHorizontal,
   Table2,
@@ -18,12 +19,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { changesOf } from '../../model/changes';
 import type { Check } from '../../model/checks';
-import { formatAgo, formatTime, plural } from '../../model/format';
+import { formatAgo, formatTime, plural, usageOf } from '../../model/format';
+import { controlTargets } from '../../model/inputs';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
 import { appTrust, LEVELS, TRUST_LEVELS } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
+import { TargetsTooltip } from '../data/control-row';
+import { IconButton } from '../data/entity-row';
 import { Field, Fields, InfoHint, Note, SectionTitle } from '../shared/fields';
 import { toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
@@ -35,6 +39,7 @@ interface Props {
   /** Each app's wiring checks, by index. */
   checks: Check[][];
   onReveal: (target: RevealTarget) => void;
+  onLocate: (target: LocateTarget) => void;
 }
 
 /** The space between widgets, at every level of the tab. */
@@ -47,7 +52,7 @@ const tile = 'rounded-xl bg-muted/50 p-4';
 const FIRST_ISSUES = 5;
 
 /** The landing tab: is this app healthy, and where to look. See SPEC.md §4.3. */
-export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props) {
+export function OverviewTab({ snapshot, env, requests, checks, onReveal, onLocate }: Props) {
   if (!snapshot) return <Note>Waiting for the Data App…</Note>;
   const { apps } = snapshot;
   const issues = issuesOf(snapshot, checks);
@@ -64,7 +69,7 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
       )}
       <Stats apps={apps} issues={issues} requests={requests} onReveal={onReveal} />
       <Issues issues={issues} onReveal={onReveal} />
-      <Changes apps={apps} onReveal={onReveal} />
+      <Changes apps={apps} structure={snapshot.structure} onReveal={onReveal} onLocate={onLocate} />
       <Environment apps={apps} env={env} requests={requests.length} />
     </div>
   );
@@ -284,7 +289,17 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
 }
 
 /** What the reader changed compared to the app as defined: controls off their declared default. */
-function Changes({ apps, onReveal }: { apps: InspectedApp[]; onReveal: (target: RevealTarget) => void }) {
+function Changes({
+  apps,
+  structure,
+  onReveal,
+  onLocate,
+}: {
+  apps: InspectedApp[];
+  structure: InspectedStructure | undefined;
+  onReveal: (target: RevealTarget) => void;
+  onLocate: (target: LocateTarget) => void;
+}) {
   const changes = changesOf(apps);
   return (
     <Collapsible className={cn(tile, 'p-2')}>
@@ -303,25 +318,49 @@ function Changes({ apps, onReveal }: { apps: InspectedApp[]; onReveal: (target: 
         ) : (
           <ul className="space-y-px">
             {changes.map((change) => (
-              <li key={`${change.app}/${change.name}`}>
-                <Item asChild size="sm" className="w-full cursor-pointer text-left hover:bg-accent">
-                  <button
-                    type="button"
+              <li key={`${change.app}/${change.name}`} className="group flex items-center gap-0.5">
+                <TargetsTooltip
+                  verb="Applies to"
+                  app={change.app}
+                  targets={controlTargets(apps[change.app] as InspectedApp, change.name)}
+                  onReveal={onReveal}
+                >
+                  <Item asChild size="sm" className="min-w-0 flex-1 cursor-pointer text-left hover:bg-accent">
+                    <button
+                      type="button"
+                      onClick={() => onReveal({ entity: 'control', app: change.app, name: change.name })}
+                    >
+                      <ItemContent className="min-w-0">
+                        <span className="truncate font-medium">
+                          {apps.length > 1 && `App ${change.app + 1} · `}
+                          {change.name}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="truncate line-through">{change.from}</span>
+                          <ArrowRight className="size-3 shrink-0" />
+                          <span className="truncate text-foreground">{change.to}</span>
+                        </span>
+                      </ItemContent>
+                    </button>
+                  </Item>
+                </TargetsTooltip>
+                {/* Out of the way until the row is hovered or a button inside has focus. */}
+                <span className="flex shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                  {usageOf(structure, 'control', change.app, change.name) && (
+                    <IconButton
+                      label="Highlight on the page"
+                      onClick={() => onLocate({ app: change.app, kind: 'control', name: change.name })}
+                    >
+                      <Locate />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    label="Show in Data"
                     onClick={() => onReveal({ entity: 'control', app: change.app, name: change.name })}
                   >
-                    <ItemContent className="min-w-0">
-                      <span className="truncate font-medium">
-                        {apps.length > 1 && `App ${change.app + 1} · `}
-                        {change.name}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="truncate line-through">{change.from}</span>
-                        <ArrowRight className="size-3 shrink-0" />
-                        <span className="truncate text-foreground">{change.to}</span>
-                      </span>
-                    </ItemContent>
-                  </button>
-                </Item>
+                    <ArrowRight />
+                  </IconButton>
+                </span>
               </li>
             ))}
           </ul>
