@@ -432,6 +432,17 @@ export function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <ToolbarButton
+                  ref={commentButton}
+                  label={commenting ? 'Stop commenting' : 'Comment on an element'}
+                  disabled={!app}
+                  active={commenting}
+                  onClick={toggleCommenting}
+                  text="Comment"
+                  shortcut="C"
+                >
+                  <MessageCircle />
+                </ToolbarButton>
+                <ToolbarButton
                   label={
                     !app || app.prompt
                       ? prompting
@@ -446,17 +457,6 @@ export function App() {
                   shortcut="P"
                 >
                   <ScrollText />
-                </ToolbarButton>
-                <ToolbarButton
-                  ref={commentButton}
-                  label={commenting ? 'Stop commenting' : 'Comment on an element'}
-                  disabled={!app}
-                  active={commenting}
-                  onClick={toggleCommenting}
-                  text="Comment"
-                  shortcut="C"
-                >
-                  <MessageCircle />
                 </ToolbarButton>
                 <ToolbarButton
                   label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
