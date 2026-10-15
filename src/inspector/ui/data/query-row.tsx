@@ -23,11 +23,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
-import { formatTime, plural, prettyJson } from '../../model/format';
+import { plural, prettyJson } from '../../model/format';
 import { declaredFilters, type QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { RevealTarget } from '../../model/types';
+import { AgoTime } from '../shared/ago-time';
 import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
 import { Field, Fields, InfoHint } from '../shared/fields';
@@ -84,7 +85,7 @@ export function QueryRow({
   const trust = queryTrust(declaration, query);
   // When it ran, where its rows came from, and how long that took: one line, whichever parts are known.
   const lastRun = [
-    query.debug?.executedAt && formatTime(query.debug.executedAt),
+    query.debug?.executedAt && <AgoTime at={query.debug.executedAt} />,
     query.debug && (query.debug.fromCache ? 'cache' : 'database'),
     latest?.durationMs !== undefined && `${latest.durationMs} ms`,
   ].filter(Boolean);
@@ -191,7 +192,17 @@ export function QueryRow({
             {declaration?.dataset || 'none declared'}
           </span>
         </Field>
-        {lastRun.length > 0 && <Field label="Last run">{lastRun.join(' · ')}</Field>}
+        {lastRun.length > 0 && (
+          <Field label="Last run">
+            {lastRun.map((part, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered line
+              <span key={i}>
+                {i > 0 && ' · '}
+                {part}
+              </span>
+            ))}
+          </Field>
+        )}
         <Field label="On the page">
           <Drawn
             kind="query"

@@ -11,15 +11,14 @@ import {
   Timer,
   TriangleAlert,
 } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { changesOf } from '../../model/changes';
 import type { Check } from '../../model/checks';
-import { formatAgo, formatTime, plural, usageOf } from '../../model/format';
+import { plural, usageOf } from '../../model/format';
 import { controlTargets } from '../../model/inputs';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
@@ -28,6 +27,7 @@ import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
 import { TargetsTooltip } from '../data/control-row';
 import { IconButton } from '../data/entity-row';
+import { AgoTime } from '../shared/ago-time';
 import { Field, Fields, InfoHint, Note, SectionTitle } from '../shared/fields';
 import { toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
@@ -179,7 +179,7 @@ function Stats({
         <Stat
           icon={<Clock />}
           title="Last request"
-          value={last ? <LastRequestTime at={last.at} /> : '—'}
+          value={last ? <AgoTime at={last.at} /> : '—'}
           tone={last?.status === 'error' ? 'error' : undefined}
           detail={last ? (lastQuery?.name ?? 'no query') : 'Nothing has run yet'}
           onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
@@ -200,23 +200,6 @@ function Stats({
         />
       </div>
     </div>
-  );
-}
-
-/** When the last request ran, in natural time that keeps up; the full time on hover. */
-function LastRequestTime({ at }: { at: Date | string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 10_000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span>{formatAgo(at, now)}</span>
-      </TooltipTrigger>
-      <TooltipContent>{formatTime(at)}</TooltipContent>
-    </Tooltip>
   );
 }
 
