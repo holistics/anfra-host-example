@@ -2,6 +2,7 @@ import { Download, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
+import { CommandPalette } from '@/components/command-palette';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
 import { PromptPanel } from '@/components/prompt-panel';
@@ -22,6 +23,7 @@ import {
   clickMessage,
   type DatasetDescriptor,
   datasets as loadDatasets,
+  openPaletteMessage,
   type RenderFormat,
   type RenderRequest,
   reader,
@@ -65,6 +67,7 @@ export function App() {
   // Whether the last click in the frame held Shift; a pick's click is reported just before the pick.
   const shiftClick = useRef({ shift: false, at: 0 });
   const [toast, setToast] = useState<Toast>();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const stage = useRef<StageHandle>(null);
 
   const refreshCatalog = useCallback(
@@ -165,7 +168,7 @@ export function App() {
     setPanel(prompting ? undefined : 'prompt');
   };
 
-  // Alt+Shift+P and Alt+Shift+I, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
+  // Cmd/Ctrl+K for the palette, Alt+Shift+P and Alt+Shift+I, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
   // a ref, so the listeners don't change with every render.
   const shortcuts = useRef({ togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt });
   shortcuts.current = { togglePrompt, toggleInspecting, hasApp: !!app, hasPrompt: !!app?.prompt };
@@ -176,6 +179,11 @@ export function App() {
       if (shortcut === 'inspect' && hasApp) toggleInspecting();
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
       if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
       const shortcut = event.code === 'KeyP' ? 'prompt' : event.code === 'KeyI' ? 'inspect' : undefined;
       if (!shortcut) return;
@@ -183,6 +191,7 @@ export function App() {
       run(shortcut);
     };
     const onMessage = (event: MessageEvent) => {
+      if (event.data === openPaletteMessage) setPaletteOpen(true);
       if (event.data === togglePromptMessage) run('prompt');
       if (event.data === toggleInspectMessage) run('inspect');
       if (event.data?.type === clickMessage)
@@ -351,6 +360,17 @@ export function App() {
             )}
           </ResizablePanelGroup>
         </SidebarInset>
+        <CommandPalette
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          entries={entries}
+          app={app}
+          onSelect={select}
+          onReload={() => setRevision((n) => n + 1)}
+          onDownload={(format) => download({ format })}
+          onInspect={toggleInspecting}
+          onPrompt={togglePrompt}
+        />
       </SidebarProvider>
       {toast && <ToastMessage toast={toast} onDone={() => setToast(undefined)} />}
     </TooltipProvider>

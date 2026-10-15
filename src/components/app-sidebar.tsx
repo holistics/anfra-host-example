@@ -57,7 +57,7 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
   const [browsed, setBrowsed] = useState<Toggled>(storedFolders);
   const [searched, setSearched] = useState<Toggled>({});
 
-  // `/` or Cmd/Ctrl+K jumps to the filter, opening the sidebar first if it's hidden. The focus waits
+  // `/` jumps to the filter (Cmd/Ctrl+K opens the command palette), opening the sidebar first if it's hidden. The focus waits
   // for a render, as a hidden sidebar (or the mobile sheet) has no input to focus yet.
   const { isMobile, setOpen, setOpenMobile, toggleSidebar } = useSidebar();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,9 +66,8 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '');
-      const chord = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k';
       const slash = event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !typing;
-      if (!chord && !slash) return;
+      if (!slash) return;
       event.preventDefault();
       (isMobile ? setOpenMobile : setOpen)(true);
       setFocusRequest((n) => n + 1);
