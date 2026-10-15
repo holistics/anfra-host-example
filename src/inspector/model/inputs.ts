@@ -106,6 +106,13 @@ export function controlTargets(app: InspectedApp, control: string) {
     .map((m) => ({ query: m.to.name, field: mappingField(m) }));
 }
 
+/** The queries a query cross-filters: selecting its rows filters each of them. */
+export function crossFilterTargets(app: InspectedApp, query: string) {
+  return crossFilters(app)
+    .filter((c) => c.from.name === query)
+    .map((c) => ({ query: c.to.name, self: c.to.name === query }));
+}
+
 /** The AQL without its `//` and block comments, quotes respected. */
 function withoutComments(text: string): string {
   let out = '';

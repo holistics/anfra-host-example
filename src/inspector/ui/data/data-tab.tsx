@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, toggleIn } from '@/lib/utils';
 import { blockNodeKey, entityKey, usageOf } from '../../model/format';
-import { controlTargets, queryInputs } from '../../model/inputs';
+import { controlTargets, crossFilterTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
 import type { DataExpansion, DataFilter, RevealTarget } from '../../model/types';
@@ -187,6 +187,7 @@ export function DataTab({
                     query={query}
                     declaration={app.declaration.queries[name]}
                     inputs={queryInputs(app, name)}
+                    crossTargets={crossFilterTargets(app, name)}
                     requests={requests.byQuery.get(`${index}/${name}`) ?? []}
                     canViewSql={canViewSql}
                     onReveal={onReveal}

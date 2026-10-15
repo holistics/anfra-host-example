@@ -34,6 +34,7 @@ import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
 import { stateDot, toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
+import { MapsTo } from './control-row';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
 import { RequestList } from './request-list';
 
@@ -55,6 +56,7 @@ export function QueryRow({
   query,
   declaration,
   inputs,
+  crossTargets,
   requests,
   canViewSql,
   onReveal,
@@ -63,6 +65,8 @@ export function QueryRow({
   query: InspectedQuery;
   declaration: QueryDeclaration | undefined;
   inputs: QueryInput[];
+  /** The queries it cross-filters. */
+  crossTargets: { query: string; self: boolean }[];
   /** This query's requests, newest first. */
   requests: { entry: RequestEntry; shared: boolean }[];
   /** Whether the reader may see generated SQL; without it, none comes back. */
@@ -160,6 +164,7 @@ export function QueryRow({
             {declaration?.dataset || 'none declared'}
           </span>
         </Field>
+        {lastRun.length > 0 && <Field label="Last run">{lastRun.join(' · ')}</Field>}
         <Field label="On the page">
           <Drawn
             kind="query"
@@ -171,8 +176,15 @@ export function QueryRow({
             onLocate={props.onLocate}
           />
         </Field>
+        <Field label="Cross-filters">
+          <MapsTo
+            app={props.app}
+            targets={crossTargets}
+            onReveal={onReveal}
+            empty={<span className="text-muted-foreground">No query</span>}
+          />
+        </Field>
         {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
-        {lastRun.length > 0 && <Field label="Last run">{lastRun.join(' · ')}</Field>}
         {(query.hasMore || query.page > 1) && (
           <Field label="Page">
             {query.page}

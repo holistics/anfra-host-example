@@ -1,6 +1,6 @@
 import type { DateDrillDeclaration, FilterDeclaration, InspectedControl } from '@holistics/anfra-sdk/common';
 import { ArrowRight, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { formatCondition } from '../../model/format';
 import type { controlTargets } from '../../model/inputs';
@@ -85,19 +85,20 @@ export function ControlRow({
 }
 
 /** The queries a control maps to: a count that opens into one row per query, each with the field and a button to open it. */
-function MapsTo({
+export function MapsTo({
   app,
   targets,
   onReveal,
+  empty = <span className="text-amber-600 dark:text-amber-400">No query, so it has no effect</span>,
 }: {
   app: number;
-  targets: ReturnType<typeof controlTargets>;
+  targets: { query: string; field?: string; self?: boolean }[];
   onReveal: (target: RevealTarget) => void;
+  /** What stands in when there are no targets. */
+  empty?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  if (targets.length === 0) {
-    return <span className="text-amber-600 dark:text-amber-400">No query, so it has no effect</span>;
-  }
+  if (targets.length === 0) return empty;
   return (
     <div className="space-y-1">
       <button
@@ -115,7 +116,8 @@ function MapsTo({
             <li key={target.query} className="flex items-center gap-1 rounded-md pl-2 hover:bg-accent">
               <span className="min-w-0 flex-1 truncate">
                 {target.query}
-                <span className="text-muted-foreground"> on {target.field}</span>
+                {target.field && <span className="text-muted-foreground"> on {target.field}</span>}
+                {target.self && <span className="text-muted-foreground"> (itself)</span>}
               </span>
               <IconButton
                 label="Show query"
