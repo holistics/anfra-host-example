@@ -209,12 +209,14 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
             : plural(rows.length, 'row')}
       </p>
       {rows.length > 0 && (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+        <div className="overflow-hidden rounded-md border">
+          <Table className="text-xs">
+            <TableHeader className="bg-muted">
               <TableRow>
                 {columns.map((column) => (
-                  <TableHead key={column}>{column}</TableHead>
+                  <TableHead key={column} className="h-7 px-2 text-xs font-semibold">
+                    {column}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -223,7 +225,9 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
                 // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
                 <TableRow key={i}>
                   {columns.map((column, j) => (
-                    <TableCell key={column}>{cell(row[j])}</TableCell>
+                    <TableCell key={column} className="px-2 py-1">
+                      {cell(row[j])}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))}
