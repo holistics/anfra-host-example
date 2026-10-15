@@ -1,5 +1,6 @@
 import type { InspectedApp } from '@holistics/anfra-sdk/common';
 import {
+  ArrowRight,
   ArrowUpRight,
   ChevronRight,
   Clock,
@@ -9,13 +10,15 @@ import {
   Timer,
   TriangleAlert,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { changesOf } from '../../model/changes';
 import type { Check } from '../../model/checks';
-import { formatTime, plural } from '../../model/format';
+import { formatAgo, formatTime, plural } from '../../model/format';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
 import { appTrust, LEVELS, TRUST_LEVELS } from '../../model/trust';
@@ -61,6 +64,7 @@ export function OverviewTab({ snapshot, env, requests, checks, onReveal }: Props
       )}
       <Stats apps={apps} issues={issues} requests={requests} onReveal={onReveal} />
       <Issues issues={issues} onReveal={onReveal} />
+      <Changes apps={apps} onReveal={onReveal} />
       <Environment apps={apps} env={env} requests={requests.length} />
     </div>
   );
@@ -170,7 +174,7 @@ function Stats({
         <Stat
           icon={<Clock />}
           title="Last request"
-          value={last ? formatTime(last.at) : '—'}
+          value={last ? <LastRequestTime at={last.at} /> : '—'}
           tone={last?.status === 'error' ? 'error' : undefined}
           detail={last ? (lastQuery?.name ?? 'no query') : 'Nothing has run yet'}
           onClick={lastQuery ? () => onReveal({ entity: 'query', ...lastQuery }) : undefined}
@@ -191,6 +195,23 @@ function Stats({
         />
       </div>
     </div>
+  );
+}
+
+/** When the last request ran, in natural time that keeps up; the full time on hover. */
+function LastRequestTime({ at }: { at: Date | string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span>{formatAgo(at, now)}</span>
+      </TooltipTrigger>
+      <TooltipContent>{formatTime(at)}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -259,6 +280,54 @@ function Issues({ issues, onReveal }: { issues: Issue[]; onReveal: (target: Reve
         </Button>
       )}
     </div>
+  );
+}
+
+/** What the reader changed compared to the app as defined: controls off their declared default. */
+function Changes({ apps, onReveal }: { apps: InspectedApp[]; onReveal: (target: RevealTarget) => void }) {
+  const changes = changesOf(apps);
+  return (
+    <Collapsible className={cn(tile, 'p-2')}>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="group w-full justify-start hover:bg-muted">
+          <ChevronRight className="transition-transform group-data-[state=open]:rotate-90" />
+          Changes from the original
+          <span className="ml-auto text-xs font-normal text-muted-foreground">
+            {changes.length ? plural(changes.length, 'change') : 'none'}
+          </span>
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-2 pt-3 pb-2">
+        {changes.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Every control is still as the app declared it.</p>
+        ) : (
+          <ul className="space-y-px">
+            {changes.map((change) => (
+              <li key={`${change.app}/${change.name}`}>
+                <Item asChild size="sm" className="w-full cursor-pointer text-left hover:bg-accent">
+                  <button
+                    type="button"
+                    onClick={() => onReveal({ entity: 'control', app: change.app, name: change.name })}
+                  >
+                    <ItemContent className="min-w-0">
+                      <span className="truncate font-medium">
+                        {apps.length > 1 && `App ${change.app + 1} · `}
+                        {change.name}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="truncate line-through">{change.from}</span>
+                        <ArrowRight className="size-3 shrink-0" />
+                        <span className="truncate text-foreground">{change.to}</span>
+                      </span>
+                    </ItemContent>
+                  </button>
+                </Item>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
