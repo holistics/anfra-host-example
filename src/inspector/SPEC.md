@@ -50,6 +50,8 @@ There is no modal or backdrop.
 **Host toolbar** (owned by the host, documented here because the inspector depends on it):
 - **Inspect**: toggles the panel. Closing the panel also ends picking.
 - **Prompt**: toggles the prompt panel, in the same slot as the inspector.
+- **Comment**: picks a node to comment on (`src/comments/SPEC.md`). It shares the frame's one pick
+  mode with Pick: starting either ends the other.
 - **Reload**: remounts the frame. The snapshot, request log and transient UI state reset. The
   selected tab and panel width are kept.
 

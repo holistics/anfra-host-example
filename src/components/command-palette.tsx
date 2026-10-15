@@ -1,4 +1,4 @@
-import { AppWindowMac, Download, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import { AppWindowMac, Download, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { useMemo } from 'react';
 import {
   CommandDialog,
@@ -28,6 +28,9 @@ interface Props {
   prompting: boolean;
   onInspect: () => void;
   onPrompt: () => void;
+  /** Whether comment mode is on, so its item says it stops it. */
+  commenting: boolean;
+  onComment: () => void;
 }
 
 /** Cmd/Ctrl+K: jump to a Data App, or run an action on the open one. */
@@ -43,6 +46,8 @@ export function CommandPalette({
   prompting,
   onInspect,
   onPrompt,
+  commenting,
+  onComment,
 }: Props) {
   const apps = useMemo(() => (entries ? appsOf(entries) : []), [entries]);
   // Close first, so an action that moves focus (a panel, a download) isn't undone by the dialog's.
@@ -79,6 +84,14 @@ export function CommandPalette({
               <ScanSearch />
               {inspecting ? 'Close the inspect panel' : 'Inspect'}
               <Shortcut letter="I" />
+            </CommandItem>
+            <CommandItem
+              value={commenting ? 'Stop commenting' : 'Comment on an element'}
+              onSelect={run(onComment)}
+            >
+              <MessageCircle />
+              {commenting ? 'Stop commenting' : 'Comment on an element'}
+              <Shortcut letter="C" />
             </CommandItem>
             {app.prompt && (
               <CommandItem
