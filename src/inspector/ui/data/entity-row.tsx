@@ -125,7 +125,7 @@ export function Drawn({
   );
 }
 
-function IconButton({
+export function IconButton({
   label,
   onClick,
   children,
