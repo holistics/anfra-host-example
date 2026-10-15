@@ -234,7 +234,7 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
         className="group/folder"
       >
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton>
+          <SidebarMenuButton tooltip={entry.description && { children: entry.description, hidden: false }}>
             <ChevronRight className="transition-transform group-data-[state=open]/folder:rotate-90" />
             <FolderIcon />
             <span>{entry.name}</span>

@@ -16,6 +16,8 @@ interface Category {
   name: string;
   /** The folder's, from the manifest; none for the root. */
   icon?: string;
+  /** The folder's, from the manifest. */
+  description?: string;
   /** The folder, or one holding it, starts closed in the repo's manifest. */
   collapsed: boolean;
   apps: AppEntry[];
@@ -27,6 +29,7 @@ function categories(
   path: string,
   name: string,
   icon?: string,
+  description?: string,
   collapsed = false,
 ): Category[] {
   const apps = entries.filter((entry): entry is AppEntry => entry.kind === 'app');
@@ -37,11 +40,12 @@ function categories(
           entry.path,
           name ? `${name} / ${entry.name}` : entry.name,
           entry.icon,
+          entry.description,
           collapsed || entry.collapsed,
         )
       : [],
   );
-  return apps.length > 0 ? [{ path, name, icon, collapsed, apps }, ...nested] : nested;
+  return apps.length > 0 ? [{ path, name, icon, description, collapsed, apps }, ...nested] : nested;
 }
 
 /** The home page: every Data App, in a grid under its category. */
@@ -77,6 +81,9 @@ function Group({ group, onSelect }: { group: Category; onSelect: (path: string) 
           <span className="text-xs font-normal">{group.apps.length}</span>
         </CollapsibleTrigger>
         <CollapsibleContent>
+          {group.description && (
+            <p className="-mt-1 mb-3 text-sm text-muted-foreground">{group.description}</p>
+          )}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4">
             {group.apps.map((app) => (
               <AppCard key={app.path} app={app} onSelect={onSelect} />

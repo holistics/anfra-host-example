@@ -11,6 +11,8 @@ const altMetaFile = '_meta.yml';
 export interface Meta {
   /** A folder's name, or a Data App's label, in place of the directory's or the `<title>`. */
   name?: string;
+  /** A folder's line on what it holds: under its header on the home page, on hover in the sidebar. */
+  description?: string;
   /** A name the page knows (src/lib/icons.ts). */
   icon?: string;
   tags: string[];
@@ -66,6 +68,7 @@ type Section = 'folders' | 'apps';
 const onlyFor = new Map<string, Section>([
   ['endorsed', 'apps'],
   ['collapsed', 'folders'],
+  ['description', 'folders'],
 ]);
 
 function entryMeta(key: string, value: unknown, kind: Section): Meta {
@@ -82,6 +85,10 @@ function entryMeta(key: string, value: unknown, kind: Section): Meta {
       const name = textOf(v);
       if (name) meta.name = name;
       else warnOnce(`"${key}": name should be a non-empty string.`);
+    } else if (field === 'description') {
+      const description = textOf(v);
+      if (description) meta.description = description;
+      else warnOnce(`"${key}": description should be a non-empty string.`);
     } else if (field === 'icon') {
       if (typeof v === 'string' && knownIcons.has(v.trim())) meta.icon = v.trim();
       else warnOnce(`"${key}": icon should be one of ${iconNames.join(', ')}.`);
