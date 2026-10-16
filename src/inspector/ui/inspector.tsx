@@ -146,7 +146,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           onClose={onClose}
         />
         {/* The active tab's underline hangs a pixel below the list; room for it keeps a vertical scrollbar away. */}
-        <div className="shrink-0 overflow-x-auto overflow-y-hidden border-b px-2 pt-1.5 pb-px">
+        <div className="shrink-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b px-2 pt-1.5 pb-px">
           <TabsList variant="line">
             <TabsTrigger value="overview">
               <LayoutDashboard />
