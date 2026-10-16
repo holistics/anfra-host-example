@@ -1,3 +1,4 @@
+import { Cable, Database, GitFork, LayoutDashboard, ListTree } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -123,17 +124,26 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
         {/* The active tab's underline hangs a pixel below the list; room for it keeps a vertical scrollbar away. */}
         <div className="shrink-0 overflow-x-auto overflow-y-hidden border-b px-2 pt-1.5 pb-px">
           <TabsList variant="line">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">
+              <LayoutDashboard />
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="structure">
+              <ListTree />
               Structure
               <Count n={problems} />
             </TabsTrigger>
             <TabsTrigger value="data">
+              <Database />
               Data
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
-            <TabsTrigger value="lineage">Lineage</TabsTrigger>
+            <TabsTrigger value="lineage">
+              <GitFork />
+              Lineage
+            </TabsTrigger>
             <TabsTrigger value="wiring">
+              <Cable />
               Wiring
               <Count n={warnings} />
             </TabsTrigger>
