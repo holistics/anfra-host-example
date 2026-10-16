@@ -24,6 +24,7 @@ import {
   clickMessage,
   type DatasetDescriptor,
   type FrameClick,
+  lineageSource,
   loadCatalog,
   openPaletteMessage,
   type RenderFormat,
@@ -152,7 +153,15 @@ export function App() {
   function mountInspector() {
     const requests = createRequestLog();
     const store = createInspectorStore({
-      env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {}, metricDocs },
+      env: {
+        hostName: 'anfra demo',
+        path,
+        sdkVersion,
+        reader,
+        datasets: datasets ?? {},
+        metricDocs,
+        lineage: lineageSource,
+      },
       requests: requests.log,
       // Comment holds the outline until its card closes; ignore the tree's hover and clear meanwhile.
       highlight: (node) => {

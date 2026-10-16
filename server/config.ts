@@ -11,7 +11,7 @@ export interface Config {
   anfraUrl: string;
   /** The Data Folder anfra serves. Definitions are its `apps/**\/*.html`, read from disk by this server. */
   repoDir: string;
-  /** Requests a minute one client may send to `core.query`. */
+  /** Requests a minute one client may send to `core.query`, and to each of `core.lineage` and `core.search`. */
   queryRateLimit: number;
   /** Requests a minute one client may send to `core.query.export`. */
   exportRateLimit: number;

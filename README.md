@@ -26,7 +26,7 @@ browser                          this host (Node, Hono)                 anfra se
 
 - **anfra** answers the core API only. Run with `--no-apps`, it serves no pages, and it must listen where only this server can reach it: `anfra serve` has no authentication.
 - **The server** (`server/`) is the one origin the browser talks to:
-  - `/api/core.show`, `/api/core.query`, `/api/core.query.export` and `/api/core.lineage`, passed to anfra, and nothing else of the core API. Queries, exports and lineage are rate-limited per client, each with its own limit (lineage counts against the query limit's number). The spot to check your own session is marked in `server/anfra.ts`.
+  - `/api/core.show`, `/api/core.query`, `/api/core.query.export` and `/api/core.lineage`, passed to anfra, and `/api/core.search` for one question only (the catalog's models, for the inspector's Lineage tab), and nothing else of the core API. Queries, exports, lineage and that search are rate-limited per client, each with its own limit (lineage and the search count against the query limit's number). The spot to check your own session is marked in `server/anfra.ts`.
   - `/exports/download/<token>/<name>`: an export's file, streamed from anfra. anfra makes its export links at this server's origin (`ANFRA_SITE_URL`, below), so the browser downloads through here, never from anfra directly. A link works for whoever has it until it expires; a host whose readers sign in checks the session here too (marked in `server/anfra.ts`).
   - `/host/apps` (the Data App tree, labelled by each file's `<title>`, and the [redirects](#redirects)), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
@@ -80,7 +80,7 @@ Run anfra with `ANFRA_SITE_URL` at this host's public origin (`https://data.exam
 | `ANFRA_URL` | `http://127.0.0.1:7878` | Where anfra answers. Keep it off the public network. |
 | `PORT`, `HOSTNAME` | `8787`, `127.0.0.1` | Where this server listens. |
 | `NODE_ENV` | | `production` serves the built page, without live reload. |
-| `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client. |
+| `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client, and each of `core.lineage` and `core.search`. |
 | `EXPORT_RATE_LIMIT` | `10` | `core.query.export` requests a minute per client. Each runs its query to the last row. |
 | `MCP` | | `1` passes anfra's MCP endpoint through at `/mcp`. See [MCP](#mcp). |
 | `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`: the last entry, which the one proxy in front of this server appends. |
