@@ -13,7 +13,7 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { type LineageGraph, lineageKinds, pathOf } from '../../model/lineage';
 import {
   type LineageActions,
@@ -50,6 +50,8 @@ interface Props {
   graph: LineageGraph;
   /** The node whose path is pinned. */
   selected: string | undefined;
+  /** A node to bring into view; a new nonce repeats a request for the same node. */
+  centerOn?: { id: string; nonce: number };
   onSelect: (id: string | undefined) => void;
   actions: LineageActions;
   /** The large view's overview of the whole canvas. */
@@ -82,8 +84,8 @@ export function LineageCanvas(props: Props) {
   );
 }
 
-function Canvas({ graph, selected, onSelect, minimap = false }: Props) {
-  const { fitView, getInternalNode } = useReactFlow();
+function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props) {
+  const { fitView, getInternalNode, setCenter, getZoom } = useReactFlow();
   const dark = useDarkPage();
   const initialized = useNodesInitialized();
   const [nodes, setNodes, onNodesChange] = useNodesState<LineageFlowNode>([]);
@@ -172,6 +174,21 @@ function Canvas({ graph, selected, onSelect, minimap = false }: Props) {
     );
     return () => cancelAnimationFrame(frame);
   }, [laidOut, fitView, minimap]);
+
+  const centeredOn = useRef<number>();
+  // Bring a requested node to the middle, once the layout is there, without zooming out from where the reader is.
+  useEffect(() => {
+    if (!centerOn || !laidOut || centeredOn.current === centerOn.nonce) return;
+    const frame = requestAnimationFrame(() => {
+      const internal = getInternalNode(centerOn.id);
+      if (!internal) return;
+      centeredOn.current = centerOn.nonce;
+      const { x, y } = internal.internals.positionAbsolute;
+      const { width = 0, height = 0 } = internal.measured;
+      void setCenter(x + width / 2, y + height / 2, { zoom: Math.max(getZoom(), 0.8), duration: 250 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [centerOn, laidOut, getInternalNode, setCenter, getZoom]);
 
   const edges = useMemo<Edge[]>(
     () =>

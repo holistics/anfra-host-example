@@ -1,6 +1,14 @@
 import type { InspectedApp, InspectedStructure, LocateTarget } from '@holistics/anfra-sdk/common';
 import { TriangleAlert } from 'lucide-react';
-import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useState } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
   buildLineageGraph,
@@ -35,6 +43,12 @@ export interface LineageFetch {
   error?: string;
 }
 
+/** A pick to land on: the keys of the picked node and what is under it, in structure order. */
+export interface LineagePick {
+  keys: string[];
+  nonce: number;
+}
+
 interface Props {
   apps: InspectedApp[] | undefined;
   structure: InspectedStructure | undefined;
@@ -46,6 +60,7 @@ interface Props {
   onLocate: (target: LocateTarget) => void;
   onHighlight: (node: string | null) => void;
   onReveal: (target: RevealTarget) => void;
+  pick?: LineagePick;
 }
 
 /** Where each number on the page comes from, as a canvas: block, query, field, dataset, model, table. */
@@ -60,8 +75,11 @@ export function LineageTab({
   onLocate,
   onHighlight,
   onReveal,
+  pick,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [centerOn, setCenterOn] = useState<{ id: string; nonce: number }>();
+  const handledPick = useRef(pick?.nonce);
   const targets = useMemo(() => lineageTargets(apps ?? []), [apps]);
   const key = targets.map(targetKey).join('|');
 
@@ -107,6 +125,21 @@ export function LineageTab({
   const filtered = useMemo(() => filterGraph(graph, view.hidden), [graph, view.hidden]);
   const focus = view.focus ? filtered.nodes.find((n) => n.id === view.focus) : undefined;
   const shown = useMemo(() => (focus ? focusGraph(filtered, focus.id) : filtered), [filtered, focus]);
+
+  // A pick pins the first of its nodes the canvas draws, and brings it into view. If a filter or
+  // focus hides them all, the pick is dropped: it is no reason to change the reader's view.
+  useEffect(() => {
+    if (!pick || pick.nonce === handledPick.current) return;
+    handledPick.current = pick.nonce;
+    for (const key of pick.keys) {
+      const hit = shown.nodes.find((n) => n.structureKey === key);
+      if (hit) {
+        onView((v) => ({ ...v, selected: hit.id }));
+        setCenterOn({ id: hit.id, nonce: pick.nonce });
+        return;
+      }
+    }
+  }, [pick, shown, onView]);
 
   // A pinned block or query is outlined on the page too, until the pin moves or the tab closes.
   const selected = view.selected ? shown.nodes.find((n) => n.id === view.selected) : undefined;
@@ -165,6 +198,7 @@ export function LineageTab({
     <LineageCanvas
       graph={shown}
       selected={view.selected}
+      centerOn={centerOn}
       onSelect={(selected) => onView((v) => ({ ...v, selected }))}
       actions={actions}
       minimap={minimap}
