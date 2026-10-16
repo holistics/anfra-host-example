@@ -132,11 +132,11 @@ function Canvas({ graph, selected, onSelect, minimap = false }: Props) {
           id: 'root',
           layoutOptions: {
             'elk.algorithm': 'layered',
-            'elk.direction': 'DOWN',
+            'elk.direction': 'RIGHT',
             'elk.partitioning.activate': 'true',
-            // One set of rows for the whole page: a block whose query reads nothing stays in the block row.
+            // One set of columns for the whole page: a block whose query reads nothing stays in the block column.
             'elk.separateConnectedComponents': 'false',
-            'elk.layered.spacing.nodeNodeBetweenLayers': '56',
+            'elk.layered.spacing.nodeNodeBetweenLayers': '80',
             'elk.spacing.nodeNode': '28',
             'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
             'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
