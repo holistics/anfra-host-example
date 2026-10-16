@@ -1,5 +1,19 @@
 import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
-import { Crosshair, Database, ListTree, ScanSearch, TriangleAlert } from 'lucide-react';
+import {
+  Box,
+  Boxes,
+  Crosshair,
+  Database,
+  ListTree,
+  type LucideIcon,
+  Ruler,
+  ScanSearch,
+  Shapes,
+  Sigma,
+  Table2,
+  TableProperties,
+  TriangleAlert,
+} from 'lucide-react';
 import { createContext, type ReactNode, useContext } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -18,16 +32,69 @@ export const kindLabels: Record<LineageKind, string> = {
   table: 'Database table',
 };
 
-/** Each kind's accent: the bar down a card's left edge, and its filter chip's dot. */
-export const kindAccents: Record<LineageKind, { bar: string; dot: string }> = {
-  block: { bar: 'border-l-indigo-500', dot: 'bg-indigo-500' },
-  query: { bar: 'border-l-emerald-500', dot: 'bg-emerald-500' },
-  metric: { bar: 'border-l-teal-500', dot: 'bg-teal-500' },
-  dimension: { bar: 'border-l-sky-500', dot: 'bg-sky-500' },
-  dataset: { bar: 'border-l-amber-500', dot: 'bg-amber-500' },
-  model: { bar: 'border-l-violet-500', dot: 'bg-violet-500' },
-  table: { bar: 'border-l-slate-500', dot: 'bg-slate-500' },
+/** Each kind's accent: the bar down a card's left edge, its filter chip's dot, and its icon's badge. */
+export const kindAccents: Record<LineageKind, { bar: string; dot: string; pill: string }> = {
+  block: {
+    bar: 'border-l-indigo-500',
+    dot: 'bg-indigo-500',
+    pill: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+  },
+  query: {
+    bar: 'border-l-emerald-500',
+    dot: 'bg-emerald-500',
+    pill: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  },
+  metric: {
+    bar: 'border-l-teal-500',
+    dot: 'bg-teal-500',
+    pill: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+  },
+  dimension: {
+    bar: 'border-l-sky-500',
+    dot: 'bg-sky-500',
+    pill: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  },
+  dataset: {
+    bar: 'border-l-amber-500',
+    dot: 'bg-amber-500',
+    pill: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  },
+  model: {
+    bar: 'border-l-violet-500',
+    dot: 'bg-violet-500',
+    pill: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  },
+  table: {
+    bar: 'border-l-slate-500',
+    dot: 'bg-slate-500',
+    pill: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',
+  },
 };
+
+/** Each kind's icon; blocks and queries keep the ones the Structure tab gives them. */
+export const kindIcons: Record<LineageKind, LucideIcon> = {
+  block: Shapes,
+  query: Table2,
+  metric: Sigma,
+  dimension: Ruler,
+  dataset: Boxes,
+  model: Box,
+  table: TableProperties,
+};
+
+/** A kind's icon in its colored badge. */
+export function KindBadge({ kind, className }: { kind: LineageKind; className?: string }) {
+  const Icon = kindIcons[kind];
+  return (
+    <span
+      className={cn('grid size-5 shrink-0 place-items-center rounded', kindAccents[kind].pill, className)}
+      role="img"
+      aria-label={kindLabels[kind]}
+    >
+      <Icon className="size-3.5" />
+    </span>
+  );
+}
 
 /** How a card stands against a pinned path: on it, the one picked, or off it. */
 export type NodeTone = 'normal' | 'selected' | 'on-path' | 'dim';
@@ -60,11 +127,12 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
     >
       <Handle
         type="target"
-        position={Position.Top}
+        position={Position.Left}
         className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
       />
       <div className="space-y-1 px-3 py-2.5">
-        <div className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+        <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+          <KindBadge kind={node.kind} />
           {kindLabels[node.kind]}
         </div>
         <div className={cn('text-sm leading-tight font-semibold break-words', mono && 'font-mono')}>
@@ -108,7 +176,7 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
       {actions && <HoverActions node={node} actions={actions} />}
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={Position.Right}
         className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
       />
     </div>

@@ -2,7 +2,7 @@ import { LoaderCircle, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { type LineageGraphNode, type LineageKind, lineageKinds } from '../../model/lineage';
-import { kindAccents, kindLabels } from './lineage-node';
+import { KindBadge, kindLabels } from './lineage-node';
 
 interface Props {
   /** How many of each kind the whole graph has: a kind it has none of gets no chip. */
@@ -45,11 +45,9 @@ export function LineageToolbar({ counts, hidden, onHidden, focus, onClearFocus, 
                       : 'border-dashed text-muted-foreground opacity-60',
                   )}
                 >
-                  <span
-                    className={cn(
-                      'size-2 rounded-full',
-                      shown ? kindAccents[kind].dot : 'bg-muted-foreground/40',
-                    )}
+                  <KindBadge
+                    kind={kind}
+                    className={cn('size-4 [&_svg]:size-3', !shown && 'bg-muted text-muted-foreground')}
                   />
                   {kindLabels[kind]}
                   <span className="text-muted-foreground tabular-nums">{counts[kind]}</span>
