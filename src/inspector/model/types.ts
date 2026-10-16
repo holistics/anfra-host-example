@@ -1,8 +1,8 @@
 // Types the model and the UI share: where a link in the panel goes, and what the host tells the
 // inspector about the frame it mounted.
-import type { DatasetDescriptor, User } from '@holistics/anfra-sdk/common';
+import type { DatasetDescriptor, LineageResult, LineageTarget, User } from '@holistics/anfra-sdk/common';
 
-export type InspectorTab = 'overview' | 'structure' | 'data' | 'wiring';
+export type InspectorTab = 'overview' | 'structure' | 'data' | 'lineage' | 'wiring';
 
 /** A structure node to select and reveal; a new nonce repeats a request for the same node. */
 export interface NodeRequest {
@@ -51,6 +51,25 @@ export interface InspectorEnv {
   datasets: Record<string, DatasetDescriptor>;
   /** What each dataset says of its metrics and fields, for the Data tab's metric tooltips. */
   metricDocs?: MetricDocs;
+  /** The catalog's lineage, for the Lineage tab. Without it the tab draws what the page and `metricDocs` say. */
+  lineage?: LineageSource;
+}
+
+/** How the host asks the catalog what a field is built from. */
+export interface LineageSource {
+  /** Each field's lineage, in the order asked: `core.lineage`. */
+  trace(targets: LineageTarget[], signal?: AbortSignal): Promise<LineageResult>;
+  /** Every model's database table, by the model's fqn and name. */
+  tables(signal?: AbortSignal): Promise<Record<string, ModelTable>>;
+}
+
+/** The table a model reads, as the catalog has it. */
+export interface ModelTable {
+  /** The model's own name and label, and what it says of itself. */
+  model: { fqn: string; name: string; label?: string; description?: string };
+  /** `schema.table`; absent for a query model. */
+  table?: string;
+  dataSource?: string;
 }
 
 /** What the catalog states of a metric: its label, description, AQL definition, type and display format. */

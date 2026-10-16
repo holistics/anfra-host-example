@@ -12,6 +12,7 @@ import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
+import { type LineageFetch, LineageTab, type LineageView } from './lineage/lineage-tab';
 import { OverviewTab } from './overview/overview-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
@@ -56,6 +57,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
+  const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set() });
+  const [lineage, setLineage] = useState<LineageFetch>();
 
   const handledPick = useRef(picked?.nonce);
 
@@ -129,6 +132,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               Data
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
+            <TabsTrigger value="lineage">Lineage</TabsTrigger>
             <TabsTrigger value="wiring">
               Wiring
               <Count n={warnings} />
@@ -199,6 +203,21 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               onReveal={reveal}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="lineage" className="min-h-0">
+          <LineageTab
+            apps={apps}
+            structure={structure}
+            env={source.env}
+            view={lineageView}
+            onView={setLineageView}
+            fetched={lineage}
+            onFetched={setLineage}
+            onLocate={source.locate}
+            onHighlight={source.highlight}
+            onReveal={reveal}
+          />
         </TabsContent>
 
         <TabsContent value="wiring" className="min-h-0">

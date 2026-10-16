@@ -16,7 +16,7 @@ import type {
 } from '@holistics/anfra-sdk/common';
 import { mountDataApp } from '@holistics/anfra-sdk/host';
 import { dependencies } from '../package.json';
-import type { MetricDoc, MetricDocs } from './inspector';
+import type { LineageSource, MetricDoc, MetricDocs, ModelTable } from './inspector';
 
 export type {
   DatasetDescriptor,
@@ -36,8 +36,8 @@ export type {
 export const sdkVersion: string = dependencies['@holistics/anfra-sdk'];
 
 /**
- * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`
- * and `core.query.export`.
+ * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`,
+ * `core.query.export`, `core.lineage`, and `core.search` for the catalog's models only.
  */
 const api = coreClient('/api');
 
@@ -88,6 +88,43 @@ export async function loadCatalog(): Promise<{
   }
   return { datasets, metricDocs };
 }
+
+/**
+ * The catalog's lineage, for the inspector's Lineage tab: what each field is built from, and the
+ * table each model reads. Both read the catalog `anfra ingest` built, not the warehouse.
+ */
+export const lineageSource: LineageSource = {
+  async trace(targets, signal) {
+    const { data, error, response } = await api.POST('/core.lineage', { body: { targets }, signal });
+    if (!data) throw new Error(error?.error?.message ?? `core.lineage answered ${response.status}.`);
+    return data;
+  },
+  async tables(signal) {
+    // The one search this host's server lets through. Its answer is untyped: read it with care.
+    const { data, error, response } = await api.POST('/core.search', {
+      body: { query: ['type:aml.model'] },
+      signal,
+    });
+    if (!data) throw new Error(error?.error?.message ?? `core.search answered ${response.status}.`);
+    const tables: Record<string, ModelTable> = {};
+    const entities = Array.isArray(data.entities) ? data.entities : [];
+    for (const entity of entities) {
+      const p = (entity as { properties?: Record<string, unknown> }).properties ?? {};
+      const text = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+      const fqn = text(p.fqn);
+      if (!fqn) continue;
+      const name = text(p.name) ?? fqn;
+      const table: ModelTable = {
+        model: { fqn, name, label: text(p.label), description: text(p.description) },
+        table: text(p.table_name),
+        dataSource: text(p.data_source_name),
+      };
+      tables[fqn] = table;
+      tables[name] ??= table;
+    }
+    return tables;
+  },
+};
 
 /**
  * Who reads the Data Apps. A real host takes this from its own session: who is signed in, their
