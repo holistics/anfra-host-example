@@ -1,5 +1,5 @@
 import type { InspectedStructure, RenderFormat, StructureNode } from '@holistics/anfra-sdk/common';
-import { ArrowRight, ChevronRight, Download, TriangleAlert } from 'lucide-react';
+import { ChevronRight, Database, Download, GitFork, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,8 @@ interface Props {
   onLocate: (node: string) => void;
   /** Open a query's or control's row in the Data tab. */
   onShowInData: (node: StructureNode) => void;
+  /** Open a node in the Lineage tab. */
+  onShowInLineage: (node: StructureNode) => void;
   /** Save a picture of a container or block. The download menu shows only when the host provides it. */
   onDownload?: (node: StructureNode, format: RenderFormat) => void;
 }
@@ -56,6 +58,7 @@ export function StructureTree({
   onHighlight,
   onLocate,
   onShowInData,
+  onShowInLineage,
   onDownload,
 }: Props) {
   const [selected, setSelected] = useState<string>();
@@ -164,10 +167,29 @@ export function StructureTree({
                     onShowInData(node);
                   }}
                 >
-                  <ArrowRight className="size-3.5" />
+                  <Database className="size-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">Show in Data</TooltipContent>
+            </Tooltip>
+          )}
+          {(node.kind === 'query' || node.kind === 'control') && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+                  aria-label="Show in Lineage"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onShowInLineage(node);
+                  }}
+                >
+                  <GitFork className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Show in Lineage</TooltipContent>
             </Tooltip>
           )}
           {onDownload && (node.kind === 'container' || node.kind === 'block') && node.id && (
