@@ -134,3 +134,17 @@ export function firstEntityUnder(
     ? { entity: entity.kind, app: entity.app ?? 0, name: entity.name ?? '' }
     : undefined;
 }
+
+/** The keys of a node and everything under it, the node first: where a pick can land in Lineage. */
+export function keysUnder(nodes: StructureNode[], key: string): string[] {
+  const collect = (node: StructureNode): string[] => [node.key, ...node.children.flatMap(collect)];
+  const find = (list: StructureNode[]): StructureNode | undefined => {
+    for (const node of list) {
+      if (node.key === key) return node;
+      const found = find(node.children);
+      if (found) return found;
+    }
+  };
+  const root = find(nodes);
+  return root ? collect(root) : [];
+}
