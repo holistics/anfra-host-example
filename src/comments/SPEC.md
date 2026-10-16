@@ -91,7 +91,7 @@ node and flips or shifts to stay inside the stage. Its width is 320px, or less i
 ┌ [block] Revenue by month                 × ┐
 │ data-anfra-block="revenue"           (mono) │
 │ ┌────────────────────────────────────────┐ │
-│ │ What should change here?               │ │   textarea, autofocus, grows to ~8 lines
+│ │ What do you want to ask or change?     │ │   textarea, autofocus, grows to ~8 lines
 │ │                                        │ │
 │ └────────────────────────────────────────┘ │
 │                   [Copy]  [Send to Claude│▾] │

@@ -145,7 +145,7 @@ export function CommentCard({ node, rect, prompt, onClose }: Props) {
           ref={textarea}
           value={comment}
           onChange={(event) => setComment(event.target.value)}
-          placeholder="What should change here?"
+          placeholder="What do you want to ask or change?"
           aria-label={`Comment on ${nameOf(node)}`}
           className="max-h-48 min-h-20 resize-none text-sm"
         />
