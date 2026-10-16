@@ -3,4 +3,4 @@ allowBuilds:
 # pnpm holds back releases younger than a day. The SDK is bumped with each anfra release, often
 # the day it ships: let the pinned version through.
 minimumReleaseAgeExclude:
-  - '@holistics/anfra-sdk@0.10.1'
+  - '@holistics/anfra-sdk@0.10.2'
