@@ -5,7 +5,7 @@
 //   @holistics/anfra-sdk/host     the plugin host: mounts a Data App in a sandboxed frame, and
 //                                 answers its calls over the bridge with the plugins installed
 //   @holistics/anfra-sdk/plugins  anfra's plugins: queries, exports, lineage, pictures, inspect
-import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
+import { coreApiBackend, coreClient, toDescriptor } from '@holistics/anfra-sdk/api';
 import type {
   DatasetDescriptor,
   InspectedApp,
@@ -24,6 +24,7 @@ import {
   renderPlugin,
 } from '@holistics/anfra-sdk/plugins';
 import { dependencies } from '../package.json';
+import type { MetricDoc, MetricDocs } from './inspector';
 
 export type {
   DatasetDescriptor,
@@ -48,11 +49,52 @@ export const sdkVersion: string = dependencies['@holistics/anfra-sdk'];
  */
 const api = coreClient('/api');
 
-/** Every dataset a Data App may query, from `core.show`. Each frame is provisioned with them. */
-export async function datasets(): Promise<Record<string, DatasetDescriptor>> {
-  const loaded = await loadDatasets(api);
-  for (const d of loaded.diagnostics) console.warn('anfra:', d.message);
-  return loaded.datasets;
+/** The part of a `core.show` field the inspector shows. A format is as the AML declares it: text, or something else. */
+function docOf(field: {
+  label?: string;
+  description?: string;
+  definition?: string;
+  type: string;
+  format?: unknown;
+}): MetricDoc {
+  const { label, description, definition, type, format } = field;
+  return { label, description, definition, type, format: typeof format === 'string' ? format : undefined };
+}
+
+/**
+ * Every dataset a Data App may query, from `core.show`: each frame is provisioned with them. With
+ * them, what the catalog says of each metric and field, which the descriptor leaves out: the
+ * inspector shows it. This is what `loadDatasets` does, keeping the part it drops.
+ */
+export async function loadCatalog(): Promise<{
+  datasets: Record<string, DatasetDescriptor>;
+  metricDocs: MetricDocs;
+}> {
+  const { data, error, response } = await api.POST('/core.show', { body: {} });
+  if (!data) throw new Error(error?.error?.message ?? `core.show answered ${response.status}.`);
+  if (data.object.kind !== 'repo') throw new Error(`core.show answered a ${data.object.kind}, not the repo.`);
+  for (const d of data.diagnostics) console.warn('anfra:', d.message);
+  const datasets: Record<string, DatasetDescriptor> = {};
+  const metricDocs: MetricDocs = {};
+  for (const dataset of data.object.datasets) {
+    // A dataset that cannot be shown in full comes in outline, and is left out.
+    if (!dataset.models) continue;
+    datasets[dataset.fqn] = toDescriptor(dataset);
+    const docs: Record<string, MetricDoc> = {};
+    for (const metric of dataset.metrics ?? []) {
+      docs[metric.name] = docOf(metric);
+    }
+    for (const model of dataset.models) {
+      for (const field of model.fields) {
+        const doc = docOf(field);
+        docs[`${model.name}.${field.name}`] = doc;
+        // A column names its model as the query does, which can be the fqn.
+        docs[`${model.fqn}.${field.name}`] ??= doc;
+      }
+    }
+    metricDocs[dataset.fqn] = docs;
+  }
+  return { datasets, metricDocs };
 }
 
 /**

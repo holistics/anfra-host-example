@@ -49,4 +49,19 @@ export interface InspectorEnv {
   reader: User;
   /** The datasets the frame is provisioned with. */
   datasets: Record<string, DatasetDescriptor>;
+  /** What each dataset says of its metrics and fields, for the Data tab's metric tooltips. */
+  metricDocs?: MetricDocs;
 }
+
+/** What the catalog states of a metric: its label, description, AQL definition, type and display format. */
+export interface MetricDoc {
+  label?: string;
+  description?: string;
+  definition?: string;
+  type?: string;
+  /** How a value displays, as the AML declares it, e.g. `#,##0%`. */
+  format?: string;
+}
+
+/** By dataset fqn, then by a metric's name or a model field's `model.field`. */
+export type MetricDocs = Record<string, Record<string, MetricDoc>>;

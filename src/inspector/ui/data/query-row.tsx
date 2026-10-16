@@ -27,7 +27,7 @@ import { plural, prettyJson } from '../../model/format';
 import { declaredFilters, type QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import { queryTrust, TRUST_LEVELS } from '../../model/trust';
-import type { RevealTarget } from '../../model/types';
+import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
 import { AgoTime } from '../shared/ago-time';
 import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
@@ -60,6 +60,7 @@ export function QueryRow({
   crossTargets,
   requests,
   canViewSql,
+  metricDocs,
   onReveal,
   ...props
 }: RowProps & {
@@ -72,6 +73,8 @@ export function QueryRow({
   requests: { entry: RequestEntry; shared: boolean }[];
   /** Whether the reader may see generated SQL; without it, none comes back. */
   canViewSql: boolean;
+  /** What the catalog says of each metric, by dataset. */
+  metricDocs: MetricDocs | undefined;
   onReveal: (target: RevealTarget) => void;
 }) {
   // Opens on what ran; each query keeps its own tab.
@@ -239,8 +242,16 @@ export function QueryRow({
         </Section>
       ) : (
         <>
-          <FieldList title="Metrics" columns={query.columns.filter((column) => column.isMeasure)} />
-          <FieldList title="Dimensions" columns={query.columns.filter((column) => !column.isMeasure)} />
+          <FieldList
+            title="Metrics"
+            columns={query.columns.filter((column) => column.isMeasure)}
+            docs={metricDocs?.[declaration?.dataset ?? '']}
+          />
+          <FieldList
+            title="Dimensions"
+            columns={query.columns.filter((column) => !column.isMeasure)}
+            docs={metricDocs?.[declaration?.dataset ?? '']}
+          />
         </>
       )}
 
@@ -457,7 +468,16 @@ function TypeIcon({ icon: Icon, label, className }: { icon: LucideIcon; label: s
 }
 
 /** The metrics or dimensions a query returns, one card row each; nothing renders when there are none. */
-function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] }) {
+function FieldList({
+  title,
+  columns,
+  docs,
+}: {
+  title: string;
+  columns: ColumnMeta[];
+  /** What the query's dataset says of its fields: with it, a row opens to show it. */
+  docs?: Record<string, MetricDoc>;
+}) {
   if (columns.length === 0) return null;
   return (
     <Section title={title} count={columns.length}>
@@ -468,8 +488,8 @@ function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] })
             ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
             : `dimension · ${column.semantic_type}`;
           const unlabelled = !column.label || column.label === column.name;
-          return (
-            <li key={column.name} className="flex items-center gap-2.5 px-3 py-2 text-xs">
+          const summary = (
+            <>
               <TypeIcon icon={Icon} label={kind} />
               <span className="min-w-0 truncate font-medium">{column.name}</span>
               {column.adhoc && <span className="shrink-0 text-amber-600 dark:text-amber-400">ad hoc</span>}
@@ -482,10 +502,77 @@ function FieldList({ title, columns }: { title: string; columns: ColumnMeta[] })
                   <span className="truncate text-muted-foreground">{column.label}</span>
                 )}
               </span>
-            </li>
+            </>
+          );
+          // An ad hoc column is the query's own: the catalog has nothing on it.
+          if (column.adhoc) {
+            return (
+              <li key={column.name} className="flex items-center gap-2.5 px-3 py-2 text-xs">
+                {summary}
+              </li>
+            );
+          }
+          // A dataset metric has no model; a model's field is keyed by `model.field`.
+          const doc = docs?.[column.modelId ? `${column.modelId}.${column.fieldName}` : column.fieldName];
+          return (
+            <FieldItem key={column.name} column={column} doc={doc} known={!!docs}>
+              {summary}
+            </FieldItem>
           );
         })}
       </ul>
     </Section>
+  );
+}
+
+/** A metric's or dimension's row: one line until opened, then what the catalog states of it. */
+function FieldItem({
+  column,
+  doc,
+  known,
+  children,
+}: {
+  column: ColumnMeta;
+  doc: MetricDoc | undefined;
+  /** Whether the host provided the catalog at all; without it nothing is known, not nothing declared. */
+  known: boolean;
+  children: ReactNode;
+}) {
+  const none = <span className="text-muted-foreground">{known ? 'None declared.' : 'Not available.'}</span>;
+  const [codeTab, setCodeTab] = useState<'aql'>('aql');
+  return (
+    <Collapsible asChild>
+      <li className="group/metric">
+        <CollapsibleTrigger className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50">
+          {children}
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/metric:rotate-90" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-2 px-3 pt-1 pb-3">
+          <Fields className="text-xs">
+            <Field label="Label">{doc?.label || column.label || none}</Field>
+            <Field label="Description">{doc?.description || none}</Field>
+            <Field label="Type">{doc?.type || column.semantic_type || none}</Field>
+            <Field label="Format">
+              {doc?.format ? <code className="font-mono">{doc.format}</code> : none}
+            </Field>
+          </Fields>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Definition</div>
+            <CodeBlock
+              tab={codeTab}
+              onTab={setCodeTab}
+              sources={{
+                aql: {
+                  label: 'AQL',
+                  code: doc?.definition && dedent(doc.definition).trim(),
+                  lang: 'aql',
+                  empty: known ? 'None declared.' : 'Not available.',
+                },
+              }}
+            />
+          </div>
+        </CollapsibleContent>
+      </li>
+    </Collapsible>
   );
 }
