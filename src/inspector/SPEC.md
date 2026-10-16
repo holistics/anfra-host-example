@@ -58,7 +58,10 @@ There is no modal or backdrop.
 **Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
 Picking a node selects and reveals it in the tree. **Shift-click** instead opens the first query or
 control at or below the picked node (the node itself, if it is one) in Data, switching to that tab;
-a node with none lands in Structure as usual. The frame's pick report doesn't carry modifier keys,
+a node with none lands in Structure as usual.
+From the **Data** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
+Lineage: it pins the first node of the picked subtree that the canvas draws (a block or query) and
+centers it; if a filter or focus hides them all, the pick is ignored. Other tabs switch to Structure. The frame's pick report doesn't carry modifier keys,
 so the host's injected script posts each click's Shift state just before it. The frame leaves pick
 mode after a pick or on Escape.
 
@@ -71,7 +74,7 @@ The inspector state also resets when the path changes or the repo revision chang
 ```
 ┌ Ecommerce Overview          [Copy report] [×] ┐
 │ ● 4 ok  ● 1 error  ◌ 1 running  ◆ 2 dirty     │   ← status bar (new)
-│ [Overview] [Structure ⚠2] [Data] [Wiring ⚠1]  │
+│ [Overview] [Structure ⚠2] [Data] [Lineage] [Wiring ⚠1] │
 ├───────────────────────────────────────────────┤
 │  tab body (scrolls)                            │
 └───────────────────────────────────────────────┘
@@ -81,10 +84,10 @@ The inspector state also resets when the path changes or the repo revision chang
   totals across them.
 - **Status bar**: counts by query state, plus dirty queries. A count of zero is hidden.
   Each count links to Data with the matching filter.
-- **Tabs**: Overview · Structure · Data · Wiring, in that order. A tab shows a badge with its issue
-  count, if any. Structure counts structure problems. Wiring counts checks at warn or error level.
+- **Tabs**: Overview · Structure · Data · Lineage · Wiring, in that order. A tab shows a badge with its issue
+  count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Wiring counts checks at warn or error level.
   Data counts failed queries.
-- **Default tab**: Overview. Pick always switches to Structure.
+- **Default tab**: Overview. Pick switches to Structure, except from Data and Lineage.
   Opening the panel again keeps the tab it was closed on.
 - **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
   or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is
@@ -274,6 +277,39 @@ of this.
 - Light and dark themes come from the host's tokens. There are no hard-coded colors outside the
   kind pills and state dots, and those have dark variants.
 
+### 4.10 Lineage
+
+Where each number on the page comes from, as a canvas (React Flow, laid out by ELK), top to bottom:
+
+**Block → Query → Metric / Dimension → Dataset → Model → Database table**
+
+- **Scope**: the whole page. Blocks come from the structure (a query marked inside a block, or
+  `usage[…].blocks`). Fields are each query's non-ad-hoc `columns`, so a query that hasn't run has
+  none yet. A column with `isMeasure` is a metric card, the rest dimension cards.
+- **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
+  fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
+  `refers` to; a dimension reaches the model its column names. Each model's table comes from the
+  catalog's models (`env.lineage.tables()`); a database table is not an entity of its own, but the
+  model's `table_name` and `data_source_name`. Shared models and tables are drawn once. A model card
+  shows as chips the fields the page reads from it.
+- **Without lineage** (no `env.lineage`, or the call failed, e.g. anfra before 0.9.1): a banner says
+  so, metrics stop at their dataset, and dimensions still reach their model.
+- **Rows**: a row per kind (ELK partitions), so a block whose query returns nothing stays in the
+  block row.
+- **Highlight**: a click on a card pins its path; everything else dims. A path follows only the
+  edges that carry the card's fields: a metric lights the models it reads, not every model of its
+  dataset. A click on the pane or Escape lets go. Pinning a block or query also outlines it on the
+  page (`highlight`).
+- **Hover buttons** on a card: Locate on the page and Show in Structure (blocks, queries), Show in
+  Data (queries, fields), Focus.
+- **Filter**: a chip per kind, with its count, shows or hides it. Hiding a kind joins across it:
+  hiding queries links each block to the fields its queries return.
+- **Focus**: keeps one card and its path. "Focused on …" above the canvas, with × to show
+  everything.
+- **Zoom**: wheel and the zoom buttons; drag the pane to move. A new layout is fitted to the view,
+  never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
+  large modal with a minimap.
+
 ## 5. Structure
 
 ### 5.1 Folder
@@ -293,10 +329,11 @@ src/inspector/
     highlight.ts          a small AQL/SQL/JS tokenizer, returning plain tokens
     requests.ts           the request log, the backend wrapper that fills it, attribution
     report.ts             snapshot + env + log → InspectorReport
+    lineage.ts            the Lineage graph: build, filter, focus, a node's path
   ui/                     React; imports only from model/, source.ts and the host's shadcn ui
     inspector.tsx         shell: subscriptions, tabs, reveal()
     header.tsx            title, status bar, Copy report, close
-    overview/  structure/  data/  wiring/
+    overview/  structure/  data/  lineage/  wiring/
     shared/               code-block, copy-button, fields, reveal, tone
 ```
 
@@ -313,7 +350,7 @@ Rules:
 ```ts
 /** Everything the inspector needs from a host. One per mounted frame. */
 interface InspectorSource {
-  env: InspectorEnv;            // hostName, path, sdkVersion, reader, datasets
+  env: InspectorEnv;            // hostName, path, sdkVersion, reader, datasets, metricDocs?, lineage?
   requests: RequestLog;         // from createRequestLog
   getSnapshot(): InspectorSnapshot | undefined;   // { apps, structure }, stable until it changes
   subscribe(listener: () => void): () => void;

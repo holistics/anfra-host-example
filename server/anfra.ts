@@ -3,12 +3,29 @@ import { bodyLimit } from 'hono/body-limit';
 import type { Config } from './config.js';
 
 /**
- * The core API ops a visitor may reach: what a Data App needs, and nothing else. `core.show` lists
- * the datasets the page provisions; `core.query` answers queries and field suggestions;
- * `core.query.export` makes a query's whole result a file and answers its link. Everything else
- * anfra serves (ingest, search, validate, …) stays private to this server.
+ * The core API ops a visitor may reach: what a Data App and the inspector need, and nothing else.
+ * `core.show` lists the datasets the page provisions; `core.query` answers queries and field
+ * suggestions; `core.query.export` makes a query's whole result a file and answers its link;
+ * `core.lineage` traces fields to what they are built from, for the inspector's Lineage tab.
+ * `core.search` is let through for one question only (`narrowedOps`). Everything else anfra serves
+ * (ingest, validate, …) stays private to this server.
  */
-export const allowedOps = new Set(['core.query', 'core.query.export', 'core.show']);
+export const allowedOps = new Set([
+  'core.query',
+  'core.query.export',
+  'core.show',
+  'core.lineage',
+  'core.search',
+]);
+
+/**
+ * Ops a visitor may ask only one exact question of. The Lineage tab draws each model's database
+ * table, which `core.lineage` gives only for models a metric refers to: the catalog's models, with
+ * their table and data source, fill in the rest. They say nothing `core.lineage` doesn't.
+ */
+export const narrowedOps: Record<string, string> = {
+  'core.search': JSON.stringify({ query: ['type:aml.model'] }),
+};
 
 /** The request headers passed on to anfra. Nothing else crosses, cookies and Origin included. */
 const forwardedHeaders = ['accept', 'content-type', 'x-request-id', 'traceparent'];
@@ -66,6 +83,22 @@ export function coreApi(config: Config, clientOf: (c: Context) => string): Hono 
     await next();
   };
 
+  // After the body limit: an op let through for one question must ask exactly it.
+  const narrow: MiddlewareHandler = async (c, next) => {
+    const op = c.req.param('op') ?? '';
+    const only = narrowedOps[op];
+    if (only !== undefined) {
+      let asked: string | undefined;
+      try {
+        asked = JSON.stringify(await c.req.json());
+      } catch {}
+      if (asked !== only) {
+        return c.json({ error: { code: 'not_found', message: `${op} is not served here for that.` } }, 404);
+      }
+    }
+    await next();
+  };
+
   const forward: MiddlewareHandler = async (c) => {
     const headers: Record<string, string> = {};
     for (const name of forwardedHeaders) {
@@ -96,7 +129,10 @@ export function coreApi(config: Config, clientOf: (c: Context) => string): Hono 
   // than a page of rows does: its own, tighter limit. No timeout of this server's own: the request
   // lasts as long as anfra takes or the browser waits.
   api.use('/core.query.export', rateLimit(config.exportRateLimit, clientOf));
-  api.all('/:op', guard, bodyLimit({ maxSize: 256 * 1024 }), forward);
+  // Tracing reads the catalog, not the warehouse: the query limit is plenty.
+  api.use('/core.lineage', rateLimit(config.queryRateLimit, clientOf));
+  api.use('/core.search', rateLimit(config.queryRateLimit, clientOf));
+  api.all('/:op', guard, bodyLimit({ maxSize: 256 * 1024 }), narrow, forward);
   api.all('*', (c) => c.json({ error: { code: 'not_found', message: 'Not served here.' } }, 404));
   return api;
 }

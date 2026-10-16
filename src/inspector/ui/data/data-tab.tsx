@@ -26,7 +26,7 @@ import { blockNodeKey, entityKey, usageOf } from '../../model/format';
 import { controlTargets, crossFilterTargets, queryInputs } from '../../model/inputs';
 import { queryCounts } from '../../model/issues';
 import type { attributeRequests } from '../../model/requests';
-import type { DataExpansion, DataFilter, RevealTarget } from '../../model/types';
+import type { DataExpansion, DataFilter, MetricDocs, RevealTarget } from '../../model/types';
 import { Note } from '../shared/fields';
 import { scrollToAndFlash } from '../shared/reveal';
 import { ControlRow } from './control-row';
@@ -44,6 +44,8 @@ interface Props {
   onView: (view: DataFilter) => void;
   /** Whether the reader may see generated SQL. */
   canViewSql: boolean;
+  /** What the catalog says of each metric, for the tooltip beside it. */
+  metricDocs: MetricDocs | undefined;
   /** Which rows are open and which sections closed, kept by the panel across tab switches. */
   expansion: DataExpansion;
   onExpansion: Dispatch<SetStateAction<DataExpansion>>;
@@ -84,6 +86,7 @@ export function DataTab({
   view,
   onView,
   canViewSql,
+  metricDocs,
   expansion,
   onExpansion,
   focus,
@@ -191,6 +194,7 @@ export function DataTab({
                     crossTargets={crossFilterTargets(app, name)}
                     requests={requests.byQuery.get(`${index}/${name}`) ?? []}
                     canViewSql={canViewSql}
+                    metricDocs={metricDocs}
                     onReveal={onReveal}
                     {...row('query', name)}
                   />

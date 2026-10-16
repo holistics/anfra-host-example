@@ -5,8 +5,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 
 /** Label / value pairs, two columns. */
-export function Fields({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">{children}</dl>;
+export function Fields({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <dl className={cn('grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm', className)}>{children}</dl>
+  );
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {

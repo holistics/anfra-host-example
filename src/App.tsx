@@ -22,9 +22,11 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   clickMessage,
+  commentCursor,
   type DatasetDescriptor,
   type FrameClick,
-  datasets as loadDatasets,
+  lineageSource,
+  loadCatalog,
   openPaletteMessage,
   type RenderFormat,
   type RenderRequest,
@@ -42,6 +44,7 @@ import {
   createRequestLog,
   Inspector,
   type InspectorTab,
+  type MetricDocs,
   type NodeRequest,
 } from '@/inspector';
 import {
@@ -69,6 +72,7 @@ export function App() {
   const [entries, setEntries] = useState<Entry[]>();
   const [redirects, setRedirects] = useState<Redirects>({});
   const [datasets, setDatasets] = useState<Record<string, DatasetDescriptor>>();
+  const [metricDocs, setMetricDocs] = useState<MetricDocs>();
   const [error, setError] = useState<string>();
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
   // Bumped to remount the Data App: the reload button, and live reload.
@@ -108,8 +112,12 @@ export function App() {
   );
   const refreshDatasets = useCallback(
     () =>
-      loadDatasets().then(setDatasets, (err: Error) =>
-        setError(`Couldn't load the datasets: ${err.message}`),
+      loadCatalog().then(
+        (loaded) => {
+          setDatasets(loaded.datasets);
+          setMetricDocs(loaded.metricDocs);
+        },
+        (err: Error) => setError(`Couldn't load the datasets: ${err.message}`),
       ),
     [],
   );
@@ -146,7 +154,15 @@ export function App() {
   function mountInspector() {
     const requests = createRequestLog();
     const store = createInspectorStore({
-      env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
+      env: {
+        hostName: 'anfra demo',
+        path,
+        sdkVersion,
+        reader,
+        datasets: datasets ?? {},
+        metricDocs,
+        lineage: lineageSource,
+      },
       requests: requests.log,
       // Comment holds the outline until its card closes; ignore the tree's hover and clear meanwhile.
       highlight: (node) => {
@@ -200,7 +216,8 @@ export function App() {
   const togglePicking = () => {
     if (!picking) {
       setPanel('inspect');
-      setTab('structure');
+      // Data and Lineage take a pick themselves; any other tab goes to Structure.
+      if (tab !== 'data' && tab !== 'lineage') setTab('structure');
       closeComment();
     }
     setPickFor(picking ? undefined : 'inspect');
@@ -314,10 +331,11 @@ export function App() {
           setPendingComment({ key: node, click: recent });
           return;
         }
-        // Shift goes to the node's first query or control in Data; the inspector picks the tab.
+        // Shift goes to the node's first query or control in Data; the inspector picks the tab. Data
+        // and Lineage stay open and jump within themselves.
         const inData = !!recent?.shift;
         setPicked({ key: node, nonce: Date.now(), inData });
-        if (!inData) setTab('structure');
+        if (!inData && tab !== 'data' && tab !== 'lineage') setTab('structure');
       }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
@@ -335,6 +353,15 @@ export function App() {
     setComment({ ...found, rect, tracked });
     return true;
   };
+  // The comment cursor on the page itself too, so it shows the moment Ask AI is clicked, not only
+  // once the pointer reaches the frame.
+  useEffect(() => {
+    if (pickFor !== 'comment') return;
+    const style = document.createElement('style');
+    style.textContent = `*{cursor:${commentCursor}!important}`;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [pickFor]);
   // A pick can land before the frame's first snapshot; wait for one, then give up.
   // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
   useEffect(() => {

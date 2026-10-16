@@ -3,7 +3,7 @@
 //
 //   @holistics/anfra-sdk/api   talks to the core API: the datasets, and a Backend for queries
 //   @holistics/anfra-sdk/host  mounts a Data App in a sandboxed frame and answers it over the bridge
-import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
+import { coreApiBackend, coreClient, toDescriptor } from '@holistics/anfra-sdk/api';
 import type {
   Backend,
   DatasetDescriptor,
@@ -16,6 +16,7 @@ import type {
 } from '@holistics/anfra-sdk/common';
 import { mountDataApp } from '@holistics/anfra-sdk/host';
 import { dependencies } from '../package.json';
+import type { LineageSource, MetricDoc, MetricDocs, ModelTable } from './inspector';
 
 export type {
   DatasetDescriptor,
@@ -35,17 +36,95 @@ export type {
 export const sdkVersion: string = dependencies['@holistics/anfra-sdk'];
 
 /**
- * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`
- * and `core.query.export`.
+ * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`,
+ * `core.query.export`, `core.lineage`, and `core.search` for the catalog's models only.
  */
 const api = coreClient('/api');
 
-/** Every dataset a Data App may query, from `core.show`. Each frame is provisioned with them. */
-export async function datasets(): Promise<Record<string, DatasetDescriptor>> {
-  const loaded = await loadDatasets(api);
-  for (const d of loaded.diagnostics) console.warn('anfra:', d.message);
-  return loaded.datasets;
+/** The part of a `core.show` field the inspector shows. A format is as the AML declares it: text, or something else. */
+function docOf(field: {
+  label?: string;
+  description?: string;
+  definition?: string;
+  type: string;
+  format?: unknown;
+}): MetricDoc {
+  const { label, description, definition, type, format } = field;
+  return { label, description, definition, type, format: typeof format === 'string' ? format : undefined };
 }
+
+/**
+ * Every dataset a Data App may query, from `core.show`: each frame is provisioned with them. With
+ * them, what the catalog says of each metric and field, which the descriptor leaves out: the
+ * inspector shows it. This is what `loadDatasets` does, keeping the part it drops.
+ */
+export async function loadCatalog(): Promise<{
+  datasets: Record<string, DatasetDescriptor>;
+  metricDocs: MetricDocs;
+}> {
+  const { data, error, response } = await api.POST('/core.show', { body: {} });
+  if (!data) throw new Error(error?.error?.message ?? `core.show answered ${response.status}.`);
+  if (data.object.kind !== 'repo') throw new Error(`core.show answered a ${data.object.kind}, not the repo.`);
+  for (const d of data.diagnostics) console.warn('anfra:', d.message);
+  const datasets: Record<string, DatasetDescriptor> = {};
+  const metricDocs: MetricDocs = {};
+  for (const dataset of data.object.datasets) {
+    // A dataset that cannot be shown in full comes in outline, and is left out.
+    if (!dataset.models) continue;
+    datasets[dataset.fqn] = toDescriptor(dataset);
+    const docs: Record<string, MetricDoc> = {};
+    for (const metric of dataset.metrics ?? []) {
+      docs[metric.name] = docOf(metric);
+    }
+    for (const model of dataset.models) {
+      for (const field of model.fields) {
+        const doc = docOf(field);
+        docs[`${model.name}.${field.name}`] = doc;
+        // A column names its model as the query does, which can be the fqn.
+        docs[`${model.fqn}.${field.name}`] ??= doc;
+      }
+    }
+    metricDocs[dataset.fqn] = docs;
+  }
+  return { datasets, metricDocs };
+}
+
+/**
+ * The catalog's lineage, for the inspector's Lineage tab: what each field is built from, and the
+ * table each model reads. Both read the catalog `anfra ingest` built, not the warehouse.
+ */
+export const lineageSource: LineageSource = {
+  async trace(targets, signal) {
+    const { data, error, response } = await api.POST('/core.lineage', { body: { targets }, signal });
+    if (!data) throw new Error(error?.error?.message ?? `core.lineage answered ${response.status}.`);
+    return data;
+  },
+  async tables(signal) {
+    // The one search this host's server lets through. Its answer is untyped: read it with care.
+    const { data, error, response } = await api.POST('/core.search', {
+      body: { query: ['type:aml.model'] },
+      signal,
+    });
+    if (!data) throw new Error(error?.error?.message ?? `core.search answered ${response.status}.`);
+    const tables: Record<string, ModelTable> = {};
+    const entities = Array.isArray(data.entities) ? data.entities : [];
+    for (const entity of entities) {
+      const p = (entity as { properties?: Record<string, unknown> }).properties ?? {};
+      const text = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+      const fqn = text(p.fqn);
+      if (!fqn) continue;
+      const name = text(p.name) ?? fqn;
+      const table: ModelTable = {
+        model: { fqn, name, label: text(p.label), description: text(p.description) },
+        table: text(p.table_name),
+        dataSource: text(p.data_source_name),
+      };
+      tables[fqn] = table;
+      tables[name] ??= table;
+    }
+    return tables;
+  },
+};
 
 /**
  * Who reads the Data Apps. A real host takes this from its own session: who is signed in, their
@@ -85,7 +164,8 @@ export const cursorMessage = 'anfra-host:cursor';
 /** The comment cursor: an arrow, its tip the hotspot, with a speech bubble at its lower right. */
 const commentCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 2v18.5l4.6-4.4 3.2 7.2 3-1.3-3.2-7.1h6.2z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><g transform="translate(13.5 12.5) scale(0.78)"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" fill="#4f46e5" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></svg>`;
 /** Every element's cursor while the frame's root carries `data-anfra-host-cursor`; crosshair where SVG cursors aren't drawn. */
-const commentCursorCss = `html[data-anfra-host-cursor],html[data-anfra-host-cursor] *{cursor:url("data:image/svg+xml,${encodeURIComponent(commentCursorSvg)}") 3 2,crosshair!important}`;
+export const commentCursor = `url("data:image/svg+xml,${encodeURIComponent(commentCursorSvg)}") 3 2,crosshair`;
+const commentCursorCss = `html[data-anfra-host-cursor],html[data-anfra-host-cursor] *{cursor:${commentCursor}!important}`;
 
 /** A rect in the frame's viewport. */
 export interface FrameRect {

@@ -1,9 +1,11 @@
+import type { StructureNode } from '@holistics/anfra-sdk/common';
+import { Cable, Database, GitFork, LayoutDashboard, ListTree } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { wiringChecks } from '../model/checks';
-import { countProblems, entityKey, firstEntityUnder } from '../model/format';
+import { countProblems, entityKey, firstEntityUnder, keysUnder } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
@@ -12,6 +14,7 @@ import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
+import { type LineageFetch, type LineagePick, LineageTab, type LineageView } from './lineage/lineage-tab';
 import { OverviewTab } from './overview/overview-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
@@ -36,6 +39,16 @@ interface Props {
  * A devtool over the running Data App: its health at a glance, the page's parts as its markup
  * declares them, and every app's queries, controls and selection. See SPEC.md.
  */
+/** The structure key of the query a name and app point at, if the page draws it. */
+function queryKeyOf(nodes: StructureNode[], app: number, name: string): string | undefined {
+  for (const n of nodes) {
+    if (n.kind === 'query' && (n.app ?? 0) === app && n.name === name) return n.key;
+    const found = queryKeyOf(n.children, app, name);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking, onClose }: Props) {
   const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot);
   const apps = snapshot?.apps;
@@ -56,6 +69,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
+  const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set() });
+  const [lineage, setLineage] = useState<LineageFetch>();
+  const [lineagePick, setLineagePick] = useState<LineagePick>();
 
   const handledPick = useRef(picked?.nonce);
 
@@ -66,6 +82,12 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     } else if ('entity' in target) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });
       onTab('data');
+    } else if ('lineage' in target) {
+      const key = queryKeyOf(structure?.nodes ?? [], target.app, target.name);
+      if (key && structure) {
+        setLineagePick({ keys: keysUnder(structure.nodes, key), nonce: Date.now() });
+      }
+      onTab('lineage');
     } else if ('check' in target) {
       setCheck({ ...target, nonce: Date.now() });
       onTab('wiring');
@@ -75,14 +97,20 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     }
   };
 
-  // A pick lands on its node in Structure, or with Shift on the first query or control in it, in Data.
+  // A pick lands on its node in Structure; with Shift, or from the Data tab, on the first query or
+  // control in it, in Data; from the Lineage tab, on the first of its nodes the canvas draws.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
   useEffect(() => {
     if (!picked) return setNode(undefined);
     // A pick already handled before this mount (the panel was closed and reopened) isn't a new one.
     if (picked.nonce === handledPick.current) return;
     handledPick.current = picked.nonce;
-    const entity = picked.inData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
+    if (tab === 'lineage' && !picked.inData && structure) {
+      setLineagePick({ keys: keysUnder(structure.nodes, picked.key), nonce: picked.nonce });
+      return;
+    }
+    const toData = picked.inData || tab === 'data';
+    const entity = toData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
     if (entity) reveal(entity);
     else {
       setNode(picked);
@@ -118,18 +146,28 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           onClose={onClose}
         />
         {/* The active tab's underline hangs a pixel below the list; room for it keeps a vertical scrollbar away. */}
-        <div className="shrink-0 overflow-x-auto overflow-y-hidden border-b px-2 pt-1.5 pb-px">
+        <div className="shrink-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b px-2 pt-1.5 pb-px">
           <TabsList variant="line">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">
+              <LayoutDashboard />
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="structure">
+              <ListTree />
               Structure
               <Count n={problems} />
             </TabsTrigger>
             <TabsTrigger value="data">
+              <Database />
               Data
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
+            <TabsTrigger value="lineage">
+              <GitFork />
+              Lineage
+            </TabsTrigger>
             <TabsTrigger value="wiring">
+              <Cable />
               Wiring
               <Count n={warnings} />
             </TabsTrigger>
@@ -170,6 +208,11 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
                   onHighlight={source.highlight}
                   onLocate={(key) => source.locate({ node: key })}
                   onDownload={source.download}
+                  onShowInLineage={(n) => {
+                    if (!structure) return;
+                    setLineagePick({ keys: keysUnder(structure.nodes, n.key), nonce: Date.now() });
+                    onTab('lineage');
+                  }}
                   onShowInData={(n) => {
                     if (n.kind === 'query' || n.kind === 'control') {
                       reveal({ entity: n.kind, app: n.app ?? 0, name: n.name ?? '' });
@@ -190,6 +233,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               view={view}
               onView={setView}
               canViewSql={source.env.reader.permissions.canViewGeneratedSql}
+              metricDocs={source.env.metricDocs}
               expansion={expansion}
               onExpansion={setExpansion}
               focus={focus}
@@ -198,6 +242,22 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               onReveal={reveal}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="lineage" className="min-h-0">
+          <LineageTab
+            apps={apps}
+            structure={structure}
+            env={source.env}
+            view={lineageView}
+            onView={setLineageView}
+            fetched={lineage}
+            onFetched={setLineage}
+            onLocate={source.locate}
+            onHighlight={source.highlight}
+            onReveal={reveal}
+            pick={lineagePick}
+          />
         </TabsContent>
 
         <TabsContent value="wiring" className="min-h-0">
