@@ -24,7 +24,7 @@ import {
   clickMessage,
   type DatasetDescriptor,
   type FrameClick,
-  datasets as loadDatasets,
+  loadCatalog,
   openPaletteMessage,
   type RenderFormat,
   type RenderRequest,
@@ -42,6 +42,7 @@ import {
   createRequestLog,
   Inspector,
   type InspectorTab,
+  type MetricDocs,
   type NodeRequest,
 } from '@/inspector';
 import {
@@ -69,6 +70,7 @@ export function App() {
   const [entries, setEntries] = useState<Entry[]>();
   const [redirects, setRedirects] = useState<Redirects>({});
   const [datasets, setDatasets] = useState<Record<string, DatasetDescriptor>>();
+  const [metricDocs, setMetricDocs] = useState<MetricDocs>();
   const [error, setError] = useState<string>();
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
   // Bumped to remount the Data App: the reload button, and live reload.
@@ -108,8 +110,12 @@ export function App() {
   );
   const refreshDatasets = useCallback(
     () =>
-      loadDatasets().then(setDatasets, (err: Error) =>
-        setError(`Couldn't load the datasets: ${err.message}`),
+      loadCatalog().then(
+        (loaded) => {
+          setDatasets(loaded.datasets);
+          setMetricDocs(loaded.metricDocs);
+        },
+        (err: Error) => setError(`Couldn't load the datasets: ${err.message}`),
       ),
     [],
   );
@@ -146,7 +152,7 @@ export function App() {
   function mountInspector() {
     const requests = createRequestLog();
     const store = createInspectorStore({
-      env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {} },
+      env: { hostName: 'anfra demo', path, sdkVersion, reader, datasets: datasets ?? {}, metricDocs },
       requests: requests.log,
       // Comment holds the outline until its card closes; ignore the tree's hover and clear meanwhile.
       highlight: (node) => {

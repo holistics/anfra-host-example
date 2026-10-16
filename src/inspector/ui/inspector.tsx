@@ -190,6 +190,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               view={view}
               onView={setView}
               canViewSql={source.env.reader.permissions.canViewGeneratedSql}
+              metricDocs={source.env.metricDocs}
               expansion={expansion}
               onExpansion={setExpansion}
               focus={focus}
