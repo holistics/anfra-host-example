@@ -58,7 +58,10 @@ There is no modal or backdrop.
 **Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
 Picking a node selects and reveals it in the tree. **Shift-click** instead opens the first query or
 control at or below the picked node (the node itself, if it is one) in Data, switching to that tab;
-a node with none lands in Structure as usual. The frame's pick report doesn't carry modifier keys,
+a node with none lands in Structure as usual.
+From the **Data** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
+Lineage: it pins the first node of the picked subtree that the canvas draws (a block or query) and
+centers it; if a filter or focus hides them all, the pick is ignored. Other tabs switch to Structure. The frame's pick report doesn't carry modifier keys,
 so the host's injected script posts each click's Shift state just before it. The frame leaves pick
 mode after a pick or on Escape.
 
@@ -84,7 +87,7 @@ The inspector state also resets when the path changes or the repo revision chang
 - **Tabs**: Overview · Structure · Data · Lineage · Wiring, in that order. A tab shows a badge with its issue
   count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Wiring counts checks at warn or error level.
   Data counts failed queries.
-- **Default tab**: Overview. Pick always switches to Structure.
+- **Default tab**: Overview. Pick switches to Structure, except from Data and Lineage.
   Opening the panel again keeps the tab it was closed on.
 - **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
   or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is

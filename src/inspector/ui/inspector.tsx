@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { wiringChecks } from '../model/checks';
-import { countProblems, entityKey, firstEntityUnder } from '../model/format';
+import { countProblems, entityKey, firstEntityUnder, keysUnder } from '../model/format';
 import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
@@ -13,7 +13,7 @@ import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
-import { type LineageFetch, LineageTab, type LineageView } from './lineage/lineage-tab';
+import { type LineageFetch, type LineagePick, LineageTab, type LineageView } from './lineage/lineage-tab';
 import { OverviewTab } from './overview/overview-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
@@ -60,6 +60,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
   const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set() });
   const [lineage, setLineage] = useState<LineageFetch>();
+  const [lineagePick, setLineagePick] = useState<LineagePick>();
 
   const handledPick = useRef(picked?.nonce);
 
@@ -79,14 +80,20 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     }
   };
 
-  // A pick lands on its node in Structure, or with Shift on the first query or control in it, in Data.
+  // A pick lands on its node in Structure; with Shift, or from the Data tab, on the first query or
+  // control in it, in Data; from the Lineage tab, on the first of its nodes the canvas draws.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
   useEffect(() => {
     if (!picked) return setNode(undefined);
     // A pick already handled before this mount (the panel was closed and reopened) isn't a new one.
     if (picked.nonce === handledPick.current) return;
     handledPick.current = picked.nonce;
-    const entity = picked.inData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
+    if (tab === 'lineage' && !picked.inData && structure) {
+      setLineagePick({ keys: keysUnder(structure.nodes, picked.key), nonce: picked.nonce });
+      return;
+    }
+    const toData = picked.inData || tab === 'data';
+    const entity = toData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
     if (entity) reveal(entity);
     else {
       setNode(picked);
@@ -227,6 +234,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
             onLocate={source.locate}
             onHighlight={source.highlight}
             onReveal={reveal}
+            pick={lineagePick}
           />
         </TabsContent>
 
