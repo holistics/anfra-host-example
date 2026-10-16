@@ -22,6 +22,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   clickMessage,
+  commentCursor,
   type DatasetDescriptor,
   type FrameClick,
   lineageSource,
@@ -352,6 +353,15 @@ export function App() {
     setComment({ ...found, rect, tracked });
     return true;
   };
+  // The comment cursor on the page itself too, so it shows the moment Ask AI is clicked, not only
+  // once the pointer reaches the frame.
+  useEffect(() => {
+    if (pickFor !== 'comment') return;
+    const style = document.createElement('style');
+    style.textContent = `*{cursor:${commentCursor}!important}`;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [pickFor]);
   // A pick can land before the frame's first snapshot; wait for one, then give up.
   // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
   useEffect(() => {
