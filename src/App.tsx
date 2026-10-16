@@ -475,7 +475,7 @@ export function App() {
                   disabled={!app}
                   active={commenting}
                   onClick={toggleCommenting}
-                  text="Comment"
+                  text="Ask AI"
                   shortcut="C"
                 >
                   <MessageCircle />

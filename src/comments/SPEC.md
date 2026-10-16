@@ -34,7 +34,7 @@ Status: **built**.
 
 ## 3. Layout and entry points
 
-**Host toolbar**: a **Comment** button (`MessageCircle` icon, text "Comment"), left of Prompt (then
+**Host toolbar**: an **Ask AI** button (`MessageCircle` icon, text "Ask AI"), left of Prompt (then
 Inspect). It toggles comment mode and shows as pressed while picking or while a card is open.
 - Tooltip: "Comment on an element" (or "Stop commenting" while on), with the shortcut.
 - Shortcut: **Alt+Shift+C**, on the page or forwarded from the frame like Alt+Shift+P and
