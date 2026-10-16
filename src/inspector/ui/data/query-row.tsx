@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronRight,
   CircleHelp,
+  GitFork,
   Hash,
   ListFilter,
   type LucideIcon,
@@ -116,6 +117,31 @@ export function QueryRow({
         query.debug?.fromCache && <span className="shrink-0 text-xs text-muted-foreground">cache</span>
       )}
       <span className="flex-1" />
+      {/* A span, not a button: the summary is already one. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* biome-ignore lint/a11y/useSemanticElements: a <button> can't sit inside the row's own button */}
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Show in Lineage"
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onReveal({ lineage: 'query', app: props.app, name: props.name });
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              onReveal({ lineage: 'query', app: props.app, name: props.name });
+            }}
+          >
+            <GitFork className="size-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">Show in Lineage</TooltipContent>
+      </Tooltip>
       {/* An empty slot when nothing narrows the query, so the icons after it stay in line. */}
       {activeFilters.length === 0 ? (
         <span className="w-9 shrink-0" aria-hidden />

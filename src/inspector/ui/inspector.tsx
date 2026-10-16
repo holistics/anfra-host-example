@@ -1,3 +1,4 @@
+import type { StructureNode } from '@holistics/anfra-sdk/common';
 import { Cable, Database, GitFork, LayoutDashboard, ListTree } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,16 @@ interface Props {
  * A devtool over the running Data App: its health at a glance, the page's parts as its markup
  * declares them, and every app's queries, controls and selection. See SPEC.md.
  */
+/** The structure key of the query a name and app point at, if the page draws it. */
+function queryKeyOf(nodes: StructureNode[], app: number, name: string): string | undefined {
+  for (const n of nodes) {
+    if (n.kind === 'query' && (n.app ?? 0) === app && n.name === name) return n.key;
+    const found = queryKeyOf(n.children, app, name);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking, onClose }: Props) {
   const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot);
   const apps = snapshot?.apps;
@@ -71,6 +82,12 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     } else if ('entity' in target) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });
       onTab('data');
+    } else if ('lineage' in target) {
+      const key = queryKeyOf(structure?.nodes ?? [], target.app, target.name);
+      if (key && structure) {
+        setLineagePick({ keys: keysUnder(structure.nodes, key), nonce: Date.now() });
+      }
+      onTab('lineage');
     } else if ('check' in target) {
       setCheck({ ...target, nonce: Date.now() });
       onTab('wiring');
@@ -191,6 +208,11 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
                   onHighlight={source.highlight}
                   onLocate={(key) => source.locate({ node: key })}
                   onDownload={source.download}
+                  onShowInLineage={(n) => {
+                    if (!structure) return;
+                    setLineagePick({ keys: keysUnder(structure.nodes, n.key), nonce: Date.now() });
+                    onTab('lineage');
+                  }}
                   onShowInData={(n) => {
                     if (n.kind === 'query' || n.kind === 'control') {
                       reveal({ entity: n.kind, app: n.app ?? 0, name: n.name ?? '' });
