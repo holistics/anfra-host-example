@@ -172,7 +172,8 @@ export const cursorMessage = 'anfra-host:cursor';
 /** The comment cursor: an arrow, its tip the hotspot, with a speech bubble at its lower right. */
 const commentCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 2v18.5l4.6-4.4 3.2 7.2 3-1.3-3.2-7.1h6.2z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><g transform="translate(13.5 12.5) scale(0.78)"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" fill="#4f46e5" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></svg>`;
 /** Every element's cursor while the frame's root carries `data-anfra-host-cursor`; crosshair where SVG cursors aren't drawn. */
-const commentCursorCss = `html[data-anfra-host-cursor],html[data-anfra-host-cursor] *{cursor:url("data:image/svg+xml,${encodeURIComponent(commentCursorSvg)}") 3 2,crosshair!important}`;
+export const commentCursor = `url("data:image/svg+xml,${encodeURIComponent(commentCursorSvg)}") 3 2,crosshair`;
+const commentCursorCss = `html[data-anfra-host-cursor],html[data-anfra-host-cursor] *{cursor:${commentCursor}!important}`;
 
 /** A rect in the frame's viewport. */
 export interface FrameRect {
