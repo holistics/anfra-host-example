@@ -35,6 +35,8 @@ export type RevealTarget =
     }
   | { entity: 'query' | 'control'; app: number; name: string }
   | { check: number; app: number }
+  /** Pins a query in the Lineage tab. */
+  | { lineage: 'query'; app: number; name: string }
   | { node: string };
 
 /** What the host knows about the frame it mounted, beyond what the frame posts. */
