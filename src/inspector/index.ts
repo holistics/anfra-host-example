@@ -10,7 +10,7 @@ export {
   type RequestLog,
   type RequestRecorder,
 } from './model/requests';
-export type { InspectorEnv, InspectorTab, NodeRequest } from './model/types';
+export type { InspectorEnv, InspectorTab, MetricDoc, MetricDocs, NodeRequest } from './model/types';
 export {
   createInspectorStore,
   type InspectorSnapshot,

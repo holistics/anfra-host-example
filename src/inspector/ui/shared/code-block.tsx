@@ -39,6 +39,24 @@ export function CodeBlock<T extends string>({
   // The reader's tab, or the first with something in it.
   const shown = sources[tab].code ? tab : (tabs.find((t) => sources[t].code) ?? tab);
   const { label, code, lang, empty } = sources[shown];
+  const body = code ? (
+    <pre
+      className={cn('max-h-56 overflow-auto bg-code px-4 py-3 font-mono text-xs leading-relaxed', className)}
+    >
+      <Highlighted code={code} lang={lang} />
+    </pre>
+  ) : (
+    <p className="bg-code px-4 py-3 text-xs text-muted-foreground">{empty}</p>
+  );
+  // One piece of code has nothing to pick: no tabs, the copy button over the code's corner.
+  if (tabs.length === 1) {
+    return (
+      <div className="relative overflow-hidden rounded-md border bg-background">
+        {body}
+        {code && <CopyButton text={code} label={`Copy the ${label}`} className="absolute top-1 right-1" />}
+      </div>
+    );
+  }
   return (
     <div className="overflow-hidden rounded-md border bg-background">
       <div className="flex items-center border-b px-1">
@@ -65,18 +83,7 @@ export function CodeBlock<T extends string>({
         </Tabs>
         {code && <CopyButton text={code} label={`Copy the ${label}`} className="ml-auto" />}
       </div>
-      {code ? (
-        <pre
-          className={cn(
-            'max-h-56 overflow-auto bg-code px-4 py-3 font-mono text-xs leading-relaxed',
-            className,
-          )}
-        >
-          <Highlighted code={code} lang={lang} />
-        </pre>
-      ) : (
-        <p className="bg-code px-4 py-3 text-xs text-muted-foreground">{empty}</p>
-      )}
+      {body}
     </div>
   );
 }
