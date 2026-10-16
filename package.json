@@ -22,7 +22,7 @@
     "format": "biome check --write ."
   },
   "dependencies": {
-    "@holistics/anfra-sdk": "0.8.0",
+    "@holistics/anfra-sdk": "0.10.0",
     "@hono/node-server": "^2.1.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
