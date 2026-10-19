@@ -110,7 +110,10 @@ describe('lineage', () => {
   test('a control links to the queries it is mapped to, carrying their fields', () => {
     const withControl = {
       ...app,
-      controls: { status: { condition: { values: ['paid'] } }, other: { condition: undefined } },
+      controls: {
+        status: { condition: { values: ['paid'] }, appliedCondition: { values: ['paid'] }, isDirty: false },
+        other: { condition: undefined },
+      },
       declaration: {
         ...app.declaration,
         mappings: [
@@ -134,6 +137,55 @@ describe('lineage', () => {
     assert.deepEqual(g.edges.find((e) => e.id === 'control:0/status->query:0/orders')?.fields, [
       'metric:ecommerce.order_count',
     ]);
+  });
+
+  describe('a control follows the applied condition', () => {
+    const build = (control: Record<string, unknown>) => {
+      const withControl = {
+        ...app,
+        controls: { status: control },
+        declaration: {
+          ...app.declaration,
+          mappings: [
+            {
+              kind: 'control',
+              from: { kind: 'filter', name: 'status' },
+              to: { name: 'orders' },
+              field: 'orders.status',
+            },
+          ],
+        },
+      } as unknown as InspectedApp;
+      const g = buildLineageGraph([withControl], structure, undefined, undefined);
+      return {
+        card: g.nodes.find((n) => n.id === 'control:0/status'),
+        edge: g.edges.find((e) => e.id === 'control:0/status->query:0/orders'),
+      };
+    };
+    const paid = { values: ['paid'] };
+
+    test('typed but not applied: not set, with the typed value pending', () => {
+      const { card, edge } = build({ condition: paid, appliedCondition: undefined, isDirty: true });
+      assert.equal(card?.isSet, false);
+      assert.equal(card?.value, 'not set');
+      assert.equal(edge?.active, false);
+      assert.match(card?.pending ?? '', /paid/);
+    });
+
+    test('applied then cleared: still set, with the clearing pending', () => {
+      const { card, edge } = build({ condition: undefined, appliedCondition: paid, isDirty: true });
+      assert.equal(card?.isSet, true);
+      assert.equal(edge?.active, true);
+      assert.match(card?.value ?? '', /paid/);
+      assert.equal(card?.pending, 'not set');
+    });
+
+    test('applied and clean: set, nothing pending', () => {
+      const { card, edge } = build({ condition: paid, appliedCondition: paid, isDirty: false });
+      assert.equal(card?.isSet, true);
+      assert.equal(edge?.active, true);
+      assert.equal(card?.pending, undefined);
+    });
   });
 
   test('a cross-filter links two queries, active while its source is selected', () => {
