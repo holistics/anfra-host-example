@@ -298,7 +298,7 @@ with cross-filters linking one query to another.
   is told apart from the purple edges.
 - **Cross-filters**: a `crossFilter` mapping whose two queries are both in the graph is an edge
   from the source query to the target query, carrying the target's fields. Like a control's edge
-  it means "filters". It is **active** (sky blue) while the app's applied selection is in the
+  it means "filters". It is **active** (orange, as a control with a value) while the app's applied selection is in the
   source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (light gray, as a
   control that is not set) otherwise, including while a selection is only pending. A cross-filter from a query
   to itself is drawn too. The layout ignores these edges, so the queries stay in the one
@@ -338,7 +338,7 @@ with cross-filters linking one query to another.
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
 - **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
-  and the orange, blue and gray edges mean.
+  and the orange and gray edges mean.
 
 ## 5. Structure
 

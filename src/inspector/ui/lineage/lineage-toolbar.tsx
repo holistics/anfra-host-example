@@ -93,7 +93,7 @@ export function LineageToolbar({
                   : 'border-dashed text-muted-foreground opacity-60',
               )}
             >
-              <Funnel className={cn('size-3', crossFilters ? 'text-sky-500' : 'text-muted-foreground')} />
+              <Funnel className={cn('size-3', crossFilters ? 'text-orange-500' : 'text-muted-foreground')} />
               Cross-filters
               <span className="text-muted-foreground tabular-nums">{crossFilterCount}</span>
             </button>
@@ -184,7 +184,7 @@ function EdgeLegend() {
           The control is mapped to the query but has no value yet, so it changes nothing for now.
         </LegendRow>
         <LegendRow
-          line={<line x1="0" y1="6" x2="40" y2="6" stroke="#38bdf8" strokeWidth="1.5" />}
+          line={<line x1="0" y1="6" x2="40" y2="6" stroke="#fb923c" strokeWidth="1.5" />}
           title="Cross-filter, active"
         >
           A selection in the source query is applied, so it filters the target query's numbers.
