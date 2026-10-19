@@ -23,12 +23,12 @@ import {
 import { KindBadge, kindLabels } from './lineage-node';
 
 interface Props {
-  /** How many of each kind the whole graph has: a kind it has none of gets no chip. */
+  /** How many of each kind the whole graph has: a kind it has none of gets no row in the Show menu. */
   counts: Partial<Record<LineageKind, number>>;
   hidden: ReadonlySet<LineageKind>;
   onHidden: (hidden: Set<LineageKind>) => void;
   crossFilters: boolean;
-  /** How many cross-filters the whole graph has: with none, no chip. */
+  /** How many cross-filters the whole graph has: with none, no row in the Show menu. */
   crossFilterCount: number;
   onCrossFilters: (shown: boolean) => void;
   onPreset: (preset: LineagePreset) => void;
