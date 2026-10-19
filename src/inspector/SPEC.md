@@ -34,10 +34,10 @@ Status: **built**, except what is marked _(not built yet)_.
 | **Mapping** | A control → query link on a field, optionally with an aggregation. |
 | **Cross-filter** | A query → query link: a selection in the source query filters the target. |
 | **Dirty** | Re-running would give something new: a query whose inputs changed, or a control whose condition differs from the applied one. At app level this is `hasChanges`. |
-| **Snapshot** | One `onInspect(apps: InspectedApp[], structure: InspectedStructure)` post from the frame. It has no rows. |
+| **Snapshot** | One `inspect.snapshot` event from the frame (`{ apps: InspectedApp[], structure: InspectedStructure }`), posted while the host watches. It has no rows. |
 | **Structure** | The tree of elements the markup marks with `data-anfra-container`, `data-anfra-block`, `data-anfra-query` and `data-anfra-control`. |
 | **Handle** | The attribute that marks a node, e.g. `data-anfra-query="trend"`. Copied so an agent can find the node. |
-| **Request** | One `submitQuery` call the host's backend answered, recorded by the inspector. |
+| **Request** | One call the frame made through the host's plugins (`core.submitQuery`, `export.query`, `lineage.trace`, …), recorded by the inspector's middleware. |
 | **Issue** | Something wrong: a failed query, a structure problem, or a wiring check at warn or error level. |
 | **Trust level** | 1–3: how far an app's numbers trace back to the semantic layer (§4.3). |
 
@@ -306,7 +306,8 @@ Rules:
 - Nothing outside `src/inspector/` imports from inside it except through `index.ts`.
 - Inside the folder, imports are relative. The only `@/` imports are the host's shadcn primitives
   (`@/components/ui/*`) and `cn` (`@/lib/utils`), so the folder can move as is.
-- SDK types come from `@holistics/anfra-sdk/common`, never from the host's `data-app.ts`.
+- SDK types come from `@holistics/anfra-sdk/common` (a call's `CallContext` from `@holistics/anfra-sdk/host`),
+  never from the host's `data-app.ts`.
 
 ### 5.2 The host contract
 
@@ -324,10 +325,11 @@ interface InspectorSource {
 /** A log for one frame, made before the frame so its first requests are in it. */
 function createRequestLog(options?: { limit?: number; previewRows?: number }): {
   log: RequestLog;
-  record(backend: Backend): Backend;   // give the frame this backend in place of yours
+  // A middleware's handle: give it the calls about this frame (a middleware matching `*`).
+  record(request: unknown, context: CallContext, next: (request?: unknown) => Promise<unknown>): Promise<unknown>;
 };
 
-/** A source plus `publish`, to pass as the frame's onInspect. */
+/** A source plus `publish`, fed by the frame's `inspect.snapshot` events. */
 function createInspectorStore(frame: { env; requests; highlight; locate }): {
   source: InspectorSource;
   publish(apps: InspectedApp[], structure: InspectedStructure): void;
@@ -342,21 +344,29 @@ function Inspector(props: {
 ```
 
 In this host, `App.tsx` makes a request log and a store per mounted frame (per path, revision and
-datasets). It passes `record` down to `mount()` in `src/data-app.ts`, which wraps `coreApiBackend`
-with it, and passes `publish` as `onInspect`. It renders `<Inspector>` in its resizable panel.
-The toolbar, pick mode and the panel slot stay host code.
+datasets). It passes `record` down to `mount()` in `src/data-app.ts`, whose one middleware on the
+plugin host hands each call to the recorder of the frame it is about, and passes `publish` as
+`onInspect`, which `mount()` feeds from `inspect.snapshot`. It renders `<Inspector>` in its
+resizable panel. The toolbar, pick mode and the panel slot stay host code.
 
 ### 5.3 Request log
 
-- Each `submitQuery` records an entry when it is sent (`pending`) and updates it when it settles:
-  `{ id, method, at, durationMs, status: 'pending' | 'ok' | 'error' | 'aborted', dataset, aql, input, page, pageSize, bustCache, fromCache, numRows, columns, preview, error }`.
-  Each `fieldSuggestions` call is recorded too, with its field, what was typed and how many values
-  came back.
+- Every call the frame starts records an entry when it is sent (`pending`) and updates it when it
+  settles: `{ id, call, caller, trace, at, durationMs, status: 'pending' | 'ok' | 'error' | 'aborted', … }`.
+  `call` is its full name; `caller` is `frame`, or `plugin <name>` for a call a plugin made for the
+  frame; `trace` is the middleware it passed before the log. The host page's own calls (highlight,
+  locate, pick) are not recorded.
+  - `core.submitQuery`: `dataset, aql, input, page, pageSize, bustCache, fromCache, numRows, columns, preview`.
+  - `core.fieldSuggestions`: its field, what was typed and how many values came back.
+  - `export.query`: its dataset, AQL, input, format and file name, and the rows exported.
+  - `lineage.trace`: the fields traced (`parent.child`), and how many answered.
+  - `render.save`: the picture's file name, never the file.
+  - Any other call: its request as sent.
 - **Attribution**: a request carries the *declared* AQL; filters and sorts are in `input`. So a
   request belongs to the queries whose `declaration.queries[name]` has the same `dataset` and
   `aql`. This is checked across every app in the frame:
   - If more than one query matches, the request is listed under each one, tagged "shared".
-  - If none match (field suggestions among them), it goes under Other requests.
+  - If none match (field suggestions, lineage and pictures among them), it goes under Other requests.
 - **Retention**: the last 200 requests per frame, in memory only. A remount starts a new log.
   Rows beyond the 20-row preview are never kept.
 - An aborted request (the SDK cancelled it) is logged as `aborted`, not as an error.
@@ -364,12 +374,12 @@ The toolbar, pick mode and the panel slot stay host code.
 ### 5.4 Data flow
 
 ```
-frame ──postMessage──▶ mountDataApp ──onInspect──▶ store.publish ──▶ source.getSnapshot ─┐
-frame ──anfra:request─▶ record(backend) ──▶ RequestLog ────────────────────────────────────┼─▶ Inspector ─▶ model ─▶ tabs
+frame ──inspect.snapshot─▶ mount() ──onInspect──▶ store.publish ──▶ source.getSnapshot ─┐
+frame ──plugin call──▶ middleware ──record──▶ RequestLog ──────────────────────────────────┼─▶ Inspector ─▶ model ─▶ tabs
                             │                                                              │   (useSyncExternalStore)
-             coreApiBackend ▼                                                              │
-                    POST /api/core.query                                                   │
-tabs ──highlight/locate──▶ source ──▶ DataApp.highlight / locate ──────────────────────────┘
+              plugins ▼ (core, export, lineage, …)                                         │
+                    POST /api/core.query, …                                                │
+tabs ──highlight/locate──▶ source ──▶ inspect.highlight / inspect.locate ──────────────────┘
 ```
 
 `Inspector` subscribes to the snapshot and the log with `useSyncExternalStore`, and derives
@@ -383,11 +393,13 @@ What the next host needs:
    `collapsible`, `tabs`, `tooltip`, plus `cn` from `@/lib/utils`. If its paths differ, change
    the imports in `ui/` (one search-and-replace on `@/components/ui`).
 2. Copy `src/inspector/`.
-3. Per mounted frame: `createRequestLog()`, wrap the frame's backend with its `record`, then
-   `createInspectorStore({ env, requests: log, highlight, locate })` and pass `publish` as the
-   frame's `onInspect`. This host's `App.tsx` does it in about 15 lines.
-4. Render `<Inspector source={…} … />` wherever it docks panels, and call `setInspecting(true)`
-   on the frame while it shows.
+3. Install the SDK's `inspectPlugin()` on the page's plugin host. Per mounted frame:
+   `createRequestLog()`, and hand its `record` the frame's calls from a middleware matching `*`;
+   then `createInspectorStore({ env, requests: log, highlight, locate })`, feed `publish` from the
+   frame's `inspect.snapshot` events, and send `highlight` and `locate` as `inspect.highlight` and
+   `inspect.locate`. This host's `App.tsx` and `src/data-app.ts` do it in about 40 lines.
+4. Render `<Inspector source={…} … />` wherever it docks panels, and call `inspect.watch` with
+   `true` on the frame while it shows.
 
 If the inspector ever needs to run outside React, `model/` already stands alone. Only `ui/` would
 need rewriting.

@@ -1,22 +1,39 @@
-// The request log: every call the frame's queries make to the host's backend, recorded host-side
-// with what the snapshots leave out, how long it took and a few of its rows. See SPEC.md §5.3.
+// The request log: every call the frame makes through the host's plugins (its queries, exports,
+// lineage, renderings), recorded host-side with what the snapshots leave out, how long it took and a
+// few of its rows. See SPEC.md §5.3.
 import type {
-  Backend,
+  BackendExportRequest,
+  BackendLineageRequest,
   BackendQueryRequest,
+  BackendQueryResult,
+  ConditionValue,
   ExportFormatOptions,
+  ExportResult,
+  FieldSuggestionsRequest,
   InspectedApp,
+  LineageResult,
   QueryInput,
 } from '@holistics/anfra-sdk/common';
+import type { CallContext } from '@holistics/anfra-sdk/host';
+
+/** The calls the log knows the shape of; any other is logged by its name, with its request as is. */
+export type KnownCall = 'core.submitQuery' | 'core.fieldSuggestions' | 'export.query' | 'lineage.trace';
 
 export interface RequestEntry {
   id: number;
-  method: 'submitQuery' | 'fieldSuggestions' | 'exportQuery';
+  /** The call's full name, `<plugin>.<name>`: `core.submitQuery` for a query. */
+  call: KnownCall | (string & {});
+  /** Who made it: `frame`, or `plugin <name>` for a plugin's call made for the frame. */
+  caller: string;
+  /** The middleware it passed through before this log, by name, outermost first. */
+  trace?: string[];
   /** When it was sent, as an ISO time. */
   at: string;
   /** Absent while pending. */
   durationMs?: number;
   status: 'pending' | 'ok' | 'error' | 'aborted';
-  dataset: string;
+  /** The dataset it queried; absent for a call that queries none. */
+  dataset?: string;
   /** The query's declared AQL; filters, sorts and drills are in `input`. */
   aql?: string;
   input?: QueryInput;
@@ -32,6 +49,10 @@ export interface RequestEntry {
   /** For a field suggestion: `model.field` and what was typed. */
   field?: string;
   q?: string;
+  /** For lineage: the fields traced, as `parent.child`. */
+  targets?: string[];
+  /** For a call the log doesn't know: its request, as the frame sent it. */
+  request?: unknown;
   fromCache?: boolean;
   numRows?: number;
   columns?: string[];
@@ -53,15 +74,92 @@ export interface RecordOptions {
   previewRows?: number;
 }
 
+/** A middleware's `handle`: records the call, then passes it on unchanged. */
+export type RecordCall = (
+  request: unknown,
+  context: CallContext,
+  next: (request?: unknown) => Promise<unknown>,
+) => Promise<unknown>;
+
 /** A log, and what fills it. */
 export interface RequestRecorder {
   log: RequestLog;
   /**
-   * `backend`, recording every call it answers. Pass the result to the frame in place of the one
-   * wrapped; the log fills whether or not anyone is inspecting.
+   * Records one of the frame's calls: hand it, as a middleware matching `*`, the calls about this
+   * frame. The host page's own calls (the panel's highlight and locate) are passed on unrecorded.
+   * The log fills whether or not anyone is inspecting.
    */
-  record(backend: Backend): Backend;
+  record: RecordCall;
 }
+
+/** What the log keeps of a request, by call: what it asked. */
+function describe(call: string, request: unknown): Partial<RequestEntry> {
+  switch (call) {
+    case 'core.submitQuery': {
+      const r = request as BackendQueryRequest;
+      return {
+        dataset: r.dataset,
+        aql: r.aql,
+        input: r.input,
+        page: r.page,
+        pageSize: r.pageSize,
+        timezone: r.timezone,
+        bustCache: r.bustCache,
+      };
+    }
+    case 'core.fieldSuggestions': {
+      const r = request as FieldSuggestionsRequest;
+      return { dataset: r.dataset, field: `${r.model}.${r.field}`, q: r.q };
+    }
+    case 'export.query': {
+      const r = request as BackendExportRequest;
+      return {
+        dataset: r.dataset,
+        aql: r.aql,
+        input: r.input,
+        timezone: r.timezone,
+        format: r.format,
+        formatOptions: r.formatOptions,
+        filename: r.filename,
+      };
+    }
+    case 'lineage.trace': {
+      const r = request as BackendLineageRequest;
+      return { targets: r.targets.map((t) => `${t.parent}.${t.child}`) };
+    }
+    case 'render.save':
+      // Not the picture itself: a file the frame made, as big as it is.
+      return { filename: (request as { filename?: string } | null)?.filename };
+    default:
+      return { request };
+  }
+}
+
+/** What the log keeps of an answer, by call: how many rows, and the first of them. */
+function summarize(call: string, result: unknown, previewRows: number): Partial<RequestEntry> {
+  switch (call) {
+    case 'core.submitQuery': {
+      const r = result as BackendQueryResult;
+      return {
+        fromCache: r.debug?.fromCache,
+        numRows: r.meta?.numRows ?? r.values.length,
+        columns: r.columns.map((column) => column.name),
+        preview: r.values.slice(0, previewRows),
+      };
+    }
+    case 'core.fieldSuggestions':
+      return { numRows: (result as ConditionValue[]).length };
+    case 'export.query':
+      return { numRows: (result as ExportResult).rowCount };
+    case 'lineage.trace':
+      return { numRows: (result as LineageResult).results.length };
+    default:
+      return {};
+  }
+}
+
+const callerOf = (context: CallContext) =>
+  context.caller.kind === 'plugin' ? `plugin ${context.caller.plugin}` : context.caller.kind;
 
 /** A log for one mounted frame. Make it before the frame, so its first requests are in it. */
 export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOptions = {}): RequestRecorder {
@@ -87,94 +185,49 @@ export function createRequestLog({ limit = 200, previewRows = 20 }: RecordOption
     changed();
   };
 
-  async function track<T>(
-    entry: Omit<RequestEntry, 'id' | 'at' | 'status'>,
-    signal: AbortSignal,
-    call: () => Promise<T>,
-    summary: (result: T) => Partial<RequestEntry>,
-  ): Promise<T> {
-    const id = nextId++;
-    const started = performance.now();
-    add({ ...entry, id, at: new Date().toISOString(), status: 'pending' });
-    const durationMs = () => Math.round(performance.now() - started);
-    let result: T;
-    try {
-      result = await call();
-    } catch (err) {
-      settle(id, {
-        status: signal.aborted ? 'aborted' : 'error',
-        durationMs: durationMs(),
-        error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      });
-      throw err;
-    }
-    // The result is the frame's whatever the log makes of it: one it can't summarize is still ok.
-    let details: Partial<RequestEntry> = {};
-    try {
-      details = summary(result);
-    } catch (err) {
-      console.error(err);
-    }
-    settle(id, { status: 'ok', durationMs: durationMs(), ...details });
-    return result;
-  }
-
   return {
-    record: (backend) => ({
-      // Only when the wrapped backend can export: without it, the SDK tells the app it can't.
-      ...(backend.exportQuery && {
-        exportQuery: (request, signal) =>
-          track(
-            {
-              method: 'exportQuery',
-              dataset: request.dataset,
-              aql: request.aql,
-              input: request.input,
-              timezone: request.timezone,
-              format: request.format,
-              formatOptions: request.formatOptions,
-              filename: request.filename,
-            },
-            signal,
-            // biome-ignore lint/style/noNonNullAssertion: checked above
-            () => backend.exportQuery!(request, signal),
-            (result) => ({ numRows: result.rowCount }),
-          ),
-      }),
-      submitQuery: (request, signal) =>
-        track(
-          {
-            method: 'submitQuery',
-            dataset: request.dataset,
-            aql: request.aql,
-            input: request.input,
-            page: request.page,
-            pageSize: request.pageSize,
-            timezone: request.timezone,
-            bustCache: request.bustCache,
-          },
-          signal,
-          () => backend.submitQuery(request, signal),
-          (result) => ({
-            fromCache: result.debug?.fromCache,
-            numRows: result.meta?.numRows ?? result.values.length,
-            columns: result.columns.map((column) => column.name),
-            preview: result.values.slice(0, previewRows),
-          }),
-        ),
-      fieldSuggestions: (request, signal) =>
-        track(
-          {
-            method: 'fieldSuggestions',
-            dataset: request.dataset,
-            field: `${request.model}.${request.field}`,
-            q: request.q,
-          },
-          signal,
-          () => backend.fieldSuggestions(request, signal),
-          (values) => ({ numRows: values.length }),
-        ),
-    }),
+    async record(request, context, next) {
+      if (context.origin.kind === 'host') return next();
+      const id = nextId++;
+      const started = performance.now();
+      // The request is the frame's whatever the log makes of it: one it can't read is still sent.
+      let details: Partial<RequestEntry> = {};
+      try {
+        details = describe(context.name, request);
+      } catch (err) {
+        console.error(err);
+      }
+      add({
+        ...details,
+        id,
+        call: context.name,
+        caller: callerOf(context),
+        // A copy: the host keeps adding the middleware after this one.
+        ...(context.trace.length > 1 && { trace: context.trace.slice(0, -1) }),
+        at: new Date().toISOString(),
+        status: 'pending',
+      });
+      const durationMs = () => Math.round(performance.now() - started);
+      let result: unknown;
+      try {
+        result = await next();
+      } catch (err) {
+        settle(id, {
+          status: context.signal.aborted ? 'aborted' : 'error',
+          durationMs: durationMs(),
+          error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+        });
+        throw err;
+      }
+      let summary: Partial<RequestEntry> = {};
+      try {
+        summary = summarize(context.name, result, previewRows);
+      } catch (err) {
+        console.error(err);
+      }
+      settle(id, { status: 'ok', durationMs: durationMs(), ...summary });
+      return result;
+    },
     log: {
       entries: () => entries,
       subscribe(listener) {
@@ -196,10 +249,10 @@ export interface QueryRef {
  * the declared AQL, not the executed one, so this is exact unless two queries declare the same.
  */
 export function queriesOf(
-  entry: Pick<BackendQueryRequest, 'dataset' | 'aql'> & { method: RequestEntry['method'] },
+  entry: Pick<BackendQueryRequest, 'dataset' | 'aql'> & { call: RequestEntry['call'] },
   apps: InspectedApp[],
 ): QueryRef[] {
-  if (entry.method === 'fieldSuggestions') return [];
+  if (entry.call !== 'core.submitQuery' && entry.call !== 'export.query') return [];
   return apps.flatMap((app, index) =>
     Object.entries(app.declaration.queries)
       .filter(([, q]) => q.dataset === entry.dataset && q.aql === entry.aql)
@@ -213,7 +266,8 @@ export function attributeRequests(entries: readonly RequestEntry[], apps: Inspec
   const other: RequestEntry[] = [];
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i] as RequestEntry;
-    const refs = entry.aql ? queriesOf({ ...entry, aql: entry.aql }, apps) : [];
+    const refs =
+      entry.aql && entry.dataset ? queriesOf({ ...entry, dataset: entry.dataset, aql: entry.aql }, apps) : [];
     if (refs.length === 0) other.push(entry);
     for (const ref of refs) {
       const key = `${ref.app}/${ref.name}`;
