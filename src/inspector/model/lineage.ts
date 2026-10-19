@@ -420,7 +420,8 @@ export function showsCrossFilters(view: {
 
 /**
  * The graph without the hidden kinds, joined across them: hiding queries links each block to the
- * fields its queries return. A joined edge carries the fields both its halves carry.
+ * fields its queries return. A joined edge carries the fields both its halves carry, and the kind
+ * of a filter edge among them: hiding queries keeps a control's edge a control's.
  */
 export function filterGraph(
   graph: LineageGraph,
@@ -437,6 +438,25 @@ export function filterGraph(
     const kept = new Map(
       edges.filter((e) => e.source !== removed.id && e.target !== removed.id).map((e) => [e.id, e]),
     );
+    /** Adds an edge: one of the same kind merges, one of another kind stays beside it under its own id. */
+    const put = (e: LineageGraphEdge): void => {
+      const existing = kept.get(e.id);
+      if (!existing) {
+        kept.set(e.id, e);
+      } else if (existing.kind === e.kind) {
+        kept.set(e.id, {
+          ...existing,
+          fields: [...new Set([...existing.fields, ...e.fields])],
+          ...(e.kind ? { active: Boolean(existing.active || e.active) } : {}),
+        });
+      } else if (e.kind) {
+        put({ ...e, id: `${e.source}->${e.target}:${e.kind}` });
+      } else {
+        // The plain edge takes the plain id; the filter edge that held it moves to its own.
+        kept.set(e.id, e);
+        put({ ...existing, id: `${existing.source}->${existing.target}:${existing.kind}` });
+      }
+    };
     for (const a of into) {
       for (const b of out) {
         // An edge with no fields (a model to its table before anything reads it) passes everything.
@@ -447,13 +467,14 @@ export function filterGraph(
               ? a.fields
               : a.fields.filter((f) => b.fields.includes(f));
         if (fields.length === 0 && a.fields.length && b.fields.length) continue;
-        const id = `${a.source}->${b.target}`;
-        const existing = kept.get(id);
-        kept.set(id, {
-          id,
+        // A joined edge keeps the kind of the edge into the removed node, else of the one out of it.
+        const from = a.kind ? a : b;
+        put({
+          id: `${a.source}->${b.target}`,
           source: a.source,
           target: b.target,
-          fields: [...new Set([...(existing?.fields ?? []), ...fields])],
+          fields,
+          ...(from.kind ? { kind: from.kind, active: from.active } : {}),
         });
       }
     }

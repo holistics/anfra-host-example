@@ -334,6 +334,107 @@ describe('lineage', () => {
     assert.ok(!edgeIds(shown).includes('block:revenue->metric:ecommerce.order_count'));
   });
 
+  describe('hiding a kind keeps a filter edge a filter edge', () => {
+    const controlled = (condition: unknown) => {
+      const withControl = {
+        ...app,
+        controls: { status: { condition, appliedCondition: condition, isDirty: false } },
+        declaration: {
+          ...app.declaration,
+          mappings: [
+            {
+              kind: 'control',
+              from: { kind: 'filter', name: 'status' },
+              to: { name: 'orders' },
+              field: 'orders.status',
+            },
+          ],
+        },
+      } as unknown as InspectedApp;
+      return buildLineageGraph([withControl], structure, catalog, undefined);
+    };
+
+    test('a control joins across a hidden query as a control, set or not', () => {
+      for (const [condition, active] of [
+        [{ values: ['paid'] }, true],
+        [undefined, false],
+      ] as const) {
+        const shown = filterGraph(controlled(condition), new Set(['query']));
+        const joined = shown.edges.find((e) => e.id === 'control:0/status->metric:ecommerce.order_count');
+        assert.equal(joined?.kind, 'control');
+        assert.equal(joined?.active, active);
+      }
+    });
+
+    test('a filter edge and a plain edge between the same nodes both survive', () => {
+      const edge = (id: string, source: string, target: string, extra = {}) => ({
+        id,
+        source,
+        target,
+        fields: ['f'],
+        ...extra,
+      });
+      const node = (id: string, kind: LineageGraph['nodes'][number]['kind']) => ({ id, kind, label: id });
+      const crowded: LineageGraph = {
+        nodes: [node('x', 'block'), node('mid', 'query'), node('mid2', 'query'), node('y', 'metric')],
+        edges: [
+          edge('x->mid', 'x', 'mid'),
+          edge('mid->y', 'mid', 'y'),
+          edge('x->mid2', 'x', 'mid2', { kind: 'control', active: true }),
+          edge('mid2->y', 'mid2', 'y'),
+        ],
+      };
+      const shown = filterGraph(crowded, new Set(['query']));
+      assert.deepEqual(
+        shown.edges.map((e) => [e.id, e.kind]).sort(),
+        [
+          ['x->y', undefined],
+          ['x->y:control', 'control'],
+        ].sort(),
+      );
+      // The same, in the other order.
+      const swapped = {
+        ...crowded,
+        edges: [crowded.edges[2], crowded.edges[3], crowded.edges[0], crowded.edges[1]],
+      };
+      assert.deepEqual(
+        filterGraph(swapped, new Set(['query']))
+          .edges.map((e) => [e.id, e.kind])
+          .sort(),
+        [
+          ['x->y', undefined],
+          ['x->y:control', 'control'],
+        ].sort(),
+      );
+    });
+
+    test('two joined control edges merge: fields are the union, active the OR', () => {
+      const edge = (id: string, source: string, target: string, fields: string[], active: boolean) => ({
+        id,
+        source,
+        target,
+        fields,
+        kind: 'control' as const,
+        active,
+      });
+      const node = (id: string, kind: LineageGraph['nodes'][number]['kind']) => ({ id, kind, label: id });
+      const two: LineageGraph = {
+        nodes: [node('c', 'control'), node('q1', 'query'), node('q2', 'query'), node('m', 'metric')],
+        edges: [
+          edge('c->q1', 'c', 'q1', ['a'], false),
+          edge('c->q2', 'c', 'q2', ['b'], true),
+          { id: 'q1->m', source: 'q1', target: 'm', fields: ['a'] },
+          { id: 'q2->m', source: 'q2', target: 'm', fields: ['b'] },
+        ],
+      };
+      const [joined, ...rest] = filterGraph(two, new Set(['query'])).edges;
+      assert.equal(rest.length, 0);
+      assert.equal(joined.id, 'c->m');
+      assert.deepEqual([...joined.fields].sort(), ['a', 'b']);
+      assert.equal(joined.active, true);
+    });
+  });
+
   test('focus keeps the node and its path', () => {
     const focused = focusGraph(graph, 'metric:ecommerce.order_count');
     assert.deepEqual(ids(focused), [
