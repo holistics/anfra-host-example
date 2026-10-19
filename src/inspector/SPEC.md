@@ -346,7 +346,9 @@ with cross-filters linking one query to another.
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
 - **First layout**: a canvas shows nothing (no cards, no edges) behind a "Laying out lineage…"
-  spinner until its first layout is placed and fitted, then fades in; later layouts glide.
+  spinner until its first layout is placed and fitted, then fades in; later layouts glide. If the
+  layout engine fails to load or run, the spinner gives way to "Couldn't lay out the lineage." with
+  the error and a Retry button; Retry loads and lays out again.
 - **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
   and the orange and gray edges mean.
 

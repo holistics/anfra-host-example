@@ -14,6 +14,7 @@ import {
 } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   type LineageGraph,
   type LineageGraphEdge,
@@ -30,6 +31,7 @@ import {
   LineageNodeCard,
   type NodeTone,
 } from './lineage-node';
+import { retryable } from './retryable';
 
 const nodeTypes = { lineage: LineageNodeCard };
 
@@ -58,14 +60,13 @@ const minimapColors: Record<string, string> = {
 };
 
 /** ELK, loaded with the first canvas: the layout engine is most of this tab's weight. */
-let elk: Promise<{ layout(graph: ElkNode): Promise<ElkNode> }> | undefined;
-export function loadElk() {
-  // In a worker, so a large graph's layout doesn't freeze the page.
-  elk ??= Promise.all([import('elkjs/lib/elk-api.js'), import('elkjs/lib/elk-worker.min.js?worker')]).then(
-    ([{ default: ELK }, { default: ElkWorker }]) => new ELK({ workerFactory: () => new ElkWorker() }),
-  );
-  return elk;
-}
+// In a worker, so a large graph's layout doesn't freeze the page. A failed import is tried again.
+export const loadElk = retryable(
+  (): Promise<{ layout(graph: ElkNode): Promise<ElkNode> }> =>
+    Promise.all([import('elkjs/lib/elk-api.js'), import('elkjs/lib/elk-worker.min.js?worker')]).then(
+      ([{ default: ELK }, { default: ElkWorker }]) => new ELK({ workerFactory: () => new ElkWorker() }),
+    ),
+);
 
 interface Props {
   /** The graph to draw, already filtered and focused. */
@@ -117,6 +118,9 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   const laidOut = layout?.shape === shape ? layout.at : undefined;
   // Unseen until the first layout is placed and fitted, so the cards never show stacked at the origin.
   const [ready, setReady] = useState(false);
+  // Why the layout failed, if it did; Retry bumps `attempt` to run it again.
+  const [failure, setFailure] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
 
   const path = useMemo(
     () => (selected && graph.nodes.some((n) => n.id === selected) ? pathOf(graph, selected) : undefined),
@@ -174,6 +178,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   }, [graph, path, selected, laidOut, crossOf, setNodes]);
 
   // Once every card has its size, lay the graph out top to bottom, a row per kind.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` reruns a failed layout
   useEffect(() => {
     if (!initialized || laidOut || graph.nodes.length === 0) return;
     // A card just added isn't measured yet: wait for it, as `initialized` turns again.
@@ -209,15 +214,22 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
             .map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
         }),
       )
-      .then((result) => {
-        if (cancelled) return;
-        const at = new Map((result.children ?? []).map((c) => [c.id, { x: c.x ?? 0, y: c.y ?? 0 }]));
-        setLayout({ shape, at });
-      });
+      .then(
+        (result) => {
+          if (cancelled) return;
+          const at = new Map((result.children ?? []).map((c) => [c.id, { x: c.x ?? 0, y: c.y ?? 0 }]));
+          setLayout({ shape, at });
+        },
+        (error: unknown) => {
+          if (cancelled) return;
+          console.error('Lineage layout failed', error);
+          setFailure(error instanceof Error ? error.message : String(error));
+        },
+      );
     return () => {
       cancelled = true;
     };
-  }, [initialized, laidOut, graph, shape, getInternalNode]);
+  }, [initialized, laidOut, graph, shape, getInternalNode, attempt]);
 
   const fitted = useRef(false);
   // A new layout is fitted to the view, but never so small that cards can't be read: the large view
@@ -239,7 +251,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     return () => cancelAnimationFrame(frame);
   }, [laidOut, fitView, minimap]);
 
-  const centeredOn = useRef<number>();
+  const centeredOn = useRef<number | undefined>(undefined);
   // Bring a requested node to the middle, once the layout is there, without zooming out from where the reader is.
   useEffect(() => {
     if (!centerOn || !laidOut || centeredOn.current === centerOn.nonce) return;
@@ -320,7 +332,23 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
           />
         )}
       </ReactFlow>
-      {!ready && graph.nodes.length > 0 && (
+      {!ready && graph.nodes.length > 0 && failure !== undefined && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm">
+          <span>Couldn't lay out the lineage.</span>
+          <span className="text-xs text-muted-foreground">{failure}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFailure(undefined);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+      {!ready && graph.nodes.length > 0 && failure === undefined && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
           Laying out lineage…
