@@ -345,6 +345,8 @@ with cross-filters linking one query to another.
 - **Zoom**: wheel and the zoom buttons; drag the pane to move. A new layout is fitted to the view,
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
+- **Resized cards**: a card that changes size (a long control value wraps, a model gains chips or a
+  description) is laid out again, to the whole pixel; the view is not fitted again.
 - **First layout**: a canvas shows nothing (no cards, no edges) behind a "Laying out lineage…"
   spinner until its first layout is placed and fitted, then fades in; later layouts glide. If the
   layout engine fails to load or run, the spinner gives way to "Couldn't lay out the lineage." with
