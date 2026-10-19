@@ -520,3 +520,33 @@ export function matchPreset(view: {
       p.hidden.every((k) => view.hidden.has(k)),
   );
 }
+
+/**
+ * The nodes in the order to lay them out: queries joined by a cross-filter next to each other, so
+ * the layout stacks them together. Every other node keeps its place.
+ */
+export function orderForLayout(graph: LineageGraph): LineageGraphNode[] {
+  const links = graph.edges.filter((e) => e.kind === 'crossFilter');
+  if (links.length === 0) return graph.nodes;
+  const next = new Map<string, string[]>();
+  for (const { source, target } of links) {
+    next.set(source, [...(next.get(source) ?? []), target]);
+    next.set(target, [...(next.get(target) ?? []), source]);
+  }
+  const queries = graph.nodes.filter((n) => n.kind === 'query');
+  const placed = new Set<string>();
+  const ordered: LineageGraphNode[] = [];
+  const visit = (n: LineageGraphNode) => {
+    if (placed.has(n.id)) return;
+    placed.add(n.id);
+    ordered.push(n);
+    for (const id of next.get(n.id) ?? []) {
+      const linked = queries.find((q) => q.id === id);
+      if (linked) visit(linked);
+    }
+  };
+  queries.forEach(visit);
+  // The queries take the slots the queries had, in their new order.
+  const reordered = [...ordered];
+  return graph.nodes.map((n) => (n.kind === 'query' ? (reordered.shift() as LineageGraphNode) : n));
+}

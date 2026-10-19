@@ -1,4 +1,4 @@
-import { Handle, type Node, type NodeProps, Position } from '@xyflow/react';
+import { Handle, type Node, type NodeProps, Position, useUpdateNodeInternals } from '@xyflow/react';
 import {
   Box,
   Boxes,
@@ -15,7 +15,7 @@ import {
   TableProperties,
   TriangleAlert,
 } from 'lucide-react';
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { LineageGraphNode, LineageKind } from '../../model/lineage';
@@ -107,7 +107,18 @@ export function KindBadge({ kind, className }: { kind: LineageKind; className?: 
 /** How a card stands against a pinned path: on it, the one picked, or off it. */
 export type NodeTone = 'normal' | 'selected' | 'on-path' | 'dim';
 
-export type LineageFlowNode = Node<{ node: LineageGraphNode; tone: NodeTone }, 'lineage'>;
+/** The cross-filter edges that leave and enter a query, by edge id: each gets its own point on the card's right side. */
+export interface CrossHandles {
+  out: string[];
+  in: string[];
+}
+
+export type LineageFlowNode = Node<
+  { node: LineageGraphNode; tone: NodeTone; cross?: CrossHandles },
+  'lineage'
+>;
+
+export const crossHandleId = (direction: 'out' | 'in', edgeId: string) => `${direction}:${edgeId}`;
 
 /** What a card's hover buttons do, given once for every card. */
 export interface LineageActions {
@@ -119,8 +130,16 @@ export interface LineageActions {
 export const LineageActionsContext = createContext<LineageActions | undefined>(undefined);
 
 /** One entity on the canvas: its kind, label and name, and what the catalog says of it. */
-export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
-  const { node, tone } = data;
+export function LineageNodeCard({ id, data }: NodeProps<LineageFlowNode>) {
+  const { node, tone, cross } = data;
+  const updateInternals = useUpdateNodeInternals();
+  const slots = [
+    ...(cross?.out ?? []).map((id) => ({ id: crossHandleId('out', id), type: 'source' as const })),
+    ...(cross?.in ?? []).map((id) => ({ id: crossHandleId('in', id), type: 'target' as const })),
+  ];
+  const slotKey = slots.map((h) => h.id).join();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the handles change with the key
+  useEffect(() => updateInternals(id), [slotKey, id, updateInternals]);
   const actions = useContext(LineageActionsContext);
   const mono = node.kind === 'table';
   return (
@@ -200,24 +219,16 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
         position={Position.Right}
         className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
       />
-      {node.kind === 'query' && (
-        <>
-          <Handle
-            id="cross-out"
-            type="source"
-            position={Position.Right}
-            style={{ top: '35%' }}
-            className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
-          />
-          <Handle
-            id="cross-in"
-            type="target"
-            position={Position.Right}
-            style={{ top: '65%' }}
-            className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
-          />
-        </>
-      )}
+      {slots.map((h, i) => (
+        <Handle
+          key={h.id}
+          id={h.id}
+          type={h.type}
+          position={Position.Right}
+          style={{ top: `${((i + 1) / (slots.length + 1)) * 100}%` }}
+          className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
+        />
+      ))}
     </div>
   );
 }
