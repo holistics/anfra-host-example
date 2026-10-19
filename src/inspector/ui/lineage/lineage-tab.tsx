@@ -92,17 +92,25 @@ export function LineageTab({
   const key = targets.map(targetKey).join('|');
 
   // Trace the page's fields when they change. A trace outlives the tab: its answer lands in the panel.
+  // A failed trace is traced again when the tab next opens; a ready trace is kept, and only tables
+  // that failed are asked for again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: traces per set of fields, not per snapshot
   useEffect(() => {
     const source = env.lineage;
-    if (!source || (fetched?.key === key && fetched.status !== 'failed')) return;
+    const prior = fetched?.key === key ? fetched : undefined;
+    const kept = prior?.status === 'ready' ? prior.catalog?.traced : undefined;
+    if (!source || prior?.status === 'loading' || (kept && !prior?.tablesError)) return;
     const tables = fetched?.catalog?.tables;
     onFetched({ key, status: 'loading', catalog: fetched?.catalog, tablesError: fetched?.tablesError });
-    const traced = targets.length ? source.trace(targets) : Promise.resolve({ results: [] });
+    const traced: Promise<LineageCatalog['traced']> = kept
+      ? Promise.resolve(kept)
+      : (targets.length ? source.trace(targets) : Promise.resolve({ results: [] })).then(
+          (r) => new Map(r.results.map((r) => [targetKey(r.target), r])),
+        );
     const known = tablesFor(tables, () => source.tables());
     void Promise.all([
       traced.then(
-        (r) => ({ ok: true as const, r }),
+        (traced) => ({ ok: true as const, traced }),
         (e: Error) => ({ ok: false as const, e }),
       ),
       known,
@@ -117,8 +125,7 @@ export function LineageTab({
             tablesError,
             catalog: { traced: new Map(), tables },
           };
-        const traced = new Map(trace.r.results.map((r) => [targetKey(r.target), r]));
-        return { key, status: 'ready', tablesError, catalog: { traced, tables } };
+        return { key, status: 'ready', tablesError, catalog: { traced: trace.traced, tables } };
       }),
     );
   }, [key, env.lineage]);
