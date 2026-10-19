@@ -19,7 +19,7 @@ import {
   lineageTargets,
   targetKey,
 } from '../../model/lineage';
-import type { InspectorEnv, RevealTarget } from '../../model/types';
+import type { InspectorEnv, LineageSource, RevealTarget } from '../../model/types';
 import { Note } from '../shared/fields';
 import { LineageCanvas, loadElk } from './lineage-canvas';
 import type { LineageActions } from './lineage-node';
@@ -90,6 +90,9 @@ export function LineageTab({
   const handledPick = useRef(pick?.nonce);
   const targets = useMemo(() => lineageTargets(apps ?? []), [apps]);
   const key = targets.map(targetKey).join('|');
+  // The set of fields this mount last started a trace for. `fetched` says so too, but only once the
+  // panel re-renders: an effect run again before then (StrictMode runs each twice) must not trace again.
+  const started = useRef<{ key: string; source: LineageSource }>(undefined);
 
   // Trace the page's fields when they change. A trace outlives the tab: its answer lands in the panel.
   // A failed trace is traced again when the tab next opens; a ready trace is kept, and only tables
@@ -100,6 +103,8 @@ export function LineageTab({
     const prior = fetched?.key === key ? fetched : undefined;
     const kept = prior?.status === 'ready' ? prior.catalog?.traced : undefined;
     if (!source || prior?.status === 'loading' || (kept && !prior?.tablesError)) return;
+    if (started.current?.key === key && started.current.source === source) return;
+    started.current = { key, source };
     const tables = fetched?.catalog?.tables;
     onFetched({ key, status: 'loading', catalog: fetched?.catalog, tablesError: fetched?.tablesError });
     const traced: Promise<LineageCatalog['traced']> = kept
