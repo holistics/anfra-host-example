@@ -318,7 +318,9 @@ with cross-filters linking one query to another.
   `refers` to; a dimension reaches the model its column names. Each model's table comes from the
   catalog's models (`env.lineage.tables()`); a database table is not an entity of its own, but the
   model's `table_name` and `data_source_name`. Shared models and tables are drawn once. A model card
-  shows as chips the fields the page reads from it.
+  shows as chips the fields the page reads from it. If asking for the tables fails, they are not
+  remembered as empty: a banner says so, the models show without their tables, and the next trace
+  asks again.
 - **Without lineage** (no `env.lineage`, or the call failed, e.g. anfra before 0.9.1): a banner says
   so, metrics stop at their dataset, and dimensions still reach their model.
 - **Columns**: a column per kind (ELK partitions), so a block whose query returns nothing stays in

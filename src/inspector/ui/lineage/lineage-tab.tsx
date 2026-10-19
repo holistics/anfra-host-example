@@ -24,6 +24,7 @@ import { Note } from '../shared/fields';
 import { LineageCanvas, loadElk } from './lineage-canvas';
 import type { LineageActions } from './lineage-node';
 import { LineageToolbar } from './lineage-toolbar';
+import { type Tables, tablesFor } from './tables';
 
 /** What the canvas shows: the kinds hidden, the node focused on, and the node whose path is pinned. */
 export interface LineageView {
@@ -41,8 +42,11 @@ export interface LineageView {
 export interface LineageFetch {
   key: string;
   status: 'loading' | 'ready' | 'failed';
-  catalog?: LineageCatalog;
+  /** The traced fields, and the models' tables: `undefined` until they have been answered, so they are asked for again. */
+  catalog?: { traced: LineageCatalog['traced']; tables?: Tables };
   error?: string;
+  /** Why the tables are missing, if asking for them failed. */
+  tablesError?: string;
 }
 
 /** A pick to land on: the keys of the picked node and what is under it, in structure order. */
@@ -93,22 +97,28 @@ export function LineageTab({
     const source = env.lineage;
     if (!source || (fetched?.key === key && fetched.status !== 'failed')) return;
     const tables = fetched?.catalog?.tables;
-    onFetched({ key, status: 'loading', catalog: fetched?.catalog });
+    onFetched({ key, status: 'loading', catalog: fetched?.catalog, tablesError: fetched?.tablesError });
     const traced = targets.length ? source.trace(targets) : Promise.resolve({ results: [] });
-    const known = tables ? Promise.resolve(tables) : source.tables().catch(() => ({}));
+    const known = tablesFor(tables, () => source.tables());
     void Promise.all([
       traced.then(
         (r) => ({ ok: true as const, r }),
         (e: Error) => ({ ok: false as const, e }),
       ),
       known,
-    ]).then(([trace, tables]) =>
+    ]).then(([trace, { tables, error: tablesError }]) =>
       onFetched((current) => {
         if (current?.key !== key) return current;
         if (!trace.ok)
-          return { key, status: 'failed', error: trace.e.message, catalog: { traced: new Map(), tables } };
+          return {
+            key,
+            status: 'failed',
+            error: trace.e.message,
+            tablesError,
+            catalog: { traced: new Map(), tables },
+          };
         const traced = new Map(trace.r.results.map((r) => [targetKey(r.target), r]));
-        return { key, status: 'ready', catalog: { traced, tables } };
+        return { key, status: 'ready', tablesError, catalog: { traced, tables } };
       }),
     );
   }, [key, env.lineage]);
@@ -118,7 +128,14 @@ export function LineageTab({
     [env.datasets],
   );
   const graph = useMemo(
-    () => buildLineageGraph(apps ?? [], structure, fetched?.catalog, env.metricDocs, datasetLabels),
+    () =>
+      buildLineageGraph(
+        apps ?? [],
+        structure,
+        fetched?.catalog && { traced: fetched.catalog.traced, tables: fetched.catalog.tables ?? {} },
+        env.metricDocs,
+        datasetLabels,
+      ),
     [apps, structure, fetched?.catalog, env.metricDocs, datasetLabels],
   );
   const counts = useMemo(() => {
@@ -242,18 +259,26 @@ export function LineageTab({
 
 /** Why the canvas stops short of the catalog, when it does. */
 function Unavailable({ env, fetched }: { env: InspectorEnv; fetched: LineageFetch | undefined }) {
+  const messages: string[] = [];
   const message = !env.lineage
     ? "This host doesn't trace lineage: the canvas shows what the page says, without database tables."
     : fetched?.status === 'failed'
       ? `Couldn't trace lineage (${fetched.error}). Metrics stop at their dataset. Tracing needs anfra 0.9.1 or later, and a catalog built with \`anfra ingest\`.`
       : undefined;
-  if (!message) return null;
-  return (
-    <div className="flex items-start gap-1.5 border-b bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
+  if (message) messages.push(message);
+  if (env.lineage && fetched?.tablesError)
+    messages.push(
+      `Couldn't load the database tables: ${fetched.tablesError}. Models show without their tables.`,
+    );
+  return messages.map((text) => (
+    <div
+      key={text}
+      className="flex items-start gap-1.5 border-b bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200"
+    >
       <TriangleAlert className="mt-px size-3.5 shrink-0" />
-      <span>{message}</span>
+      <span>{text}</span>
     </div>
-  );
+  ));
 }
 
 function Padded({ children }: { children: ReactNode }) {
