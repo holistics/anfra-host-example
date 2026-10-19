@@ -60,7 +60,7 @@ Picking a node selects and reveals it in the tree. **Shift-click** instead opens
 control at or below the picked node (the node itself, if it is one) in Data, switching to that tab;
 a node with none lands in Structure as usual.
 From the **Data** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
-Lineage: it pins the first node of the picked subtree that the canvas draws (a block or query) and
+Lineage: it pins the first node of the picked subtree that the canvas draws (a control, block or query) and
 centers it; if a filter or focus hides them all, the pick is ignored. Other tabs switch to Structure. The frame's pick report doesn't carry modifier keys,
 so the host's injected script posts each click's Shift state just before it. The frame leaves pick
 mode after a pick or on Escape.
@@ -279,13 +279,21 @@ of this.
 
 ### 4.10 Lineage
 
-Where each number on the page comes from, as a canvas (React Flow, laid out by ELK), top to bottom:
+Where each number on the page comes from, as a canvas (React Flow, laid out by ELK), left to right:
 
-**Block → Query → Metric / Dimension → Dataset → Model → Database table**
+**Control → Block → Query → Metric / Dimension → Dataset → Model → Database table**
 
 - **Scope**: the whole page. Blocks come from the structure (a query marked inside a block, or
   `usage[…].blocks`). Fields are each query's non-ad-hoc `columns`, so a query that hasn't run has
   none yet. A column with `isMeasure` is a metric card, the rest dimension cards.
+- **Controls**: a control that a `control` mapping connects to a query (a mapping to a query the
+  graph doesn't have is skipped) is a card with an edge to each query it feeds, carrying that
+  query's fields, so a pin runs from the control through them. The card shows the control's
+  current condition as its **Value** (`formatCondition`), or "not set" when it has no values.
+  Unlike every other edge, which points from what uses to what it is built from, a control's edge
+  means "filters": the control changes the query's numbers but is not part of where they come
+  from. It is drawn orange when the control has a value and light gray when it is not set, so it
+  is told apart from the purple edges. Cross-filters between queries are not drawn.
 - **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
   `refers` to; a dimension reaches the model its column names. Each model's table comes from the
@@ -294,14 +302,14 @@ Where each number on the page comes from, as a canvas (React Flow, laid out by E
   shows as chips the fields the page reads from it.
 - **Without lineage** (no `env.lineage`, or the call failed, e.g. anfra before 0.9.1): a banner says
   so, metrics stop at their dataset, and dimensions still reach their model.
-- **Rows**: a row per kind (ELK partitions), so a block whose query returns nothing stays in the
-  block row.
+- **Columns**: a column per kind (ELK partitions), so a block whose query returns nothing stays in
+  the block column. Controls are the first column.
 - **Highlight**: a click on a card pins its path; everything else dims. A path follows only the
   edges that carry the card's fields: a metric lights the models it reads, not every model of its
   dataset. A click on the pane or Escape lets go. Pinning a block or query also outlines it on the
   page (`highlight`).
-- **Hover buttons** on a card: Locate on the page and Show in Structure (blocks, queries), Show in
-  Data (queries, fields), Focus.
+- **Hover buttons** on a card: Locate on the page and Show in Structure (controls, blocks, queries),
+  Show in Data (controls, queries, fields), Focus.
 - **Filter**: a chip per kind, with its count, shows or hides it. Hiding a kind joins across it:
   hiding queries links each block to the fields its queries return.
 - **Focus**: keeps one card and its path. "Focused on …" above the canvas, with × to show
@@ -309,6 +317,8 @@ Where each number on the page comes from, as a canvas (React Flow, laid out by E
 - **Zoom**: wheel and the zoom buttons; drag the pane to move. A new layout is fitted to the view,
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
+- **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
+  and the orange and gray edges mean.
 
 ## 5. Structure
 
