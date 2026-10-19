@@ -63,83 +63,89 @@ export function LineageToolbar({
     );
   return (
     <div className="space-y-1.5 border-b px-2 py-2">
-      <div className="flex items-center gap-1.5">
-        <Select
-          value={preset?.id ?? 'custom'}
-          onValueChange={(id) => {
-            const picked = lineagePresets.find((p) => p.id === id);
-            if (picked) onPreset(picked);
-          }}
-        >
-          <SelectTrigger size="sm" aria-label="Preset" className="w-44 px-2 text-xs data-[size=sm]:h-7">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {!preset && (
-              <SelectItem value="custom" disabled>
-                Custom
-              </SelectItem>
-            )}
-            {lineagePresets.map((p) => (
-              <SelectItem key={p.id} value={p.id} className="text-xs">
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
-              <Funnel className="size-3" />
-              Show
-              {hiddenTotal > 0 && (
-                <span className="text-muted-foreground tabular-nums">{hiddenTotal} hidden</span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Select
+            value={preset?.id ?? 'custom'}
+            onValueChange={(id) => {
+              const picked = lineagePresets.find((p) => p.id === id);
+              if (picked) onPreset(picked);
+            }}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Preset"
+              className="w-44 min-w-0 shrink px-2 text-xs data-[size=sm]:h-7"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {!preset && (
+                <SelectItem value="custom" disabled>
+                  Custom
+                </SelectItem>
               )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-56 p-1">
-            {lineageKinds
-              .filter((kind) => counts[kind])
-              .map((kind) => {
-                const shown = !hidden.has(kind);
-                return (
-                  <button
-                    key={kind}
-                    type="button"
-                    aria-pressed={shown}
-                    onClick={() => toggle(kind)}
-                    className={rowClass(shown)}
-                  >
-                    <KindBadge
-                      kind={kind}
-                      className={cn('size-4 [&_svg]:size-3', !shown && 'bg-muted text-muted-foreground')}
+              {lineagePresets.map((p) => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                <Funnel className="size-3" />
+                Show
+                {hiddenTotal > 0 && (
+                  <span className="text-muted-foreground tabular-nums">{hiddenTotal} hidden</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-1">
+              {lineageKinds
+                .filter((kind) => counts[kind])
+                .map((kind) => {
+                  const shown = !hidden.has(kind);
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={shown}
+                      onClick={() => toggle(kind)}
+                      className={rowClass(shown)}
+                    >
+                      <KindBadge
+                        kind={kind}
+                        className={cn('size-4 [&_svg]:size-3', !shown && 'bg-muted text-muted-foreground')}
+                      />
+                      {kindLabels[kind]}
+                      <span className="ml-auto text-muted-foreground tabular-nums">{counts[kind]}</span>
+                      {shown ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                    </button>
+                  );
+                })}
+              {crossFilterCount > 0 && (
+                <button
+                  type="button"
+                  aria-pressed={crossFilters}
+                  onClick={() => onCrossFilters(!crossFilters)}
+                  className={rowClass(crossDrawn)}
+                  title={crossFilters && !crossDrawn ? 'Hidden with queries' : undefined}
+                >
+                  <span className="flex size-4 items-center justify-center">
+                    <Funnel
+                      className={cn('size-3', crossDrawn ? 'text-orange-500' : 'text-muted-foreground')}
                     />
-                    {kindLabels[kind]}
-                    <span className="ml-auto text-muted-foreground tabular-nums">{counts[kind]}</span>
-                    {shown ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                  </button>
-                );
-              })}
-            {crossFilterCount > 0 && (
-              <button
-                type="button"
-                aria-pressed={crossFilters}
-                onClick={() => onCrossFilters(!crossFilters)}
-                className={rowClass(crossDrawn)}
-                title={crossFilters && !crossDrawn ? 'Hidden with queries' : undefined}
-              >
-                <span className="flex size-4 items-center justify-center">
-                  <Funnel
-                    className={cn('size-3', crossDrawn ? 'text-orange-500' : 'text-muted-foreground')}
-                  />
-                </span>
-                Cross-filters
-                <span className="ml-auto text-muted-foreground tabular-nums">{crossFilterCount}</span>
-                {crossDrawn ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-              </button>
-            )}
-          </PopoverContent>
-        </Popover>
+                  </span>
+                  Cross-filters
+                  <span className="ml-auto text-muted-foreground tabular-nums">{crossFilterCount}</span>
+                  {crossDrawn ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {loading && (
             <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-label="Tracing" />
