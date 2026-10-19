@@ -22,6 +22,7 @@ import {
   orderForLayout,
   pathOf,
 } from '../../model/lineage';
+import { layoutKey, shapeOf } from './layout';
 import {
   type CrossHandles,
   crossHandleId,
@@ -113,8 +114,15 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   const initialized = useNodesInitialized();
   const [nodes, setNodes, onNodesChange] = useNodesState<LineageFlowNode>([]);
   // Where ELK put each node, for the graph of this shape: a new shape is laid out again.
-  const shape = `${graph.nodes.map((n) => n.id).join()}|${graph.edges.map((e) => e.id).join()}`;
-  const [layout, setLayout] = useState<{ shape: string; at: Map<string, { x: number; y: number }> }>();
+  const shape = useMemo(() => shapeOf(graph), [graph]);
+  // `key` is the shape and the cards' sizes it was laid out for: a card that changes size is laid out again.
+  const [layout, setLayout] = useState<{
+    shape: string;
+    key: string;
+    at: Map<string, { x: number; y: number }>;
+  }>();
+  // Bumped when React Flow measures a card again, so the layout can compare sizes.
+  const [measures, setMeasures] = useState(0);
   const laidOut = layout?.shape === shape ? layout.at : undefined;
   // Unseen until the first layout is placed and fitted, so the cards never show stacked at the origin.
   const [ready, setReady] = useState(false);
@@ -177,12 +185,18 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     });
   }, [graph, path, selected, laidOut, crossOf, setNodes]);
 
-  // Once every card has its size, lay the graph out top to bottom, a row per kind.
+  // Once every card has its size, lay the graph out top to bottom, a row per kind. A card that changes
+  // size lays it out again, in place: `laidOut` stays, so the view isn't fitted again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` reruns a failed layout
   useEffect(() => {
-    if (!initialized || laidOut || graph.nodes.length === 0) return;
+    if (!initialized || graph.nodes.length === 0) return;
     // A card just added isn't measured yet: wait for it, as `initialized` turns again.
     if (graph.nodes.some((node) => !getInternalNode(node.id)?.measured?.height)) return;
+    const key = layoutKey(graph, (id) => {
+      const { width, height } = getInternalNode(id)?.measured ?? {};
+      return width !== undefined && height !== undefined ? { width, height } : undefined;
+    });
+    if (laidOut && layout?.key === key) return;
     let cancelled = false;
     void loadElk()
       .then((engine) =>
@@ -218,7 +232,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
         (result) => {
           if (cancelled) return;
           const at = new Map((result.children ?? []).map((c) => [c.id, { x: c.x ?? 0, y: c.y ?? 0 }]));
-          setLayout({ shape, at });
+          setLayout({ shape, key, at });
         },
         (error: unknown) => {
           if (cancelled) return;
@@ -229,13 +243,17 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     return () => {
       cancelled = true;
     };
-  }, [initialized, laidOut, graph, shape, getInternalNode, attempt]);
+  }, [initialized, laidOut, layout?.key, measures, graph, shape, getInternalNode, attempt]);
 
   const fitted = useRef(false);
+  // The shape last fitted: a layout of the same shape (a card changed size) keeps the reader's view.
+  const fittedShape = useRef<string | undefined>(undefined);
   // A new layout is fitted to the view, but never so small that cards can't be read: the large view
   // shows the rest.
   useEffect(() => {
     if (!laidOut) return;
+    if (fittedShape.current === shape) return;
+    fittedShape.current = shape;
     // The first layout lands in place; later ones glide.
     const duration = fitted.current ? 200 : 0;
     const frame = requestAnimationFrame(() => {
@@ -249,7 +267,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     });
     fitted.current = true;
     return () => cancelAnimationFrame(frame);
-  }, [laidOut, fitView, minimap]);
+  }, [laidOut, shape, fitView, minimap]);
 
   const centeredOn = useRef<number | undefined>(undefined);
   // Bring a requested node to the middle, once the layout is there, without zooming out from where the reader is.
@@ -310,7 +328,10 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
         edges={laidOut ? edges : []}
         style={{ opacity: ready ? 1 : 0, transition: 'opacity 200ms' }}
         nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
+        onNodesChange={(changes) => {
+          onNodesChange(changes);
+          if (changes.some((c) => c.type === 'dimensions')) setMeasures((n) => n + 1);
+        }}
         onNodeClick={(_, node) => onSelect(node.id === selected ? undefined : node.id)}
         onPaneClick={() => onSelect(undefined)}
         nodesDraggable={false}
