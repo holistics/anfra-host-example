@@ -443,7 +443,7 @@ describe('lineage', () => {
       // The same, in the other order.
       const swapped = {
         ...crowded,
-        edges: [crowded.edges[2], crowded.edges[3], crowded.edges[0], crowded.edges[1]],
+        edges: [...crowded.edges.slice(2), ...crowded.edges.slice(0, 2)],
       };
       assert.deepEqual(
         filterGraph(swapped, new Set(['query']))
@@ -477,6 +477,7 @@ describe('lineage', () => {
       };
       const [joined, ...rest] = filterGraph(two, new Set(['query'])).edges;
       assert.equal(rest.length, 0);
+      assert.ok(joined);
       assert.equal(joined.id, 'c->m');
       assert.deepEqual([...joined.fields].sort(), ['a', 'b']);
       assert.equal(joined.active, true);
