@@ -10,6 +10,7 @@ import {
   ScanSearch,
   Shapes,
   Sigma,
+  SlidersHorizontal,
   Table2,
   TableProperties,
   TriangleAlert,
@@ -23,6 +24,7 @@ import { CodeBlock } from '../shared/code-block';
 
 /** Each kind's name on its card, as the reader knows it. */
 export const kindLabels: Record<LineageKind, string> = {
+  control: 'Control',
   block: 'Block',
   query: 'Query',
   metric: 'Metric',
@@ -34,6 +36,11 @@ export const kindLabels: Record<LineageKind, string> = {
 
 /** Each kind's accent: the bar down a card's left edge, its filter chip's dot, and its icon's badge. */
 export const kindAccents: Record<LineageKind, { bar: string; dot: string; pill: string }> = {
+  control: {
+    bar: 'border-l-orange-500',
+    dot: 'bg-orange-500',
+    pill: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+  },
   block: {
     bar: 'border-l-indigo-500',
     dot: 'bg-indigo-500',
@@ -73,6 +80,7 @@ export const kindAccents: Record<LineageKind, { bar: string; dot: string; pill: 
 
 /** Each kind's icon; blocks and queries keep the ones the Structure tab gives them. */
 export const kindIcons: Record<LineageKind, LucideIcon> = {
+  control: SlidersHorizontal,
   block: Shapes,
   query: Table2,
   metric: Sigma,
@@ -141,6 +149,19 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
         {node.name && node.name !== node.label && (
           <div className="truncate font-mono text-[11px] text-muted-foreground">{node.name}</div>
         )}
+        {node.value && (
+          <div
+            className={cn(
+              'flex items-baseline gap-1.5 rounded bg-muted px-2 py-1 text-xs',
+              !node.isSet && 'text-muted-foreground italic',
+            )}
+          >
+            <span className="text-[10px] tracking-wider text-muted-foreground uppercase not-italic">
+              Value
+            </span>
+            <span className="min-w-0 font-mono break-words">{node.value}</span>
+          </div>
+        )}
         {node.description && (
           <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">{node.description}</p>
         )}
@@ -186,7 +207,7 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
 /** Small buttons over a hovered card's corner: find it on the page, open it in its tab, or focus on it. */
 function HoverActions({ node, actions }: { node: LineageGraphNode; actions: LineageActions }) {
   const { structureKey, entity } = node;
-  const onPage = node.kind === 'block' || node.kind === 'query';
+  const onPage = node.kind === 'block' || node.kind === 'query' || node.kind === 'control';
   return (
     <div className="nodrag absolute -top-3 right-2 hidden items-center gap-0.5 rounded-md border bg-background p-0.5 shadow-sm group-hover:flex">
       {onPage && structureKey && (
@@ -201,8 +222,16 @@ function HoverActions({ node, actions }: { node: LineageGraphNode; actions: Line
       )}
       {entity && node.kind !== 'block' && (
         <ActionButton
-          label={node.kind === 'query' ? 'Show in Data' : `Show ${entity.name} in Data`}
-          onClick={() => actions.reveal({ entity: 'query', app: entity.app, name: entity.name })}
+          label={
+            node.kind === 'query' || node.kind === 'control' ? 'Show in Data' : `Show ${entity.name} in Data`
+          }
+          onClick={() =>
+            actions.reveal({
+              entity: node.kind === 'control' ? 'control' : 'query',
+              app: entity.app,
+              name: entity.name,
+            })
+          }
         >
           <Database />
         </ActionButton>

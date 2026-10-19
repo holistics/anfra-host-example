@@ -26,9 +26,15 @@ import {
 const nodeTypes = { lineage: LineageNodeCard };
 
 const edgeColor = { normal: '#a78bfa', onPath: '#7c3aed' };
+/** A control's edge says "filters", not "is built from": orange once the reader has set it, gray before. */
+const filterEdgeColor = {
+  set: { normal: '#fb923c', onPath: '#ea580c' },
+  unset: { normal: '#e5e7eb', onPath: '#9ca3af' },
+};
 
 /** Each kind's colour on the minimap. */
 const minimapColors: Record<string, string> = {
+  control: '#f97316',
   block: '#6366f1',
   query: '#10b981',
   metric: '#14b8a6',
@@ -190,23 +196,29 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     return () => cancelAnimationFrame(frame);
   }, [centerOn, laidOut, getInternalNode, setCenter, getZoom]);
 
-  const edges = useMemo<Edge[]>(
-    () =>
-      graph.edges.map((e) => {
-        const on = path?.edges.has(e.id) ?? false;
-        const color = on ? edgeColor.onPath : edgeColor.normal;
-        return {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
-          style: { stroke: color, strokeWidth: on ? 2 : 1.25, opacity: path && !on ? 0.15 : 1 },
-          zIndex: on ? 1 : 0,
-          focusable: false,
-        };
-      }),
-    [graph, path],
-  );
+  const edges = useMemo<Edge[]>(() => {
+    const controls = new Map(graph.nodes.filter((n) => n.kind === 'control').map((n) => [n.id, n.isSet]));
+    return graph.edges.map((e) => {
+      const on = path?.edges.has(e.id) ?? false;
+      const filters = controls.has(e.source);
+      const palette = filters ? filterEdgeColor[controls.get(e.source) ? 'set' : 'unset'] : edgeColor;
+      const color = palette[on ? 'onPath' : 'normal'];
+      const opacity = path && !on ? 0.15 : 1;
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
+        style: {
+          stroke: color,
+          strokeWidth: on ? 2 : 1.25,
+          opacity,
+        },
+        zIndex: on ? 1 : 0,
+        focusable: false,
+      };
+    });
+  }, [graph, path]);
 
   return (
     <ReactFlow

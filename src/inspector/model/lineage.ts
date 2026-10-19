@@ -1,4 +1,5 @@
-// The Lineage tab's graph: where each number on the page comes from, top to bottom. A block draws
+// The Lineage tab's graph: where each number on the page comes from, left to right. A control
+// filters queries; a block draws
 // queries; a query returns metrics and dimensions; each comes from its dataset, which reads models,
 // each over a database table. Built from the page as inspected and the catalog's lineage; the tab
 // only filters, focuses and draws it. See SPEC.md §4.10.
@@ -11,9 +12,20 @@ import type {
   LineageTarget,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
+import { controlMappings } from './checks';
+import { formatCondition } from './format';
 import type { MetricDocs, ModelTable } from './types';
 
-export const lineageKinds = ['block', 'query', 'metric', 'dimension', 'dataset', 'model', 'table'] as const;
+export const lineageKinds = [
+  'control',
+  'block',
+  'query',
+  'metric',
+  'dimension',
+  'dataset',
+  'model',
+  'table',
+] as const;
 export type LineageKind = (typeof lineageKinds)[number];
 
 export interface LineageGraphNode {
@@ -27,10 +39,13 @@ export interface LineageGraphNode {
   definition?: string;
   /** A model's fields that the page's fields read. */
   chips?: string[];
-  /** A block's or query's node in the structure, to locate on the page and select in Structure. */
+  /** A block's, query's or control's node in the structure, to locate on the page and select in Structure. */
   structureKey?: string;
-  /** A query, or the first query returning a field: to open in the Data tab. */
+  /** A query or control, or the first query returning a field: to open in the Data tab. */
   entity?: { app: number; name: string };
+  /** A control: whether the reader has set a value, and it in words. */
+  isSet?: boolean;
+  value?: string;
   /** Why the catalog could not trace a field. */
   error?: string;
 }
@@ -101,14 +116,18 @@ function blocksOf(
   return out;
 }
 
-/** Each query's first node in the tree, to locate it on the page. */
-function queryNodesOf(nodes: StructureNode[], out = new Map<string, StructureNode>()) {
+/** Each query's or control's first node in the tree, to locate it on the page. */
+function entityNodesOf(
+  nodes: StructureNode[],
+  kind: 'query' | 'control',
+  out = new Map<string, StructureNode>(),
+) {
   for (const node of nodes) {
-    if (node.kind === 'query' && node.name !== undefined) {
+    if (node.kind === kind && node.name !== undefined) {
       const key = `${node.app ?? 0}/${node.name}`;
       if (!out.has(key)) out.set(key, node);
     }
-    queryNodesOf(node.children, out);
+    entityNodesOf(node.children, kind, out);
   }
   return out;
 }
@@ -225,7 +244,8 @@ export function buildLineageGraph(
     return model;
   };
 
-  const queryNodes = queryNodesOf(structure?.nodes ?? []);
+  const queryNodes = entityNodesOf(structure?.nodes ?? [], 'query');
+  const controlNodes = entityNodesOf(structure?.nodes ?? [], 'control');
   const queryFields = new Map<string, Set<string>>();
 
   apps.forEach((app, appIndex) => {
@@ -292,6 +312,31 @@ export function buildLineageGraph(
           chips.set(model.id, set);
         }
       }
+    }
+  });
+
+  // A control filters the queries it is mapped to. Like a block, its edge carries the query's fields,
+  // so a highlight runs from the control through them.
+  apps.forEach((app, appIndex) => {
+    for (const mapping of controlMappings(app)) {
+      const queryId = `query:${appIndex}/${mapping.to.name}`;
+      if (!nodes.has(queryId)) continue;
+      const name = mapping.from.name;
+      const controlId = `control:${appIndex}/${name}`;
+      const condition = app.controls[name]?.condition;
+      const isSet = (condition?.values?.length ?? 0) > 0;
+      node({
+        id: controlId,
+        kind: 'control',
+        label: name,
+        name: apps.length > 1 ? (app.title ?? `app ${appIndex + 1}`) : undefined,
+        structureKey: controlNodes.get(`${appIndex}/${name}`)?.key,
+        entity: { app: appIndex, name },
+        isSet,
+        value: isSet ? formatCondition(condition) : 'not set',
+      });
+      const fields = queryFields.get(queryId);
+      edge(controlId, queryId, fields?.size ? fields : [queryId]);
     }
   });
 
