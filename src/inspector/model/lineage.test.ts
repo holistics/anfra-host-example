@@ -11,6 +11,7 @@ import {
   buildLineageGraph,
   filterGraph,
   focusGraph,
+  hiddenCount,
   type LineageCatalog,
   type LineageGraph,
   lineagePresets,
@@ -18,6 +19,7 @@ import {
   matchPreset,
   orderForLayout,
   pathOf,
+  showsCrossFilters,
   targetKey,
 } from './lineage';
 import type { ModelTable } from './types';
@@ -192,6 +194,24 @@ describe('lineage', () => {
     for (const p of lineagePresets)
       assert.equal(matchPreset({ hidden: new Set(p.hidden), crossFilters: p.crossFilters })?.id, p.id);
     assert.equal(matchPreset({ hidden: new Set(['table']), crossFilters: false }), undefined);
+  });
+
+  test('the hidden count counts only what the graph has', () => {
+    const counts = { block: 2, query: 3, metric: 1 };
+    // No cross-filters in the graph: turning them off hides nothing.
+    assert.equal(hiddenCount({ hidden: new Set(), crossFilters: false }, counts, 0), 0);
+    // Cross-filters there and off: one hidden.
+    assert.equal(hiddenCount({ hidden: new Set(), crossFilters: false }, counts, 2), 1);
+    // A hidden kind the graph has none of is not counted.
+    assert.equal(hiddenCount({ hidden: new Set(['table']), crossFilters: true }, counts, 2), 0);
+    // Hiding queries hides their cross-filters too, toggle on or not.
+    assert.equal(hiddenCount({ hidden: new Set(['query']), crossFilters: true }, counts, 2), 2);
+  });
+
+  test('cross-filters are drawn only with the toggle and the queries', () => {
+    assert.equal(showsCrossFilters({ hidden: new Set(), crossFilters: true }), true);
+    assert.equal(showsCrossFilters({ hidden: new Set(), crossFilters: false }), false);
+    assert.equal(showsCrossFilters({ hidden: new Set(['query']), crossFilters: true }), false);
   });
 
   test('the page down to its tables, shared models and tables once', () => {

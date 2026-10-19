@@ -404,6 +404,14 @@ export function buildLineageGraph(
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
 }
 
+/** Whether the view draws cross-filters: a cross-filter joins two queries, so it goes with the toggle, or with the queries. */
+export function showsCrossFilters(view: {
+  hidden: ReadonlySet<LineageKind>;
+  crossFilters: boolean;
+}): boolean {
+  return view.crossFilters && !view.hidden.has('query');
+}
+
 /**
  * The graph without the hidden kinds, joined across them: hiding queries links each block to the
  * fields its queries return. A joined edge carries the fields both its halves carry.
@@ -413,8 +421,7 @@ export function filterGraph(
   hidden: ReadonlySet<LineageKind>,
   { crossFilters = true }: { crossFilters?: boolean } = {},
 ): LineageGraph {
-  // A cross-filter joins two queries: it goes with the toggle, or with the queries.
-  const dropCross = !crossFilters || hidden.has('query');
+  const dropCross = !showsCrossFilters({ hidden, crossFilters });
   if (hidden.size === 0 && !dropCross) return graph;
   let nodes = graph.nodes;
   let edges = dropCross ? graph.edges.filter((e) => e.kind !== 'crossFilter') : graph.edges;
@@ -519,6 +526,16 @@ export function matchPreset(view: {
       p.hidden.length === view.hidden.size &&
       p.hidden.every((k) => view.hidden.has(k)),
   );
+}
+
+/** How many things the graph has that the view hides: each kind with nodes, and its cross-filters, if any, when not drawn. */
+export function hiddenCount(
+  view: { hidden: ReadonlySet<LineageKind>; crossFilters: boolean },
+  counts: Partial<Record<LineageKind, number>>,
+  crossFilterCount: number,
+): number {
+  const kinds = lineageKinds.filter((k) => counts[k] && view.hidden.has(k)).length;
+  return kinds + (crossFilterCount > 0 && !showsCrossFilters(view) ? 1 : 0);
 }
 
 /**
