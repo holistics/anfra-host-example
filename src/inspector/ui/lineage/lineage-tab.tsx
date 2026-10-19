@@ -270,7 +270,7 @@ function Unavailable({ env, fetched }: { env: InspectorEnv; fetched: LineageFetc
   const message = !env.lineage
     ? "This host doesn't trace lineage: the canvas shows what the page says, without database tables."
     : fetched?.status === 'failed'
-      ? `Couldn't trace lineage (${fetched.error}). Metrics stop at their dataset. Tracing needs anfra 0.9.1 or later, and a catalog built with \`anfra ingest\`.`
+      ? `Couldn't trace lineage (${fetched.error}). Metrics stop at their dataset. Tracing needs a catalog built with \`anfra ingest\`.`
       : undefined;
   if (message) messages.push(message);
   if (env.lineage && fetched?.tablesError)

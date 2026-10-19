@@ -313,7 +313,8 @@ with cross-filters linking one query to another.
   what the source filters, not what it is built from. Pinning the target still runs up to the
   source. Cross-filters are off by default: the "Cross-filters" chip, shown when
   the page has any, turns them on.
-- **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
+- **Catalog**: the tab traces every field in one `lineage.trace` call (the `lineage` plugin's,
+  made by the host page on its plugin host), again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
   `refers` to; a dimension reaches the model its column names. Each model's table comes from the
   catalog's models (`env.lineage.tables()`); a database table is not an entity of its own, but the
@@ -321,7 +322,7 @@ with cross-filters linking one query to another.
   shows as chips the fields the page reads from it. If asking for the tables fails, they are not
   remembered as empty: a banner says so, the models show without their tables, and the next trace
   asks again.
-- **Without lineage** (no `env.lineage`, or the call failed, e.g. anfra before 0.9.1): a banner says
+- **Without lineage** (no `env.lineage`, or the call failed, e.g. no catalog yet): a banner says
   so, metrics stop at their dataset, and dimensions still reach their model.
 - **Columns**: a column per kind (ELK partitions), so a block whose query returns nothing stays in
   the block column. Controls are the first column.
