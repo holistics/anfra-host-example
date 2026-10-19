@@ -200,6 +200,24 @@ export function LineageNodeCard({ data }: NodeProps<LineageFlowNode>) {
         position={Position.Right}
         className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
       />
+      {node.kind === 'query' && (
+        <>
+          <Handle
+            id="cross-out"
+            type="source"
+            position={Position.Right}
+            style={{ top: '35%' }}
+            className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
+          />
+          <Handle
+            id="cross-in"
+            type="target"
+            position={Position.Right}
+            style={{ top: '65%' }}
+            className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0"
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -163,7 +163,10 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
               layoutOptions: { 'elk.partitioning.partition': String(lineageKinds.indexOf(node.kind)) },
             };
           }),
-          edges: graph.edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+          // A cross-filter joins two queries of one column: left out, so ELK keeps them there.
+          edges: graph.edges
+            .filter((e) => e.kind !== 'crossFilter')
+            .map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
         }),
       )
       .then((result) => {
@@ -216,6 +219,10 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
         id: e.id,
         source: e.source,
         target: e.target,
+        // Between two queries of one column: out of the right side and back into it, in a loop.
+        ...(e.kind === 'crossFilter'
+          ? { type: 'smoothstep', sourceHandle: 'cross-out', targetHandle: 'cross-in' }
+          : {}),
         markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
         style: {
           stroke: color,

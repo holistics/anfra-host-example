@@ -301,7 +301,9 @@ with cross-filters linking one query to another.
   it means "filters". It is **active** (sky blue) while the app's applied selection is in the
   source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (dashed
   light gray) otherwise, including while a selection is only pending. A cross-filter from a query
-  to itself is drawn too. Cross-filters are off by default: the "Cross-filters" chip, shown when
+  to itself is drawn too. The layout ignores these edges, so the queries stay together in the one
+  query column; the edge leaves a query's right side and loops back into the right side of the
+  other. Cross-filters are off by default: the "Cross-filters" chip, shown when
   the page has any, turns them on.
 - **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
