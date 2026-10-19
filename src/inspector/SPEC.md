@@ -337,6 +337,8 @@ with cross-filters linking one query to another.
 - **Zoom**: wheel and the zoom buttons; drag the pane to move. A new layout is fitted to the view,
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
+- **First layout**: a canvas shows nothing (no cards, no edges) behind a "Laying out lineage…"
+  spinner until its first layout is placed and fitted, then fades in; later layouts glide.
 - **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
   and the orange and gray edges mean.
 

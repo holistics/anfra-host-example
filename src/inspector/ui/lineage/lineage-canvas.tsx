@@ -115,6 +115,8 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   const shape = `${graph.nodes.map((n) => n.id).join()}|${graph.edges.map((e) => e.id).join()}`;
   const [layout, setLayout] = useState<{ shape: string; at: Map<string, { x: number; y: number }> }>();
   const laidOut = layout?.shape === shape ? layout.at : undefined;
+  // Unseen until the first layout is placed and fitted, so the cards never show stacked at the origin.
+  const [ready, setReady] = useState(false);
 
   const path = useMemo(
     () => (selected && graph.nodes.some((n) => n.id === selected) ? pathOf(graph, selected) : undefined),
@@ -144,6 +146,8 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     return new Map(sorted.map((e, i) => [e.id, i]));
   }, [graph, laidOut]);
 
+  // Cards that ELK has placed at least once: only those may show before the current layout lands.
+  const placed = useRef(new Set<string>());
   // The cards, drawn unseen until they are measured and laid out, then where ELK put them.
   useEffect(() => {
     setNodes((previous) => {
@@ -156,13 +160,14 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
             : path.nodes.has(node.id)
               ? 'on-path'
               : 'dim';
+        if (laidOut?.has(node.id)) placed.current.add(node.id);
         return {
           id: node.id,
           type: 'lineage',
           position: laidOut?.get(node.id) ?? before.get(node.id)?.position ?? { x: 0, y: 0 },
           data: { node, tone, cross: crossOf.get(node.id) },
-          // A card with no place yet stays unseen; one already placed stays put until the new layout.
-          style: laidOut || before.has(node.id) ? undefined : { opacity: 0 },
+          // A card ELK has not placed yet stays unseen; one already placed stays put until the new layout.
+          style: laidOut || placed.current.has(node.id) ? undefined : { opacity: 0 },
         };
       });
     });
@@ -221,15 +226,15 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     if (!laidOut) return;
     // The first layout lands in place; later ones glide.
     const duration = fitted.current ? 200 : 0;
-    const frame = requestAnimationFrame(
-      () =>
-        void fitView({
-          padding: 0.12,
-          duration,
-          maxZoom: 1,
-          minZoom: minimap ? 0.2 : 0.6,
-        }),
-    );
+    const frame = requestAnimationFrame(() => {
+      void fitView({
+        padding: 0.12,
+        duration,
+        maxZoom: 1,
+        minZoom: minimap ? 0.2 : 0.6,
+      });
+      setReady(true);
+    });
     fitted.current = true;
     return () => cancelAnimationFrame(frame);
   }, [laidOut, fitView, minimap]);
@@ -286,31 +291,41 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   }, [graph, path, lanes]);
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onNodeClick={(_, node) => onSelect(node.id === selected ? undefined : node.id)}
-      onPaneClick={() => onSelect(undefined)}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      edgesFocusable={false}
-      minZoom={0.1}
-      maxZoom={2}
-      colorMode={dark ? 'dark' : 'light'}
-      className="bg-muted/30"
-    >
-      <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
-      <Controls showInteractive={false} position="bottom-left" />
-      {minimap && (
-        <MiniMap
-          pannable
-          zoomable
-          nodeColor={(n) => minimapColors[(n as LineageFlowNode).data.node.kind] ?? '#94a3b8'}
-          position="bottom-right"
-        />
+    <div className="relative size-full">
+      <ReactFlow
+        nodes={nodes}
+        // Edges draw as soon as their cards are measured, wherever those sit: wait for the layout.
+        edges={laidOut ? edges : []}
+        style={{ opacity: ready ? 1 : 0, transition: 'opacity 200ms' }}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onNodeClick={(_, node) => onSelect(node.id === selected ? undefined : node.id)}
+        onPaneClick={() => onSelect(undefined)}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        minZoom={0.1}
+        maxZoom={2}
+        colorMode={dark ? 'dark' : 'light'}
+        className="bg-muted/30"
+      >
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
+        <Controls showInteractive={false} position="bottom-left" />
+        {minimap && (
+          <MiniMap
+            pannable
+            zoomable
+            nodeColor={(n) => minimapColors[(n as LineageFlowNode).data.node.kind] ?? '#94a3b8'}
+            position="bottom-right"
+          />
+        )}
+      </ReactFlow>
+      {!ready && graph.nodes.length > 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          Laying out lineage…
+        </div>
       )}
-    </ReactFlow>
+    </div>
   );
 }
