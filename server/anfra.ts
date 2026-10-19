@@ -5,10 +5,11 @@ import type { Config } from './config.js';
 /**
  * The core API ops a visitor may reach: what a Data App needs, and nothing else. `core.show` lists
  * the datasets the page provisions; `core.query` answers queries and field suggestions;
- * `core.query.export` makes a query's whole result a file and answers its link. Everything else
- * anfra serves (ingest, search, validate, …) stays private to this server.
+ * `core.query.export` makes a query's whole result a file and answers its link; `core.lineage`
+ * traces fields through the repo's catalog (`Anfra.lineage()`). Everything else anfra serves
+ * (ingest, search, validate, …) stays private to this server.
  */
-export const allowedOps = new Set(['core.query', 'core.query.export', 'core.show']);
+export const allowedOps = new Set(['core.lineage', 'core.query', 'core.query.export', 'core.show']);
 
 /** The request headers passed on to anfra. Nothing else crosses, cookies and Origin included. */
 const forwardedHeaders = ['accept', 'content-type', 'x-request-id', 'traceparent'];
@@ -96,6 +97,8 @@ export function coreApi(config: Config, clientOf: (c: Context) => string): Hono 
   // than a page of rows does: its own, tighter limit. No timeout of this server's own: the request
   // lasts as long as anfra takes or the browser waits.
   api.use('/core.query.export', rateLimit(config.exportRateLimit, clientOf));
+  // Lineage may build the repo's catalog first: held to the query limit, counted on its own.
+  api.use('/core.lineage', rateLimit(config.queryRateLimit, clientOf));
   api.all('/:op', guard, bodyLimit({ maxSize: 256 * 1024 }), forward);
   api.all('*', (c) => c.json({ error: { code: 'not_found', message: 'Not served here.' } }, 404));
   return api;
