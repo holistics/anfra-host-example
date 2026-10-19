@@ -21,7 +21,7 @@ import {
 } from '../../model/lineage';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import { Note } from '../shared/fields';
-import { LineageCanvas } from './lineage-canvas';
+import { LineageCanvas, loadElk } from './lineage-canvas';
 import type { LineageActions } from './lineage-node';
 import { LineageToolbar } from './lineage-toolbar';
 
@@ -80,6 +80,8 @@ export function LineageTab({
   pick,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  // The layout engine is most of the tab's weight: start loading it now, not at the first layout.
+  useEffect(() => void loadElk(), []);
   const [centerOn, setCenterOn] = useState<{ id: string; nonce: number }>();
   const handledPick = useRef(pick?.nonce);
   const targets = useMemo(() => lineageTargets(apps ?? []), [apps]);

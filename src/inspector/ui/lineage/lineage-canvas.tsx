@@ -59,8 +59,11 @@ const minimapColors: Record<string, string> = {
 
 /** ELK, loaded with the first canvas: the layout engine is most of this tab's weight. */
 let elk: Promise<{ layout(graph: ElkNode): Promise<ElkNode> }> | undefined;
-function loadElk() {
-  elk ??= import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK());
+export function loadElk() {
+  // In a worker, so a large graph's layout doesn't freeze the page.
+  elk ??= Promise.all([import('elkjs/lib/elk-api.js'), import('elkjs/lib/elk-worker.min.js?worker')]).then(
+    ([{ default: ELK }, { default: ElkWorker }]) => new ELK({ workerFactory: () => new ElkWorker() }),
+  );
   return elk;
 }
 
@@ -158,7 +161,8 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
           type: 'lineage',
           position: laidOut?.get(node.id) ?? before.get(node.id)?.position ?? { x: 0, y: 0 },
           data: { node, tone, cross: crossOf.get(node.id) },
-          style: laidOut ? undefined : { opacity: 0 },
+          // A card with no place yet stays unseen; one already placed stays put until the new layout.
+          style: laidOut || before.has(node.id) ? undefined : { opacity: 0 },
         };
       });
     });
@@ -210,13 +214,23 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     };
   }, [initialized, laidOut, graph, shape, getInternalNode]);
 
+  const fitted = useRef(false);
   // A new layout is fitted to the view, but never so small that cards can't be read: the large view
   // shows the rest.
   useEffect(() => {
     if (!laidOut) return;
+    // The first layout lands in place; later ones glide.
+    const duration = fitted.current ? 200 : 0;
     const frame = requestAnimationFrame(
-      () => void fitView({ padding: 0.12, duration: 200, maxZoom: 1, minZoom: minimap ? 0.2 : 0.6 }),
+      () =>
+        void fitView({
+          padding: 0.12,
+          duration,
+          maxZoom: 1,
+          minZoom: minimap ? 0.2 : 0.6,
+        }),
     );
+    fitted.current = true;
     return () => cancelAnimationFrame(frame);
   }, [laidOut, fitView, minimap]);
 

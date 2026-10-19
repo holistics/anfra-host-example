@@ -138,8 +138,9 @@ export function LineageNodeCard({ id, data }: NodeProps<LineageFlowNode>) {
     ...(cross?.in ?? []).map((id) => ({ id: crossHandleId('in', id), type: 'target' as const })),
   ];
   const slotKey = slots.map((h) => h.id).join();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the handles change with the key
-  useEffect(() => updateInternals(id), [slotKey, id, updateInternals]);
+  useEffect(() => {
+    if (slotKey) updateInternals(id);
+  }, [slotKey, id, updateInternals]);
   const actions = useContext(LineageActionsContext);
   const mono = node.kind === 'table';
   return (
