@@ -3,15 +3,15 @@
 A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yourself, in place of the appserve pages `anfra serve` has built in. It is a reference for putting Data Apps in a page of your own: everything it needs from anfra is the published [`@holistics/anfra-sdk`](https://www.npmjs.com/package/@holistics/anfra-sdk) and the core HTTP API.
 
 - A sidebar lists the repo's Data Apps; each opens at `/apps/<path>`.
-- The stage runs the open Data App in a sandboxed frame. Its queries come back to the page over the SDK's bridge and are answered by anfra through this host's server. So are its exports: a Data App's `query.export()` downloads a query's whole result as a CSV.
-- Pictures: the toolbar downloads a PNG or PDF of the whole app, a node's row in the Structure tab one of that container or block, and a Data App can save its own with `Anfra.render()`. The SDK draws them in the frame; this host turns that on (`render: true` in [`src/data-app.ts`](src/data-app.ts)), since it has the page save a file the app's code made. Turn it on only for apps you trust with that.
+- The stage runs the open Data App in a sandboxed frame, on the SDK's plugin host with every plugin anfra has. Its queries come back to the page over the SDK's bridge and are answered by anfra through this host's server. So are its exports (a Data App's `query.export()` downloads a query's whole result as a CSV) and its lineage (`Anfra.lineage()` traces fields through the repo's catalog).
+- Pictures: the toolbar downloads a PNG or PDF of the whole app, a node's row in the Structure tab one of that container or block, and a Data App can save its own with `Anfra.render()`. The SDK draws them in the frame; this host turns that on by installing the `render` plugin (in [`src/data-app.ts`](src/data-app.ts)), since it has the page save a file the app's code made. Install it only for apps you trust with that.
 - A toolbar reloads the app, and opens the inspect panel:
   - Structure: the app's parts as its markup declares them, as a tree. Hover a node to highlight it on the page, click to scroll to it, copy its handle (`[Revenue](data-anfra-block="revenue")`) to point an agent at it, or download a picture of it. Pick mode goes from the page to the tree.
-  - Data: every app's queries (state, rows, executed AQL and SQL), controls and selection.
+  - Data: every app's queries (state, rows, executed AQL and SQL), controls and selection, and every call the frame made through the plugins (exports, lineage, pictures saved), recorded by a middleware.
 - Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
-Tested with anfra 0.8.0 and `@holistics/anfra-sdk` 0.8.0. Bump them together: the SDK is released with anfra.
+Tested with anfra 0.11.0 and `@holistics/anfra-sdk` 0.11.0. Bump them together: the SDK is released with anfra.
 
 ## How it fits together
 
@@ -26,7 +26,7 @@ browser                          this host (Node, Hono)                 anfra se
 
 - **anfra** answers the core API only. Run with `--no-apps`, it serves no pages, and it must listen where only this server can reach it: `anfra serve` has no authentication.
 - **The server** (`server/`) is the one origin the browser talks to:
-  - `/api/core.show`, `/api/core.query` and `/api/core.query.export`, passed to anfra, and nothing else of the core API. Queries and exports are rate-limited per client, each with its own limit. The spot to check your own session is marked in `server/anfra.ts`.
+  - `/api/core.show`, `/api/core.query`, `/api/core.query.export` and `/api/core.lineage`, passed to anfra, and nothing else of the core API. Queries, exports and lineage are rate-limited per client, each with its own limit (lineage counts against the query limit's number). The spot to check your own session is marked in `server/anfra.ts`.
   - `/exports/download/<token>/<name>`: an export's file, streamed from anfra. anfra makes its export links at this server's origin (`ANFRA_SITE_URL`, below), so the browser downloads through here, never from anfra directly. A link works for whoever has it until it expires; a host whose readers sign in checks the session here too (marked in `server/anfra.ts`).
   - `/host/apps` (the Data App tree, labelled by each file's `<title>`, and the [redirects](#redirects)), `/host/files/<path>` (a definition or a file it refers to, sent sandboxed) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo's `apps/` folder itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
@@ -49,7 +49,7 @@ You need Node 22 or newer, pnpm, and anfra.
    Or `pnpm dev:anfra`, which does the same in `ANFRA_REPO`, with `ANFRA_SITE_URL` at `http://localhost:5173` unless you set it. With Docker:
 
    ```sh
-   docker run --rm -p 127.0.0.1:7878:7878 -e ANFRA_SITE_URL=http://localhost:5173 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.8.0 serve --no-apps --addr 0.0.0.0:7878
+   docker run --rm -p 127.0.0.1:7878:7878 -e ANFRA_SITE_URL=http://localhost:5173 -v "$PWD:/repo" ghcr.io/holistics/anfra:0.11.0 serve --no-apps --addr 0.0.0.0:7878
    ```
 
 2. Start the host:
