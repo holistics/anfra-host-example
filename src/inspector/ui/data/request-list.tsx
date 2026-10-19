@@ -53,16 +53,27 @@ export function RequestList({
   );
 }
 
-const methodLabel: Record<RequestEntry['method'], string> = {
-  submitQuery: 'Query',
-  exportQuery: 'Export',
-  fieldSuggestions: 'Suggestions',
+const callLabels: Record<string, string> = {
+  'core.submitQuery': 'Query',
+  'export.query': 'Export',
+  'core.fieldSuggestions': 'Suggestions',
+  'lineage.trace': 'Lineage',
+  'render.save': 'Picture saved',
+  'anfra.body': 'Plugin code',
 };
+
+/** What a request is, in words: its call's label, or the call's name for one this list doesn't know. */
+const labelOf = (entry: RequestEntry) => callLabels[entry.call] ?? entry.call;
+
+/** A request's title: the field it suggests for, the dataset it queries, or what it is. */
+function titleOf(entry: RequestEntry): string {
+  if (entry.call === 'core.fieldSuggestions' && entry.field) return entry.field;
+  return entry.dataset || labelOf(entry);
+}
 
 /** A request as a card, laid out like a query row: what it is, how it ended, then its details. */
 function RequestCard({ entry }: { entry: RequestEntry }) {
   const [open, setOpen] = useState(false);
-  const title = entry.method === 'fieldSuggestions' ? entry.field : entry.dataset;
   return (
     <li className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}>
       {/* The same shell as a query row: one clickable line, the state as a dot, a chevron at the end. */}
@@ -73,7 +84,7 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
           onClick={() => setOpen(!open)}
           aria-expanded={open}
         >
-          <span className="min-w-0 truncate font-medium">{title || methodLabel[entry.method]}</span>
+          <span className="min-w-0 truncate font-medium">{titleOf(entry)}</span>
           <span className="min-w-0 truncate text-xs text-muted-foreground">{summaryOf(entry)}</span>
           <span className="flex-1" />
           <Tooltip>
@@ -99,8 +110,11 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
       {open && (
         <div className="space-y-3 px-3 pt-1.5 pb-3">
           <Fields>
-            <Field label="Type">{methodLabel[entry.method]}</Field>
-            <Field label="Dataset">{entry.dataset || 'none'}</Field>
+            <Field label="Type">{labelOf(entry)}</Field>
+            <Field label="Call">{entry.call}</Field>
+            {entry.dataset && <Field label="Dataset">{entry.dataset}</Field>}
+            <Field label="Caller">{entry.caller}</Field>
+            {entry.trace && <Field label="Middleware">{entry.trace.join(' → ')}</Field>}
             <Field label="Sent at">{formatTime(entry.at)}</Field>
             <Field label="Duration">
               {entry.durationMs === undefined ? 'Still running' : `${entry.durationMs} ms`}
@@ -153,14 +167,21 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
 
 /** What a line says after its time: the source, the page, and the rows or how it ended. */
 function summaryOf(entry: RequestEntry): string {
-  if (entry.method === 'fieldSuggestions') {
+  if (entry.call === 'core.fieldSuggestions') {
     return `suggestions for ${entry.field}${entry.q ? ` "${entry.q}"` : ''}${entry.numRows === undefined ? '' : ` · ${entry.numRows}`}`;
   }
-  if (entry.method === 'exportQuery') {
+  if (entry.call === 'export.query') {
     const parts = [`export${entry.format ? ` ${entry.format}` : ''}`];
     if (entry.status === 'ok') parts.push(`${entry.numRows ?? 0} rows`);
     else if (entry.status !== 'pending') parts.push(entry.status);
     return parts.join(' · ');
+  }
+  if (entry.call !== 'core.submitQuery') {
+    const parts = [
+      entry.targets?.join(', ') ?? entry.filename ?? (entry.caller === 'frame' ? undefined : entry.caller),
+    ];
+    if (entry.status !== 'ok' && entry.status !== 'pending') parts.push(entry.status);
+    return parts.filter(Boolean).join(' · ');
   }
   const parts = [entry.fromCache === undefined ? undefined : entry.fromCache ? 'cache' : 'database'];
   if (entry.page && entry.page > 1) parts.push(`page ${entry.page}`);
@@ -183,13 +204,23 @@ function inputOf(entry: RequestEntry): string | undefined {
     format,
     formatOptions,
     filename,
+    targets,
+    request,
   } = entry;
   const shown =
-    entry.method === 'submitQuery'
+    entry.call === 'core.submitQuery'
       ? { dataset, page, pageSize, timezone, bustCache, ...input }
-      : entry.method === 'exportQuery'
+      : entry.call === 'export.query'
         ? { dataset, timezone, format, formatOptions, filename, ...input }
-        : { dataset, field, q };
+        : entry.call === 'core.fieldSuggestions'
+          ? { dataset, field, q }
+          : entry.call === 'lineage.trace'
+            ? { targets }
+            : entry.call === 'render.save'
+              ? { filename }
+              : isRecord(request)
+                ? request
+                : { request };
   // Without the declared AQL, which the query shows already, and empty lists.
   const kept = Object.entries(shown).filter(
     ([, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0),
@@ -239,6 +270,9 @@ function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][
     </div>
   );
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function cell(value: unknown): string {
   if (value === null || value === undefined) return '∅';

@@ -127,8 +127,11 @@ function Stats({
   const warnings = issues.length - errors;
   const controls = apps.flatMap((app) => Object.values(app.controls));
   const unapplied = counts.dirtyControls;
-  const last = requests.findLast((r) => r.method === 'submitQuery' && r.status !== 'pending');
-  const lastQuery = last?.aql ? queriesOf({ ...last, aql: last.aql }, apps)[0] : undefined;
+  const last = requests.findLast((r) => r.call === 'core.submitQuery' && r.status !== 'pending');
+  const lastQuery =
+    last?.aql && last.dataset
+      ? queriesOf({ ...last, dataset: last.dataset, aql: last.aql }, apps)[0]
+      : undefined;
   const firstIssue = issues[0];
 
   return (

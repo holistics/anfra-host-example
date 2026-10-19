@@ -1,11 +1,12 @@
 // Everything this host asks of the Anfra SDK, in one place. A host of your own needs these calls
 // and nothing else from the SDK; the rest of this project is UI around them.
 //
-//   @holistics/anfra-sdk/api   talks to the core API: the datasets, and a Backend for queries
-//   @holistics/anfra-sdk/host  mounts a Data App in a sandboxed frame and answers it over the bridge
+//   @holistics/anfra-sdk/api      talks to the core API: the datasets, and a Backend for queries
+//   @holistics/anfra-sdk/host     the plugin host: mounts a Data App in a sandboxed frame, and
+//                                 answers its calls over the bridge with the plugins installed
+//   @holistics/anfra-sdk/plugins  anfra's plugins: queries, exports, lineage, pictures, inspect
 import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
 import type {
-  Backend,
   DatasetDescriptor,
   InspectedApp,
   InspectedStructure,
@@ -14,7 +15,14 @@ import type {
   RenderRequest,
   User,
 } from '@holistics/anfra-sdk/common';
-import { mountDataApp } from '@holistics/anfra-sdk/host';
+import { type CallContext, createHost, type Host, type Middleware } from '@holistics/anfra-sdk/host';
+import {
+  corePlugin,
+  exportPlugin,
+  inspectPlugin,
+  lineagePlugin,
+  renderPlugin,
+} from '@holistics/anfra-sdk/plugins';
 import { dependencies } from '../package.json';
 
 export type {
@@ -35,8 +43,8 @@ export type {
 export const sdkVersion: string = dependencies['@holistics/anfra-sdk'];
 
 /**
- * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`
- * and `core.query.export`.
+ * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`,
+ * `core.query.export` and `core.lineage`.
  */
 const api = coreClient('/api');
 
@@ -134,6 +142,13 @@ export async function definition(path: string): Promise<{ html: string; baseHref
   };
 }
 
+/** Records one of a frame's calls, then passes it on: a middleware's `handle`. */
+export type RecordCall = (
+  request: unknown,
+  context: CallContext,
+  next: (request?: unknown) => Promise<unknown>,
+) => Promise<unknown>;
+
 export interface MountOptions {
   container: HTMLElement;
   path: string;
@@ -142,8 +157,8 @@ export interface MountOptions {
   onInspect: (apps: InspectedApp[], structure: InspectedStructure) => void;
   /** In pick mode, the node the reader pointed at (its key), or null when they left the mode. */
   onPick: (node: string | null) => void;
-  /** Wraps the backend the frame's queries go to, to record them for the inspector. */
-  record?: (backend: Backend) => Backend;
+  /** Sees every call about this frame, through the host's middleware: to record them for the inspector. */
+  record?: RecordCall;
 }
 
 /** What the page does with a mounted Data App. */
@@ -162,29 +177,97 @@ export interface DataApp {
   unmount: () => void;
 }
 
+/** Each mounted frame's recorder, by its frame: the one middleware hands each call to its frame's. */
+const recorders = new WeakMap<HTMLIFrameElement, RecordCall>();
+
+/** Every call on the page passes through it; those about a recorded frame go to its recorder. */
+const recording: Middleware = {
+  name: 'anfra-host.requests',
+  match: '*',
+  handle(request, context, next) {
+    const record = context.mount && recorders.get(context.mount.frame);
+    return record ? record(request, context, next) : next();
+  },
+};
+
 /**
- * Mount a Data App in `container`: a sandboxed frame running its definition, with the SDK and the
- * datasets provisioned ahead of it. Its queries come back to this page over the bridge, and are
- * answered by `core.query` through this host's server. Its exports too, by `core.query.export`: the
- * SDK saves the file from this page, by following the link anfra made at this host's origin.
+ * The page's plugin host: every plugin anfra has, over the core API through this host's server.
+ * Made again when the datasets are (an AML change), since the Backend resolves fields against them.
  *
- * Rendering (a PNG or PDF of the app, `Anfra.render()` in the app, `render()` here) is off unless
- * turned on: the frame draws the picture and this page saves it, so the app's own code chooses a
- * file this host's origin downloads. The SDK lets through only a PNG or a PDF; turn it on only for
- * apps you trust with that, as this host does for its own repo.
+ * - `core` runs the app's queries and suggests a filter's values, by `core.query`.
+ * - `export` makes a query's whole result a file, by `core.query.export`: the SDK saves it from
+ *   this page, by following the link anfra made at this host's origin.
+ * - `lineage` traces fields through the repo's catalog (`Anfra.lineage()`), by `core.lineage`.
+ * - `render` draws a PNG or PDF of the app in the frame (`Anfra.render()` in the app,
+ *   `render.draw` here), and has this page save it: installing it is the opt-in, since the app's
+ *   own code then chooses a file this host's origin downloads. The SDK lets through only a PNG or a
+ *   PDF; install it only for apps you trust with that, as this host does for its own repo.
+ * - `inspect` carries the inspect panel's snapshots, highlight, locate and pick; the panel is this
+ *   host's own (src/inspector).
+ *
+ * A Data App sees what is installed as `Anfra.plugins`: leave one out, and apps offer none of it.
+ */
+let host: { datasets: Record<string, DatasetDescriptor>; runtime: Host } | undefined;
+function hostFor(datasets: Record<string, DatasetDescriptor>): Host {
+  if (host?.datasets !== datasets) {
+    const backend = coreApiBackend(api, { datasets });
+    host = {
+      datasets,
+      runtime: createHost({
+        plugins: [
+          corePlugin(backend),
+          exportPlugin(backend),
+          lineagePlugin(backend),
+          renderPlugin(),
+          inspectPlugin(),
+        ],
+        middleware: [recording],
+      }),
+    };
+  }
+  return host.runtime;
+}
+
+/**
+ * Mount a Data App in `container`: a sandboxed frame running its definition, with the SDK, the
+ * plugins' frame halves and the datasets provisioned ahead of it. Its calls come back to this page
+ * over the bridge, and the plugins answer them (see `hostFor`).
  */
 export async function mount(options: MountOptions): Promise<DataApp> {
   const { html, baseHref } = await definition(options.path);
-  return mountDataApp({
+  const mounted = hostFor(options.datasets).mount({
     container: options.container,
     definition: html,
     baseHref,
     datasets: options.datasets,
     user: reader,
-    backend: (options.record ?? ((b) => b))(coreApiBackend(api, { datasets: options.datasets })),
-    onInspect: options.onInspect,
-    onPick: options.onPick,
-    render: true,
     title: options.path,
   });
+  // Before the frame's document loads, so its first calls are recorded.
+  if (options.record) recorders.set(mounted.frame, options.record);
+  const stop = [
+    mounted.on(
+      'inspect.snapshot',
+      ({ apps, structure }: { apps: InspectedApp[]; structure: InspectedStructure }) =>
+        options.onInspect(apps, structure),
+    ),
+    mounted.on('inspect.picked', ({ node }: { node: string | null }) => options.onPick(node)),
+  ];
+  // What the page asks of the frame answers nothing worth waiting for; a failure is only logged.
+  const send = (name: string, request: unknown) => {
+    mounted.call(name, request).catch((err: Error) => console.warn('anfra:', err.message));
+  };
+  return {
+    frame: mounted.frame,
+    setInspecting: (open) => send('inspect.watch', open),
+    setPicking: (on) => send('inspect.pick', on),
+    highlight: (node) => send('inspect.highlight', node),
+    locate: (target) => send('inspect.locate', target),
+    render: (request) => mounted.call<Rendering>('render.draw', request),
+    unmount() {
+      for (const off of stop) off();
+      recorders.delete(mounted.frame);
+      mounted.unmount();
+    },
+  };
 }

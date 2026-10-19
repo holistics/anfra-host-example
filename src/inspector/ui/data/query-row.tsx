@@ -78,7 +78,7 @@ export function QueryRow({
   const [codeTab, setCodeTab] = useState<CodeTab>('aql');
   // The newest run that ended, however it did; one another query may have made isn't this one's.
   const latest = requests.find(
-    ({ entry, shared }) => !shared && entry.method === 'submitQuery' && entry.status !== 'pending',
+    ({ entry, shared }) => !shared && entry.call === 'core.submitQuery' && entry.status !== 'pending',
   )?.entry;
   const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
