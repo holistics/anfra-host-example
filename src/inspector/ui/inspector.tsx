@@ -69,7 +69,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
   const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
   const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
-  const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set() });
+  const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set(), crossFilters: false });
   const [lineage, setLineage] = useState<LineageFetch>();
   const [lineagePick, setLineagePick] = useState<LineagePick>();
 

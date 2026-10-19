@@ -283,6 +283,8 @@ Where each number on the page comes from, as a canvas (React Flow, laid out by E
 
 **Control → Block → Query → Metric / Dimension → Dataset → Model → Database table**
 
+with cross-filters linking one query to another.
+
 - **Scope**: the whole page. Blocks come from the structure (a query marked inside a block, or
   `usage[…].blocks`). Fields are each query's non-ad-hoc `columns`, so a query that hasn't run has
   none yet. A column with `isMeasure` is a metric card, the rest dimension cards.
@@ -293,7 +295,14 @@ Where each number on the page comes from, as a canvas (React Flow, laid out by E
   Unlike every other edge, which points from what uses to what it is built from, a control's edge
   means "filters": the control changes the query's numbers but is not part of where they come
   from. It is drawn orange when the control has a value and light gray when it is not set, so it
-  is told apart from the purple edges. Cross-filters between queries are not drawn.
+  is told apart from the purple edges.
+- **Cross-filters**: a `crossFilter` mapping whose two queries are both in the graph is an edge
+  from the source query to the target query, carrying the target's fields. Like a control's edge
+  it means "filters". It is **active** (sky blue) while the app's applied selection is in the
+  source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (dashed
+  light gray) otherwise, including while a selection is only pending. A cross-filter from a query
+  to itself is drawn too. Cross-filters are off by default: the "Cross-filters" chip, shown when
+  the page has any, turns them on.
 - **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
   `refers` to; a dimension reaches the model its column names. Each model's table comes from the
@@ -311,14 +320,21 @@ Where each number on the page comes from, as a canvas (React Flow, laid out by E
 - **Hover buttons** on a card: Locate on the page and Show in Structure (controls, blocks, queries),
   Show in Data (controls, queries, fields), Focus.
 - **Filter**: a chip per kind, with its count, shows or hides it. Hiding a kind joins across it:
-  hiding queries links each block to the fields its queries return.
+  hiding queries links each block to the fields its queries return. The "Cross-filters" chip does
+  the same for cross-filter edges; hiding queries hides them too, as they join two queries.
+- **Presets**: a menu beside the chips sets the kinds and cross-filters in one go. It shows
+  "Custom" once the chips no longer match a preset. All four leave the focus alone.
+  - **Default**: every kind, no cross-filters.
+  - **Everything**: every kind and the cross-filters.
+  - **Interaction mapping**: only controls, blocks and queries, with the cross-filters.
+  - **Query lineage**: everything except controls and cross-filters.
 - **Focus**: keeps one card and its path. "Focused on …" above the canvas, with × to show
   everything.
 - **Zoom**: wheel and the zoom buttons; drag the pane to move. A new layout is fitted to the view,
   never below 60% in the panel. The expand button opens the same canvas, filters and pin in a
   large modal with a minimap.
 - **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
-  and the orange and gray edges mean.
+  and the orange, blue and gray edges mean.
 
 ## 5. Structure
 
