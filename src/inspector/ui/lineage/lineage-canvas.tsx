@@ -39,9 +39,9 @@ const filterEdgeColor = {
   set: { normal: '#fb923c', onPath: '#ea580c' },
   unset: { normal: '#e5e7eb', onPath: '#9ca3af' },
 };
-/** A cross-filter's edge, drawn like a control's: blue while a selection in its source is applied, light gray before. */
+/** A cross-filter's edge, drawn like a control's: orange while a selection in its source is applied, light gray before. */
 const crossFilterEdgeColor = {
-  active: { normal: '#38bdf8', onPath: '#0284c7' },
+  active: { normal: '#fb923c', onPath: '#ea580c' },
   inactive: { normal: '#e5e7eb', onPath: '#9ca3af' },
 };
 
