@@ -321,6 +321,54 @@ describe('lineage', () => {
     ]);
   });
 
+  describe('a cross-filter is not lineage', () => {
+    // `orders` (order_count) cross-filters `revenueByStatus` (revenue, status): different metrics.
+    const crossed = buildLineageGraph(
+      [
+        {
+          ...app,
+          declaration: {
+            ...app.declaration,
+            mappings: [
+              {
+                kind: 'crossFilter',
+                id: 'x1',
+                from: { name: 'orders' },
+                to: { name: 'revenueByStatus' },
+              },
+            ],
+          },
+        } as unknown as InspectedApp,
+      ],
+      structure,
+      catalog,
+      undefined,
+    );
+
+    test('pinning the source shows what it filters, not what that is built from', () => {
+      const path = pathOf(crossed, 'query:0/orders');
+      assert.deepEqual([...path.nodes].sort(), [
+        'block:kpis',
+        'dataset:ecommerce',
+        'metric:ecommerce.order_count',
+        'model:orders',
+        'query:0/orders',
+        'query:0/revenueByStatus',
+        'table:ecommerce_duckdb/public.orders',
+      ]);
+      assert.ok(path.edges.has('crossFilter:0/x1'));
+    });
+
+    test('pinning the target walks up through the cross-filter to its source', () => {
+      const path = pathOf(crossed, 'query:0/revenueByStatus');
+      assert.ok(path.nodes.has('query:0/orders'));
+      assert.ok(path.edges.has('crossFilter:0/x1'));
+      assert.ok(path.nodes.has('metric:ecommerce.revenue'));
+      assert.ok(path.nodes.has('model:products'));
+      assert.ok(!path.nodes.has('metric:ecommerce.order_count'));
+    });
+  });
+
   test('a query that has not run still links to its block', () => {
     assert.ok(pathOf(graph, 'query:0/later').nodes.has('block:kpis'));
   });

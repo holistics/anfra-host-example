@@ -308,7 +308,10 @@ with cross-filters linking one query to another.
   query column, but it lays queries that are joined by one next to each other. Each edge has its
   own point on the right side of both cards and its own lane: it leaves the source, runs out and
   back into the target, and the shorter its span the nearer the cards its lane, so loops nest
-  instead of overlapping.Cross-filters are off by default: the "Cross-filters" chip, shown when
+  instead of overlapping. Pinning the source query highlights the edge and the target query, but
+  nothing reached only through the target (its fields, datasets, models or tables): the edge shows
+  what the source filters, not what it is built from. Pinning the target still runs up to the
+  source. Cross-filters are off by default: the "Cross-filters" chip, shown when
   the page has any, turns them on.
 - **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it
