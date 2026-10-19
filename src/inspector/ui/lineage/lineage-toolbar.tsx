@@ -5,12 +5,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
+  hiddenCount,
   type LineageGraphNode,
   type LineageKind,
   type LineagePreset,
   lineageKinds,
   lineagePresets,
   matchPreset,
+  showsCrossFilters,
 } from '../../model/lineage';
 import { KindBadge, kindLabels } from './lineage-node';
 
@@ -52,7 +54,8 @@ export function LineageToolbar({
     else next.add(kind);
     onHidden(next);
   };
-  const hiddenCount = lineageKinds.filter((k) => counts[k] && hidden.has(k)).length + (crossFilters ? 0 : 1);
+  const hiddenTotal = hiddenCount({ hidden, crossFilters }, counts, crossFilterCount);
+  const crossDrawn = showsCrossFilters({ hidden, crossFilters });
   const rowClass = (shown: boolean) =>
     cn(
       'flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors hover:bg-accent',
@@ -89,8 +92,8 @@ export function LineageToolbar({
             <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
               <Funnel className="size-3" />
               Show
-              {hiddenCount > 0 && (
-                <span className="text-muted-foreground tabular-nums">{hiddenCount} hidden</span>
+              {hiddenTotal > 0 && (
+                <span className="text-muted-foreground tabular-nums">{hiddenTotal} hidden</span>
               )}
             </Button>
           </PopoverTrigger>
@@ -122,16 +125,17 @@ export function LineageToolbar({
                 type="button"
                 aria-pressed={crossFilters}
                 onClick={() => onCrossFilters(!crossFilters)}
-                className={rowClass(crossFilters)}
+                className={rowClass(crossDrawn)}
+                title={crossFilters && !crossDrawn ? 'Hidden with queries' : undefined}
               >
                 <span className="flex size-4 items-center justify-center">
                   <Funnel
-                    className={cn('size-3', crossFilters ? 'text-orange-500' : 'text-muted-foreground')}
+                    className={cn('size-3', crossDrawn ? 'text-orange-500' : 'text-muted-foreground')}
                   />
                 </span>
                 Cross-filters
                 <span className="ml-auto text-muted-foreground tabular-nums">{crossFilterCount}</span>
-                {crossFilters ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                {crossDrawn ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
               </button>
             )}
           </PopoverContent>
