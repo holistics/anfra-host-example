@@ -31,6 +31,11 @@ const filterEdgeColor = {
   set: { normal: '#fb923c', onPath: '#ea580c' },
   unset: { normal: '#e5e7eb', onPath: '#9ca3af' },
 };
+/** A cross-filter's edge: blue while a selection in its source is applied, dashed gray before. */
+const crossFilterEdgeColor = {
+  active: { normal: '#38bdf8', onPath: '#0284c7' },
+  inactive: { normal: '#cbd5e1', onPath: '#64748b' },
+};
 
 /** Each kind's colour on the minimap. */
 const minimapColors: Record<string, string> = {
@@ -197,11 +202,14 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
   }, [centerOn, laidOut, getInternalNode, setCenter, getZoom]);
 
   const edges = useMemo<Edge[]>(() => {
-    const controls = new Map(graph.nodes.filter((n) => n.kind === 'control').map((n) => [n.id, n.isSet]));
     return graph.edges.map((e) => {
       const on = path?.edges.has(e.id) ?? false;
-      const filters = controls.has(e.source);
-      const palette = filters ? filterEdgeColor[controls.get(e.source) ? 'set' : 'unset'] : edgeColor;
+      const palette =
+        e.kind === 'crossFilter'
+          ? crossFilterEdgeColor[e.active ? 'active' : 'inactive']
+          : e.kind === 'control'
+            ? filterEdgeColor[e.active ? 'set' : 'unset']
+            : edgeColor;
       const color = palette[on ? 'onPath' : 'normal'];
       const opacity = path && !on ? 0.15 : 1;
       return {
@@ -212,6 +220,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
         style: {
           stroke: color,
           strokeWidth: on ? 2 : 1.25,
+          strokeDasharray: e.kind === 'crossFilter' && !e.active ? '5 4' : undefined,
           opacity,
         },
         zIndex: on ? 1 : 0,

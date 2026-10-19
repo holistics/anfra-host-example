@@ -1,9 +1,16 @@
-import { CircleHelp, LoaderCircle, Maximize2, X } from 'lucide-react';
+import { CircleHelp, Funnel, LoaderCircle, Maximize2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { type LineageGraphNode, type LineageKind, lineageKinds } from '../../model/lineage';
+import {
+  type LineageGraphNode,
+  type LineageKind,
+  type LineagePreset,
+  lineageKinds,
+  lineagePresets,
+  matchPreset,
+} from '../../model/lineage';
 import { KindBadge, kindLabels } from './lineage-node';
 
 interface Props {
@@ -11,6 +18,11 @@ interface Props {
   counts: Partial<Record<LineageKind, number>>;
   hidden: ReadonlySet<LineageKind>;
   onHidden: (hidden: Set<LineageKind>) => void;
+  crossFilters: boolean;
+  /** How many cross-filters the whole graph has: with none, no chip. */
+  crossFilterCount: number;
+  onCrossFilters: (shown: boolean) => void;
+  onPreset: (preset: LineagePreset) => void;
   focus: LineageGraphNode | undefined;
   onClearFocus: () => void;
   loading: boolean;
@@ -19,7 +31,20 @@ interface Props {
 }
 
 /** Above the canvas: a chip per kind to show or hide it, what it is focused on, and the large view. */
-export function LineageToolbar({ counts, hidden, onHidden, focus, onClearFocus, loading, onExpand }: Props) {
+export function LineageToolbar({
+  counts,
+  hidden,
+  onHidden,
+  crossFilters,
+  crossFilterCount,
+  onCrossFilters,
+  onPreset,
+  focus,
+  onClearFocus,
+  loading,
+  onExpand,
+}: Props) {
+  const preset = matchPreset({ hidden, crossFilters });
   const toggle = (kind: LineageKind) => {
     const next = new Set(hidden);
     if (next.has(kind)) next.delete(kind);
@@ -56,8 +81,45 @@ export function LineageToolbar({ counts, hidden, onHidden, focus, onClearFocus, 
                 </button>
               );
             })}
+          {crossFilterCount > 0 && (
+            <button
+              type="button"
+              aria-pressed={crossFilters}
+              onClick={() => onCrossFilters(!crossFilters)}
+              className={cn(
+                'flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors',
+                crossFilters
+                  ? 'bg-background text-foreground'
+                  : 'border-dashed text-muted-foreground opacity-60',
+              )}
+            >
+              <Funnel className={cn('size-3', crossFilters ? 'text-sky-500' : 'text-muted-foreground')} />
+              Cross-filters
+              <span className="text-muted-foreground tabular-nums">{crossFilterCount}</span>
+            </button>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <select
+            aria-label="Preset"
+            value={preset?.id ?? 'custom'}
+            onChange={(e) => {
+              const picked = lineagePresets.find((p) => p.id === e.target.value);
+              if (picked) onPreset(picked);
+            }}
+            className="h-6 rounded-md border bg-background px-1 text-[11px] font-medium"
+          >
+            {!preset && (
+              <option value="custom" disabled>
+                Custom
+              </option>
+            )}
+            {lineagePresets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
           {loading && (
             <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-label="Tracing" />
           )}
@@ -91,7 +153,7 @@ export function LineageToolbar({ counts, hidden, onHidden, focus, onClearFocus, 
   );
 }
 
-/** What an arrow means: the two kinds of edge, drawn as they are on the canvas. */
+/** What an arrow means: the kinds of edge, drawn as they are on the canvas. */
 function EdgeLegend() {
   return (
     <Popover>
@@ -120,6 +182,20 @@ function EdgeLegend() {
           title="Filters, not set"
         >
           The control is mapped to the query but has no value yet, so it changes nothing for now.
+        </LegendRow>
+        <LegendRow
+          line={<line x1="0" y1="6" x2="40" y2="6" stroke="#38bdf8" strokeWidth="1.5" />}
+          title="Cross-filter, active"
+        >
+          A selection in the source query is applied, so it filters the target query's numbers.
+        </LegendRow>
+        <LegendRow
+          line={
+            <line x1="0" y1="6" x2="40" y2="6" stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="5 4" />
+          }
+          title="Cross-filter, inactive"
+        >
+          The queries are linked but nothing is selected in the source yet. Shown when cross-filters are on.
         </LegendRow>
       </PopoverContent>
     </Popover>

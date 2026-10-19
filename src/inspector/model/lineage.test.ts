@@ -13,7 +13,9 @@ import {
   focusGraph,
   type LineageCatalog,
   type LineageGraph,
+  lineagePresets,
   lineageTargets,
+  matchPreset,
   pathOf,
   targetKey,
 } from './lineage';
@@ -129,6 +131,51 @@ describe('lineage', () => {
     assert.deepEqual(g.edges.find((e) => e.id === 'control:0/status->query:0/orders')?.fields, [
       'metric:ecommerce.order_count',
     ]);
+  });
+
+  test('a cross-filter links two queries, active while its source is selected', () => {
+    const base = {
+      ...app,
+      declaration: {
+        ...app.declaration,
+        mappings: [
+          { kind: 'crossFilter', id: 'x1', from: { name: 'orders' }, to: { name: 'orders' } },
+          { kind: 'crossFilter', id: 'x2', from: { name: 'orders' }, to: { name: 'missing' } },
+        ],
+      },
+    };
+    const idle = buildLineageGraph([base as unknown as InspectedApp], structure, undefined, undefined);
+    const edge = idle.edges.find((e) => e.kind === 'crossFilter');
+    assert.equal(edge?.id, 'crossFilter:0/x1');
+    assert.equal(edge?.active, false);
+    assert.equal(idle.edges.filter((e) => e.kind === 'crossFilter').length, 1);
+
+    const applied = { ...base, appliedSelection: { source: 'orders' } } as unknown as InspectedApp;
+    const live = buildLineageGraph([applied], structure, undefined, undefined);
+    assert.equal(live.edges.find((e) => e.kind === 'crossFilter')?.active, true);
+
+    assert.equal(
+      filterGraph(live, new Set(), { crossFilters: false }).edges.some((e) => e.kind === 'crossFilter'),
+      false,
+    );
+    assert.equal(
+      filterGraph(live, new Set(['block']), { crossFilters: true }).edges.some(
+        (e) => e.kind === 'crossFilter',
+      ),
+      true,
+    );
+    assert.equal(
+      filterGraph(live, new Set(['query']), { crossFilters: true }).edges.some(
+        (e) => e.kind === 'crossFilter',
+      ),
+      false,
+    );
+  });
+
+  test('presets match the view they set, and only that', () => {
+    for (const p of lineagePresets)
+      assert.equal(matchPreset({ hidden: new Set(p.hidden), crossFilters: p.crossFilters })?.id, p.id);
+    assert.equal(matchPreset({ hidden: new Set(['table']), crossFilters: false }), undefined);
   });
 
   test('the page down to its tables, shared models and tables once', () => {

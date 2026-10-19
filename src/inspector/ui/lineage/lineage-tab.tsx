@@ -28,6 +28,8 @@ import { LineageToolbar } from './lineage-toolbar';
 /** What the canvas shows: the kinds hidden, the node focused on, and the node whose path is pinned. */
 export interface LineageView {
   hidden: Set<LineageKind>;
+  /** Whether the cross-filters between queries are drawn. */
+  crossFilters: boolean;
   focus?: string;
   selected?: string;
 }
@@ -122,7 +124,11 @@ export function LineageTab({
     for (const node of graph.nodes) counts[node.kind] = (counts[node.kind] ?? 0) + 1;
     return counts;
   }, [graph]);
-  const filtered = useMemo(() => filterGraph(graph, view.hidden), [graph, view.hidden]);
+  const crossFilterCount = useMemo(() => graph.edges.filter((e) => e.kind === 'crossFilter').length, [graph]);
+  const filtered = useMemo(
+    () => filterGraph(graph, view.hidden, { crossFilters: view.crossFilters }),
+    [graph, view.hidden, view.crossFilters],
+  );
   const focus = view.focus ? filtered.nodes.find((n) => n.id === view.focus) : undefined;
   const shown = useMemo(() => (focus ? focusGraph(filtered, focus.id) : filtered), [filtered, focus]);
 
@@ -188,6 +194,12 @@ export function LineageTab({
       counts={counts}
       hidden={view.hidden}
       onHidden={(hidden) => onView((v) => ({ ...v, hidden }))}
+      crossFilters={view.crossFilters}
+      crossFilterCount={crossFilterCount}
+      onCrossFilters={(crossFilters) => onView((v) => ({ ...v, crossFilters }))}
+      onPreset={(preset) =>
+        onView((v) => ({ ...v, hidden: new Set(preset.hidden), crossFilters: preset.crossFilters }))
+      }
       focus={focus}
       onClearFocus={() => onView((v) => ({ ...v, focus: undefined }))}
       loading={fetched?.status === 'loading'}

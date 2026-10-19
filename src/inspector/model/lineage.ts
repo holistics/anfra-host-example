@@ -12,7 +12,7 @@ import type {
   LineageTarget,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
-import { controlMappings } from './checks';
+import { controlMappings, crossFilters } from './checks';
 import { formatCondition } from './format';
 import type { MetricDocs, ModelTable } from './types';
 
@@ -57,6 +57,10 @@ export interface LineageGraphEdge {
   target: string;
   /** The page's fields whose data flows along it: what a highlight follows. */
   fields: string[];
+  /** A filter's edge, which says "filters" rather than "is built from". */
+  kind?: 'control' | 'crossFilter';
+  /** A filter's edge: whether it changes the target's numbers now. */
+  active?: boolean;
 }
 
 export interface LineageGraph {
@@ -217,10 +221,15 @@ export function buildLineageGraph(
     nodes.set(n.id, n);
     return n;
   };
-  const edge = (source: string, target: string, fields: Iterable<string>) => {
-    const id = `${source}->${target}`;
+  const edge = (
+    source: string,
+    target: string,
+    fields: Iterable<string>,
+    extra: Pick<LineageGraphEdge, 'kind' | 'active'> & { id?: string } = {},
+  ) => {
+    const id = extra.id ?? `${source}->${target}`;
     const existing = edges.get(id) ?? { id, source, target, fields: [] };
-    edges.set(id, { ...existing, fields: [...new Set([...existing.fields, ...fields])] });
+    edges.set(id, { ...existing, ...extra, id, fields: [...new Set([...existing.fields, ...fields])] });
   };
   /** A model by the name a column or the catalog uses, which can be its fqn: one node either way. */
   const modelNode = (name: string, card?: Entity) => {
@@ -336,7 +345,23 @@ export function buildLineageGraph(
         value: isSet ? formatCondition(condition) : 'not set',
       });
       const fields = queryFields.get(queryId);
-      edge(controlId, queryId, fields?.size ? fields : [queryId]);
+      edge(controlId, queryId, fields?.size ? fields : [queryId], { kind: 'control', active: isSet });
+    }
+  });
+
+  // A cross-filter links two queries: a selection in the source filters the target. It is active
+  // while the reader's applied selection is in the source query.
+  apps.forEach((app, appIndex) => {
+    for (const cross of crossFilters(app)) {
+      const source = `query:${appIndex}/${cross.from.name}`;
+      const target = `query:${appIndex}/${cross.to.name}`;
+      if (!nodes.has(source) || !nodes.has(target)) continue;
+      const fields = queryFields.get(target);
+      edge(source, target, fields?.size ? fields : [target], {
+        id: `crossFilter:${appIndex}/${cross.id}`,
+        kind: 'crossFilter',
+        active: app.appliedSelection?.source === cross.from.name,
+      });
     }
   });
 
@@ -383,10 +408,16 @@ export function buildLineageGraph(
  * The graph without the hidden kinds, joined across them: hiding queries links each block to the
  * fields its queries return. A joined edge carries the fields both its halves carry.
  */
-export function filterGraph(graph: LineageGraph, hidden: ReadonlySet<LineageKind>): LineageGraph {
-  if (hidden.size === 0) return graph;
+export function filterGraph(
+  graph: LineageGraph,
+  hidden: ReadonlySet<LineageKind>,
+  { crossFilters = true }: { crossFilters?: boolean } = {},
+): LineageGraph {
+  // A cross-filter joins two queries: it goes with the toggle, or with the queries.
+  const dropCross = !crossFilters || hidden.has('query');
+  if (hidden.size === 0 && !dropCross) return graph;
   let nodes = graph.nodes;
-  let edges = graph.edges;
+  let edges = dropCross ? graph.edges.filter((e) => e.kind !== 'crossFilter') : graph.edges;
   for (const removed of graph.nodes.filter((n) => hidden.has(n.kind))) {
     const into = edges.filter((e) => e.target === removed.id);
     const out = edges.filter((e) => e.source === removed.id);
@@ -455,4 +486,37 @@ export function focusGraph(graph: LineageGraph, id: string): LineageGraph {
     nodes: graph.nodes.filter((n) => path.nodes.has(n.id)),
     edges: graph.edges.filter((e) => path.edges.has(e.id)),
   };
+}
+
+/** A view of the graph in one click: the kinds hidden, and whether cross-filters are drawn. */
+export interface LineagePreset {
+  id: string;
+  label: string;
+  hidden: LineageKind[];
+  crossFilters: boolean;
+}
+
+export const lineagePresets: LineagePreset[] = [
+  { id: 'default', label: 'Default', hidden: [], crossFilters: false },
+  { id: 'everything', label: 'Everything', hidden: [], crossFilters: true },
+  {
+    id: 'interaction',
+    label: 'Interaction mapping',
+    hidden: ['metric', 'dimension', 'dataset', 'model', 'table'],
+    crossFilters: true,
+  },
+  { id: 'query', label: 'Query lineage', hidden: ['control'], crossFilters: false },
+];
+
+/** The preset a view is exactly, or none once the reader has changed it. */
+export function matchPreset(view: {
+  hidden: ReadonlySet<LineageKind>;
+  crossFilters: boolean;
+}): LineagePreset | undefined {
+  return lineagePresets.find(
+    (p) =>
+      p.crossFilters === view.crossFilters &&
+      p.hidden.length === view.hidden.size &&
+      p.hidden.every((k) => view.hidden.has(k)),
+  );
 }
