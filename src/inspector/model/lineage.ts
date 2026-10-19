@@ -489,26 +489,37 @@ export function filterGraph(
  * what it carries. A metric's path reaches the models it reads, not every model of its dataset.
  */
 export function pathOf(graph: LineageGraph, id: string): { nodes: Set<string>; edges: Set<string> } {
-  const incident = graph.edges.filter((e) => e.source === id || e.target === id);
+  // What a node filters is not what it is built from: the fields of a cross-filter it sources are
+  // its target's, so they are not carried.
+  const filtersOut = (e: LineageGraphEdge) => e.source === id && e.kind === 'crossFilter';
+  const incident = graph.edges.filter((e) => (e.source === id || e.target === id) && !filtersOut(e));
   const carried = new Set(incident.flatMap((e) => e.fields));
   const node = graph.nodes.find((n) => n.id === id);
   if (node?.kind === 'metric' || node?.kind === 'dimension') carried.add(id);
-  const follows = (e: LineageGraphEdge) => e.fields.length === 0 || e.fields.some((f) => carried.has(f));
+  const follows = (e: LineageGraphEdge) =>
+    filtersOut(e) || e.fields.length === 0 || e.fields.some((f) => carried.has(f));
 
   const edges = new Set<string>();
+  const filtered = new Set<string>();
   // Down is toward the warehouse (what it is built from); up is toward the page (what uses it).
+  // The way down stops at a node reached over a cross-filter: it shows what the node filters, not
+  // what that is built from.
   const walk = (from: string, down: boolean, seen: Set<string>) => {
     for (const e of graph.edges) {
       if ((down ? e.source : e.target) !== from || !follows(e)) continue;
       edges.add(e.id);
       const next = down ? e.target : e.source;
+      if (down && e.kind === 'crossFilter') {
+        filtered.add(next);
+        continue;
+      }
       if (seen.has(next)) continue;
       seen.add(next);
       walk(next, down, seen);
     }
     return seen;
   };
-  const nodes = new Set([...walk(id, true, new Set([id])), ...walk(id, false, new Set([id]))]);
+  const nodes = new Set([...walk(id, true, new Set([id])), ...walk(id, false, new Set([id])), ...filtered]);
   return { nodes, edges };
 }
 
