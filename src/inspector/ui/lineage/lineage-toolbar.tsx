@@ -71,7 +71,7 @@ export function LineageToolbar({
             if (picked) onPreset(picked);
           }}
         >
-          <SelectTrigger size="sm" aria-label="Preset" className="h-7 w-44 px-2 text-xs">
+          <SelectTrigger size="sm" aria-label="Preset" className="w-44 px-2 text-xs data-[size=sm]:h-7">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
