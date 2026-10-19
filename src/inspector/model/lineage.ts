@@ -43,9 +43,11 @@ export interface LineageGraphNode {
   structureKey?: string;
   /** A query or control, or the first query returning a field: to open in the Data tab. */
   entity?: { app: number; name: string };
-  /** A control: whether the reader has set a value, and it in words. */
+  /** A control: whether a value is applied (what the queries last ran with), and it in words. */
   isSet?: boolean;
   value?: string;
+  /** A control: what the reader has typed but not applied, when it differs from the value. */
+  pending?: string;
   /** Why the catalog could not trace a field. */
   error?: string;
 }
@@ -332,8 +334,11 @@ export function buildLineageGraph(
       if (!nodes.has(queryId)) continue;
       const name = mapping.from.name;
       const controlId = `control:${appIndex}/${name}`;
-      const condition = app.controls[name]?.condition;
-      const isSet = (condition?.values?.length ?? 0) > 0;
+      // The applied condition is what the queries ran with; the typed one is only pending.
+      const control = app.controls[name];
+      const isSet = (control?.appliedCondition?.values?.length ?? 0) > 0;
+      const value = isSet ? formatCondition(control?.appliedCondition) : 'not set';
+      const typed = control?.condition?.values?.length ? formatCondition(control.condition) : 'not set';
       node({
         id: controlId,
         kind: 'control',
@@ -342,7 +347,8 @@ export function buildLineageGraph(
         structureKey: controlNodes.get(`${appIndex}/${name}`)?.key,
         entity: { app: appIndex, name },
         isSet,
-        value: isSet ? formatCondition(condition) : 'not set',
+        value,
+        pending: control?.isDirty && typed !== value ? typed : undefined,
       });
       const fields = queryFields.get(queryId);
       edge(controlId, queryId, fields?.size ? fields : [queryId], { kind: 'control', active: isSet });

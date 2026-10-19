@@ -182,6 +182,11 @@ export function LineageNodeCard({ id, data }: NodeProps<LineageFlowNode>) {
             <span className="min-w-0 font-mono break-words">{node.value}</span>
           </div>
         )}
+        {node.pending && (
+          <div className="font-mono text-[11px] break-words text-muted-foreground">
+            pending: {node.pending}
+          </div>
+        )}
         {node.description && (
           <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">{node.description}</p>
         )}

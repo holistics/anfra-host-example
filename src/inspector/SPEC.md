@@ -291,10 +291,13 @@ with cross-filters linking one query to another.
 - **Controls**: a control that a `control` mapping connects to a query (a mapping to a query the
   graph doesn't have is skipped) is a card with an edge to each query it feeds, carrying that
   query's fields, so a pin runs from the control through them. The card shows the control's
-  current condition as its **Value** (`formatCondition`), or "not set" when it has no values.
+  applied condition (`appliedCondition`, what the queries last ran with) as its **Value**
+  (`formatCondition`), or "not set" when none is applied. A pending edit, one the reader has typed
+  but not applied (`isDirty` and a different condition), is shown as a muted `pending:` line under
+  the value; it changes neither the value nor the edge's colour, as in the Data tab's Inputs.
   Unlike every other edge, which points from what uses to what it is built from, a control's edge
   means "filters": the control changes the query's numbers but is not part of where they come
-  from. It is drawn orange when the control has a value and light gray when it is not set, so it
+  from. It is drawn orange when the control has an applied value and light gray when it is not set, so it
   is told apart from the purple edges.
 - **Cross-filters**: a `crossFilter` mapping whose two queries are both in the graph is an edge
   from the source query to the target query, carrying the target's fields. Like a control's edge
