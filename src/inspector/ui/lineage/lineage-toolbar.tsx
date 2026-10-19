@@ -1,6 +1,12 @@
 import { CircleHelp, Eye, EyeOff, Funnel, LoaderCircle, Maximize2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -56,11 +62,6 @@ export function LineageToolbar({
   };
   const hiddenTotal = hiddenCount({ hidden, crossFilters }, counts, crossFilterCount);
   const crossDrawn = showsCrossFilters({ hidden, crossFilters });
-  const rowClass = (shown: boolean) =>
-    cn(
-      'flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors hover:bg-accent',
-      !shown && 'text-muted-foreground',
-    );
   return (
     <div className="space-y-1.5 border-b px-2 py-2">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -92,28 +93,28 @@ export function LineageToolbar({
               ))}
             </SelectContent>
           </Select>
-          <Popover>
-            <PopoverTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
-                <Funnel className="size-3" />
+                {hiddenTotal > 0 ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
                 Show
                 {hiddenTotal > 0 && (
                   <span className="text-muted-foreground tabular-nums">{hiddenTotal} hidden</span>
                 )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-56 p-1">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
               {lineageKinds
                 .filter((kind) => counts[kind])
                 .map((kind) => {
                   const shown = !hidden.has(kind);
                   return (
-                    <button
+                    <DropdownMenuCheckboxItem
                       key={kind}
-                      type="button"
-                      aria-pressed={shown}
-                      onClick={() => toggle(kind)}
-                      className={rowClass(shown)}
+                      checked={shown}
+                      onCheckedChange={() => toggle(kind)}
+                      onSelect={(e) => e.preventDefault()}
+                      className={cn('text-xs', !shown && 'text-muted-foreground')}
                     >
                       <KindBadge
                         kind={kind}
@@ -122,16 +123,15 @@ export function LineageToolbar({
                       {kindLabels[kind]}
                       <span className="ml-auto text-muted-foreground tabular-nums">{counts[kind]}</span>
                       {shown ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                    </button>
+                    </DropdownMenuCheckboxItem>
                   );
                 })}
               {crossFilterCount > 0 && (
-                <button
-                  type="button"
-                  aria-pressed={crossFilters}
-                  onClick={() => onCrossFilters(!crossFilters)}
-                  className={rowClass(crossDrawn)}
-                  title={crossFilters && !crossDrawn ? 'Hidden with queries' : undefined}
+                <DropdownMenuCheckboxItem
+                  checked={crossFilters}
+                  onCheckedChange={(v) => onCrossFilters(v === true)}
+                  onSelect={(e) => e.preventDefault()}
+                  className={cn('text-xs', !crossDrawn && 'text-muted-foreground')}
                 >
                   <span className="flex size-4 items-center justify-center">
                     <Funnel
@@ -139,12 +139,14 @@ export function LineageToolbar({
                     />
                   </span>
                   Cross-filters
-                  <span className="ml-auto text-muted-foreground tabular-nums">{crossFilterCount}</span>
+                  <span className="ml-auto text-muted-foreground tabular-nums">
+                    {crossFilters && !crossDrawn ? 'with queries' : crossFilterCount}
+                  </span>
                   {crossDrawn ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                </button>
+                </DropdownMenuCheckboxItem>
               )}
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {loading && (
