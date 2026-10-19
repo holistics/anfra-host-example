@@ -299,11 +299,13 @@ with cross-filters linking one query to another.
 - **Cross-filters**: a `crossFilter` mapping whose two queries are both in the graph is an edge
   from the source query to the target query, carrying the target's fields. Like a control's edge
   it means "filters". It is **active** (sky blue) while the app's applied selection is in the
-  source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (dashed
-  light gray) otherwise, including while a selection is only pending. A cross-filter from a query
-  to itself is drawn too. The layout ignores these edges, so the queries stay together in the one
-  query column; the edge leaves a query's right side and loops back into the right side of the
-  other. Cross-filters are off by default: the "Cross-filters" chip, shown when
+  source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (light gray, as a
+  control that is not set) otherwise, including while a selection is only pending. A cross-filter from a query
+  to itself is drawn too. The layout ignores these edges, so the queries stay in the one
+  query column, but it lays queries that are joined by one next to each other. Each edge has its
+  own point on the right side of both cards and its own lane: it leaves the source, runs out and
+  back into the target, and the shorter its span the nearer the cards its lane, so loops nest
+  instead of overlapping.Cross-filters are off by default: the "Cross-filters" chip, shown when
   the page has any, turns them on.
 - **Catalog**: the tab traces every field in one `core.lineage` call, again only when the set of
   fields changes, and keeps the answer across tab switches. A metric reaches the model fields it

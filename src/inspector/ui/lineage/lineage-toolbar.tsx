@@ -190,9 +190,7 @@ function EdgeLegend() {
           A selection in the source query is applied, so it filters the target query's numbers.
         </LegendRow>
         <LegendRow
-          line={
-            <line x1="0" y1="6" x2="40" y2="6" stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="5 4" />
-          }
+          line={<line x1="0" y1="6" x2="40" y2="6" stroke="#e5e7eb" strokeWidth="1.5" />}
           title="Cross-filter, inactive"
         >
           The queries are linked but nothing is selected in the source yet. Shown when cross-filters are on.

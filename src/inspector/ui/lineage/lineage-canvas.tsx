@@ -14,8 +14,16 @@ import {
 } from '@xyflow/react';
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { type LineageGraph, lineageKinds, pathOf } from '../../model/lineage';
 import {
+  type LineageGraph,
+  type LineageGraphEdge,
+  lineageKinds,
+  orderForLayout,
+  pathOf,
+} from '../../model/lineage';
+import {
+  type CrossHandles,
+  crossHandleId,
   type LineageActions,
   LineageActionsContext,
   type LineageFlowNode,
@@ -31,10 +39,10 @@ const filterEdgeColor = {
   set: { normal: '#fb923c', onPath: '#ea580c' },
   unset: { normal: '#e5e7eb', onPath: '#9ca3af' },
 };
-/** A cross-filter's edge: blue while a selection in its source is applied, dashed gray before. */
+/** A cross-filter's edge, drawn like a control's: blue while a selection in its source is applied, light gray before. */
 const crossFilterEdgeColor = {
   active: { normal: '#38bdf8', onPath: '#0284c7' },
-  inactive: { normal: '#cbd5e1', onPath: '#64748b' },
+  inactive: { normal: '#e5e7eb', onPath: '#9ca3af' },
 };
 
 /** Each kind's colour on the minimap. */
@@ -110,6 +118,29 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
     [graph, selected],
   );
 
+  // Each cross-filter edge's own points on its two queries, and its lane: the shorter the span, the
+  // closer to the cards, so the loops nest instead of crossing.
+  const crossOf = useMemo(() => {
+    const out = new Map<string, CrossHandles>();
+    const of = (id: string) => {
+      const handles = out.get(id) ?? { out: [], in: [] };
+      out.set(id, handles);
+      return handles;
+    };
+    for (const e of graph.edges) {
+      if (e.kind !== 'crossFilter') continue;
+      of(e.source).out.push(e.id);
+      of(e.target).in.push(e.id);
+    }
+    return out;
+  }, [graph]);
+  const lanes = useMemo(() => {
+    const span = (e: LineageGraphEdge) =>
+      Math.abs((laidOut?.get(e.source)?.y ?? 0) - (laidOut?.get(e.target)?.y ?? 0));
+    const sorted = graph.edges.filter((e) => e.kind === 'crossFilter').sort((a, b) => span(a) - span(b));
+    return new Map(sorted.map((e, i) => [e.id, i]));
+  }, [graph, laidOut]);
+
   // The cards, drawn unseen until they are measured and laid out, then where ELK put them.
   useEffect(() => {
     setNodes((previous) => {
@@ -126,12 +157,12 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
           id: node.id,
           type: 'lineage',
           position: laidOut?.get(node.id) ?? before.get(node.id)?.position ?? { x: 0, y: 0 },
-          data: { node, tone },
+          data: { node, tone, cross: crossOf.get(node.id) },
           style: laidOut ? undefined : { opacity: 0 },
         };
       });
     });
-  }, [graph, path, selected, laidOut, setNodes]);
+  }, [graph, path, selected, laidOut, crossOf, setNodes]);
 
   // Once every card has its size, lay the graph out top to bottom, a row per kind.
   useEffect(() => {
@@ -154,7 +185,7 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
             'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
             'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
           },
-          children: graph.nodes.map((node) => {
+          children: orderForLayout(graph).map((node) => {
             const measured = getInternalNode(node.id)?.measured;
             return {
               id: node.id,
@@ -221,20 +252,24 @@ function Canvas({ graph, selected, centerOn, onSelect, minimap = false }: Props)
         target: e.target,
         // Between two queries of one column: out of the right side and back into it, in a loop.
         ...(e.kind === 'crossFilter'
-          ? { type: 'smoothstep', sourceHandle: 'cross-out', targetHandle: 'cross-in' }
+          ? {
+              type: 'smoothstep',
+              sourceHandle: crossHandleId('out', e.id),
+              targetHandle: crossHandleId('in', e.id),
+              pathOptions: { offset: 18 + 12 * (lanes.get(e.id) ?? 0), borderRadius: 8 },
+            }
           : {}),
         markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
         style: {
           stroke: color,
           strokeWidth: on ? 2 : 1.25,
-          strokeDasharray: e.kind === 'crossFilter' && !e.active ? '5 4' : undefined,
           opacity,
         },
         zIndex: on ? 1 : 0,
         focusable: false,
       };
     });
-  }, [graph, path]);
+  }, [graph, path, lanes]);
 
   return (
     <ReactFlow

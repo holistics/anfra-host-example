@@ -16,6 +16,7 @@ import {
   lineagePresets,
   lineageTargets,
   matchPreset,
+  orderForLayout,
   pathOf,
   targetKey,
 } from './lineage';
@@ -170,6 +171,21 @@ describe('lineage', () => {
       ),
       false,
     );
+  });
+
+  test('layout order puts cross-filtered queries side by side', () => {
+    const q = (id: string) => ({ id, kind: 'query' as const, label: id });
+    const e = (source: string, target: string) => ({
+      id: `${source}->${target}`,
+      source,
+      target,
+      fields: [],
+      kind: 'crossFilter' as const,
+    });
+    const nodes = [q('a'), q('b'), q('c'), { id: 'm', kind: 'metric' as const, label: 'm' }];
+    const order = orderForLayout({ nodes, edges: [e('a', 'c')] }).map((n) => n.id);
+    assert.deepEqual(order, ['a', 'c', 'b', 'm']);
+    assert.equal(orderForLayout({ nodes, edges: [] }), nodes);
   });
 
   test('presets match the view they set, and only that', () => {
