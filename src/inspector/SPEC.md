@@ -327,7 +327,9 @@ with cross-filters linking one query to another.
 - **Hover buttons** on a card: Locate on the page and Show in Structure (controls, blocks, queries),
   Show in Data (controls, queries, fields), Focus.
 - **Filter**: a chip per kind, with its count, shows or hides it. Hiding a kind joins across it:
-  hiding queries links each block to the fields its queries return. The "Cross-filters" chip does
+  hiding queries links each block to the fields its queries return. A joined edge keeps a filter
+  edge's kind (a control's stays "filters", orange or gray as before) and, where it meets a plain
+  edge between the same two cards, sits beside it rather than replacing it. The "Cross-filters" chip does
   the same for cross-filter edges; hiding queries hides them too, as they join two queries.
 - **Presets**: a menu beside the chips sets the kinds and cross-filters in one go. It shows
   "Custom" once the chips no longer match a preset. All four leave the focus alone.
