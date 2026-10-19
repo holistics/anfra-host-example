@@ -1,7 +1,8 @@
-import { CircleHelp, Funnel, LoaderCircle, Maximize2, X } from 'lucide-react';
+import { CircleHelp, Eye, EyeOff, Funnel, LoaderCircle, Maximize2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
   type LineageGraphNode,
@@ -30,7 +31,7 @@ interface Props {
   onExpand?: () => void;
 }
 
-/** Above the canvas: a chip per kind to show or hide it, what it is focused on, and the large view. */
+/** Above the canvas: a preset, a menu to show or hide each kind, what it is focused on, and the large view. */
 export function LineageToolbar({
   counts,
   hidden,
@@ -51,75 +52,91 @@ export function LineageToolbar({
     else next.add(kind);
     onHidden(next);
   };
+  const hiddenCount = lineageKinds.filter((k) => counts[k] && hidden.has(k)).length + (crossFilters ? 0 : 1);
+  const rowClass = (shown: boolean) =>
+    cn(
+      'flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors hover:bg-accent',
+      !shown && 'text-muted-foreground',
+    );
   return (
     <div className="space-y-1.5 border-b px-2 py-2">
-      <div className="flex items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-          {lineageKinds
-            .filter((kind) => counts[kind])
-            .map((kind) => {
-              const shown = !hidden.has(kind);
-              return (
-                <button
-                  key={kind}
-                  type="button"
-                  aria-pressed={shown}
-                  onClick={() => toggle(kind)}
-                  className={cn(
-                    'flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors',
-                    shown
-                      ? 'bg-background text-foreground'
-                      : 'border-dashed text-muted-foreground opacity-60',
-                  )}
-                >
-                  <KindBadge
-                    kind={kind}
-                    className={cn('size-4 [&_svg]:size-3', !shown && 'bg-muted text-muted-foreground')}
-                  />
-                  {kindLabels[kind]}
-                  <span className="text-muted-foreground tabular-nums">{counts[kind]}</span>
-                </button>
-              );
-            })}
-          {crossFilterCount > 0 && (
-            <button
-              type="button"
-              aria-pressed={crossFilters}
-              onClick={() => onCrossFilters(!crossFilters)}
-              className={cn(
-                'flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors',
-                crossFilters
-                  ? 'bg-background text-foreground'
-                  : 'border-dashed text-muted-foreground opacity-60',
-              )}
-            >
-              <Funnel className={cn('size-3', crossFilters ? 'text-orange-500' : 'text-muted-foreground')} />
-              Cross-filters
-              <span className="text-muted-foreground tabular-nums">{crossFilterCount}</span>
-            </button>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <select
-            aria-label="Preset"
-            value={preset?.id ?? 'custom'}
-            onChange={(e) => {
-              const picked = lineagePresets.find((p) => p.id === e.target.value);
-              if (picked) onPreset(picked);
-            }}
-            className="h-6 rounded-md border bg-background px-1 text-[11px] font-medium"
-          >
+      <div className="flex items-center gap-1.5">
+        <Select
+          value={preset?.id ?? 'custom'}
+          onValueChange={(id) => {
+            const picked = lineagePresets.find((p) => p.id === id);
+            if (picked) onPreset(picked);
+          }}
+        >
+          <SelectTrigger size="sm" aria-label="Preset" className="h-7 w-44 px-2 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
             {!preset && (
-              <option value="custom" disabled>
+              <SelectItem value="custom" disabled>
                 Custom
-              </option>
+              </SelectItem>
             )}
             {lineagePresets.map((p) => (
-              <option key={p.id} value={p.id}>
+              <SelectItem key={p.id} value={p.id} className="text-xs">
                 {p.label}
-              </option>
+              </SelectItem>
             ))}
-          </select>
+          </SelectContent>
+        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+              <Funnel className="size-3" />
+              Show
+              {hiddenCount > 0 && (
+                <span className="text-muted-foreground tabular-nums">{hiddenCount} hidden</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-56 p-1">
+            {lineageKinds
+              .filter((kind) => counts[kind])
+              .map((kind) => {
+                const shown = !hidden.has(kind);
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={shown}
+                    onClick={() => toggle(kind)}
+                    className={rowClass(shown)}
+                  >
+                    <KindBadge
+                      kind={kind}
+                      className={cn('size-4 [&_svg]:size-3', !shown && 'bg-muted text-muted-foreground')}
+                    />
+                    {kindLabels[kind]}
+                    <span className="ml-auto text-muted-foreground tabular-nums">{counts[kind]}</span>
+                    {shown ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                  </button>
+                );
+              })}
+            {crossFilterCount > 0 && (
+              <button
+                type="button"
+                aria-pressed={crossFilters}
+                onClick={() => onCrossFilters(!crossFilters)}
+                className={rowClass(crossFilters)}
+              >
+                <span className="flex size-4 items-center justify-center">
+                  <Funnel
+                    className={cn('size-3', crossFilters ? 'text-orange-500' : 'text-muted-foreground')}
+                  />
+                </span>
+                Cross-filters
+                <span className="ml-auto text-muted-foreground tabular-nums">{crossFilterCount}</span>
+                {crossFilters ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+              </button>
+            )}
+          </PopoverContent>
+        </Popover>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {loading && (
             <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-label="Tracing" />
           )}
