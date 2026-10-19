@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@holistics/anfra-sdk':
-        specifier: 0.11.0
-        version: 0.11.0(esbuild@0.28.2)
+        specifier: 0.11.1
+        version: 0.11.1(esbuild@0.28.2)
       '@hono/node-server':
         specifier: ^2.1.4
         version: 2.1.4(hono@4.13.13)
@@ -312,8 +312,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@holistics/anfra-sdk@0.11.0':
-    resolution: {integrity: sha512-udj/6NkhcmRJUS7SOA2K7I1e+QPzbMgwt/cCEoutC3W0ATRWR7YnVblcjTPJT26zuzYMw6N4gCK0DRH8dMffOA==}
+  '@holistics/anfra-sdk@0.11.1':
+    resolution: {integrity: sha512-gt993a8Ebp37llBrCdu8HkCIfysAVmVvOUWQuuFon5lLBrn55soqpKnmyyAcqEYtps5dg8kD1bEENGFaVSb21A==}
     peerDependencies:
       esbuild: '>=0.20'
     peerDependenciesMeta:
@@ -1877,7 +1877,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@holistics/anfra-sdk@0.11.0(esbuild@0.28.2)':
+  '@holistics/anfra-sdk@0.11.1(esbuild@0.28.2)':
     dependencies:
       openapi-fetch: 0.17.0
     optionalDependencies:
