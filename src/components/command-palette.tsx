@@ -1,5 +1,15 @@
-import { AppWindowMac, Download, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import {
+  AppWindowMac,
+  Download,
+  MessageCircle,
+  Moon,
+  RotateCw,
+  ScanSearch,
+  ScrollText,
+  Sun,
+} from 'lucide-react';
 import { useMemo } from 'react';
+import { useTheme } from '@/components/theme-toggle';
 import {
   CommandDialog,
   CommandEmpty,
@@ -49,6 +59,7 @@ export function CommandPalette({
   commenting,
   onComment,
 }: Props) {
+  const [theme, toggleTheme] = useTheme();
   const apps = useMemo(() => (entries ? appsOf(entries) : []), [entries]);
   // Close first, so an action that moves focus (a panel, a download) isn't undone by the dialog's.
   const run = (action: () => void) => () => {
@@ -105,6 +116,15 @@ export function CommandPalette({
             )}
           </CommandGroup>
         )}
+        <CommandGroup heading="Appearance">
+          <CommandItem
+            value={theme === 'dark' ? 'Switch to light mode theme' : 'Switch to dark mode theme'}
+            onSelect={run(toggleTheme)}
+          >
+            {theme === 'dark' ? <Sun /> : <Moon />}
+            {theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          </CommandItem>
+        </CommandGroup>
         <CommandGroup heading="Apps">
           {apps.map((entry) => {
             const folder = entry.path.includes('/') ? entry.path.slice(0, entry.path.lastIndexOf('/')) : '';
