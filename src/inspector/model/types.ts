@@ -59,7 +59,7 @@ export interface InspectorEnv {
 
 /** How the host asks the catalog what a field is built from. */
 export interface LineageSource {
-  /** Each field's lineage, in the order asked: `core.lineage`. */
+  /** Each field's lineage, in the order asked: the `lineage` plugin's `lineage.trace`. */
   trace(targets: LineageTarget[], signal?: AbortSignal): Promise<LineageResult>;
   /** Every model's database table, by the model's fqn and name. */
   tables(signal?: AbortSignal): Promise<Record<string, ModelTable>>;

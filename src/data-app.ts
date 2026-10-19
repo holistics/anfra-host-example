@@ -10,6 +10,7 @@ import type {
   DatasetDescriptor,
   InspectedApp,
   InspectedStructure,
+  LineageResult,
   LocateTarget,
   Rendering,
   RenderRequest,
@@ -100,12 +101,15 @@ export async function loadCatalog(): Promise<{
 /**
  * The catalog's lineage, for the inspector's Lineage tab: what each field is built from, and the
  * table each model reads. Both read the catalog `anfra ingest` built, not the warehouse.
+ *
+ * The trace is the `lineage` plugin's call, made as this page on the plugin host the open Data App
+ * runs on: the same plugin and middleware as the app's own `Anfra.lineage()`. The tables are a
+ * search, which no plugin answers, so they go to the core API directly.
  */
 export const lineageSource: LineageSource = {
-  async trace(targets, signal) {
-    const { data, error, response } = await api.POST('/core.lineage', { body: { targets }, signal });
-    if (!data) throw new Error(error?.error?.message ?? `core.lineage answered ${response.status}.`);
-    return data;
+  trace(targets, signal) {
+    if (!host) return Promise.reject(new Error('No Data App is open.'));
+    return host.runtime.call<LineageResult>('lineage.trace', { targets }, { signal });
   },
   async tables(signal) {
     // The one search this host's server lets through. Its answer is untyped: read it with care.
