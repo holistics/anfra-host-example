@@ -102,6 +102,35 @@ describe('lineage', () => {
     ]);
   });
 
+  test('a control links to the queries it is mapped to, carrying their fields', () => {
+    const withControl = {
+      ...app,
+      controls: { status: { condition: { values: ['paid'] } }, other: { condition: undefined } },
+      declaration: {
+        ...app.declaration,
+        mappings: [
+          {
+            kind: 'control',
+            from: { kind: 'filter', name: 'status' },
+            to: { name: 'orders' },
+            field: 'orders.status',
+          },
+          { kind: 'control', from: { kind: 'filter', name: 'gone' }, to: { name: 'missing' }, field: 'x' },
+        ],
+      },
+    } as unknown as InspectedApp;
+    const g = buildLineageGraph([withControl], structure, undefined, undefined);
+    assert.equal(g.nodes.find((n) => n.id === 'control:0/status')?.kind, 'control');
+    assert.equal(g.nodes.find((n) => n.id === 'control:0/status')?.isSet, true);
+    assert.equal(
+      g.nodes.some((n) => n.id === 'control:0/gone'),
+      false,
+    );
+    assert.deepEqual(g.edges.find((e) => e.id === 'control:0/status->query:0/orders')?.fields, [
+      'metric:ecommerce.order_count',
+    ]);
+  });
+
   test('the page down to its tables, shared models and tables once', () => {
     assert.deepEqual(ids(graph), [
       'block:kpis',
