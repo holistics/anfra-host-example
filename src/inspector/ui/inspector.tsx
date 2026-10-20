@@ -1,5 +1,5 @@
 import type { StructureNode } from '@holistics/anfra-sdk/common';
-import { Cable, Database, GitFork, LayoutDashboard, ListTree } from 'lucide-react';
+import { Cable, Database, GitFork, LayoutDashboard, ListTree, Sheet } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,12 +10,19 @@ import { queryCounts } from '../model/issues';
 import { buildReport } from '../model/report';
 import { attributeRequests } from '../model/requests';
 import { appTrust } from '../model/trust';
-import type { DataExpansion, DataFilter, InspectorTab, NodeRequest, RevealTarget } from '../model/types';
+import type {
+  InspectorTab,
+  NodeRequest,
+  QueriesExpansion,
+  QueriesFilter,
+  RevealTarget,
+} from '../model/types';
 import type { InspectorSource } from '../source';
 import { DataTab } from './data/data-tab';
 import { InspectorHeader } from './header';
 import { type LineageFetch, type LineagePick, LineageTab, type LineageView } from './lineage/lineage-tab';
 import { OverviewTab } from './overview/overview-tab';
+import { QueriesTab } from './queries/queries-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
 import { WiringTab } from './wiring/wiring-tab';
@@ -63,12 +70,15 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const checks = useMemo(() => (apps ?? []).map(wiringChecks), [apps]);
   const warnings = checks.flat().filter((c) => c.level !== 'info').length;
 
-  // An entity to open in Data, or a node to select in Structure; the nonce repeats a request.
+  // An entity to open in Queries, or a node to select in Structure; the nonce repeats a request.
   const [focus, setFocus] = useState<{ key: string; nonce: number }>();
   const [node, setNode] = useState<NodeRequest>();
   const [check, setCheck] = useState<{ app: number; check: number; nonce: number }>();
-  const [view, setView] = useState<DataFilter>({ search: '', filter: 'all' });
-  const [expansion, setExpansion] = useState<DataExpansion>({ open: new Set(), closedSections: new Set() });
+  const [view, setView] = useState<QueriesFilter>({ search: '', filter: 'all' });
+  const [expansion, setExpansion] = useState<QueriesExpansion>({
+    open: new Set(),
+    closedSections: new Set(),
+  });
   const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set(), crossFilters: false });
   const [lineage, setLineage] = useState<LineageFetch>();
   const [lineagePick, setLineagePick] = useState<LineagePick>();
@@ -81,7 +91,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
       onTab(target.tab);
     } else if ('entity' in target) {
       setFocus({ key: entityKey(target.entity, target.app, target.name), nonce: Date.now() });
-      onTab('data');
+      onTab('queries');
     } else if ('lineage' in target) {
       const key = queryKeyOf(structure?.nodes ?? [], target.app, target.name);
       if (key && structure) {
@@ -97,8 +107,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     }
   };
 
-  // A pick lands on its node in Structure; with Shift, or from the Data tab, on the first query or
-  // control in it, in Data; from the Lineage tab, on the first of its nodes the canvas draws.
+  // A pick lands on its node in Structure; with Shift, or from the Queries tab, on the first query or
+  // control in it, in Queries; from the Lineage tab, on the first of its nodes the canvas draws.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
   useEffect(() => {
     if (!picked) return setNode(undefined);
@@ -109,7 +119,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
       setLineagePick({ keys: keysUnder(structure.nodes, picked.key), nonce: picked.nonce });
       return;
     }
-    const toData = picked.inData || tab === 'data';
+    const toData = picked.inData || tab === 'queries';
     const entity = toData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
     if (entity) reveal(entity);
     else {
@@ -140,7 +150,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           onTogglePicking={onTogglePicking}
           onShowQueries={(filter) => {
             setView({ search: '', filter });
-            onTab('data');
+            onTab('queries');
           }}
           report={() => JSON.stringify(buildReport(snapshot, source.env, requests), null, 2)}
           onClose={onClose}
@@ -152,14 +162,18 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               <LayoutDashboard />
               Overview
             </TabsTrigger>
+            <TabsTrigger value="data">
+              <Sheet />
+              Data
+            </TabsTrigger>
             <TabsTrigger value="structure">
               <ListTree />
               Structure
               <Count n={problems} />
             </TabsTrigger>
-            <TabsTrigger value="data">
+            <TabsTrigger value="queries">
               <Database />
-              Data
+              Queries
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
             <TabsTrigger value="lineage">
@@ -183,6 +197,18 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               checks={checks}
               onReveal={reveal}
               onLocate={source.locate}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="data" className="min-h-0">
+          <div className="h-full overflow-y-auto">
+            <DataTab
+              apps={apps}
+              structure={structure}
+              requests={attributed.byQuery}
+              canExport={source.env.reader.permissions.canExportData}
+              onReveal={reveal}
             />
           </div>
         </TabsContent>
@@ -224,9 +250,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           </div>
         </TabsContent>
 
-        <TabsContent value="data" className="min-h-0">
+        <TabsContent value="queries" className="min-h-0">
           <div className="h-full overflow-y-auto">
-            <DataTab
+            <QueriesTab
               apps={apps}
               structure={structure}
               requests={attributed}

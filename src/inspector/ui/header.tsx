@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import type { queryCounts } from '../model/issues';
 import { TRUST_LEVELS, type Trust } from '../model/trust';
-import type { DataFilter } from '../model/types';
+import type { QueriesFilter } from '../model/types';
 import { copyText } from './shared/copy-button';
 import { stateDot, toneText } from './shared/tone';
 
@@ -19,8 +19,8 @@ interface Props {
   /** Whether the frame is in pick mode. */
   picking: boolean;
   onTogglePicking: () => void;
-  /** Open the Data tab on the queries counted, filtered to them. */
-  onShowQueries: (filter: DataFilter['filter']) => void;
+  /** Open the Queries tab on the queries counted, filtered to them. */
+  onShowQueries: (filter: QueriesFilter['filter']) => void;
   /** The report, as JSON, built when asked for. */
   report: () => string;
   onClose: () => void;
@@ -57,7 +57,7 @@ export function InspectorHeader({
           <TooltipContent>
             {picking
               ? 'Stop picking'
-              : 'Pick an element on the page · Shift-click to open its query or control in Data'}
+              : 'Pick an element on the page · Shift-click to open its query or control in Queries'}
           </TooltipContent>
         </Tooltip>
         <CopyReport report={report} />
@@ -71,7 +71,7 @@ export function InspectorHeader({
 }
 
 /**
- * Query counts by state, and dirty queries and controls; each opens Data on them. A zero count is
+ * Query counts by state, and dirty queries and controls; each opens Queries on them. A zero count is
  * left out.
  */
 function StatusBar({
@@ -81,7 +81,7 @@ function StatusBar({
 }: {
   counts: ReturnType<typeof queryCounts>;
   trust: Trust | undefined;
-  onClick: (filter: DataFilter['filter']) => void;
+  onClick: (filter: QueriesFilter['filter']) => void;
 }) {
   const items = [
     {

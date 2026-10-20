@@ -41,7 +41,7 @@ export interface LineageGraphNode {
   chips?: string[];
   /** A block's, query's or control's node in the structure, to locate on the page and select in Structure. */
   structureKey?: string;
-  /** A query or control, or the first query returning a field: to open in the Data tab. */
+  /** A query or control, or the first query returning a field: to open in the Queries tab. */
   entity?: { app: number; name: string };
   /** A control: whether a value is applied (what the queries last ran with), and it in words. */
   isSet?: boolean;

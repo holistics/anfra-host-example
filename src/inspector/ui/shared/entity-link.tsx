@@ -1,6 +1,6 @@
 import type { RevealTarget } from '../../model/types';
 
-/** A query's or control's name that opens its row in the Data tab. */
+/** A query's or control's name that opens its row in the Queries tab. */
 export function EntityLink({
   entity,
   app,

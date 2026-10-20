@@ -2,13 +2,13 @@ import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { formatTime, plural } from '../../model/format';
+import { formatTime } from '../../model/format';
 import type { RequestEntry } from '../../model/requests';
 import { CodeBlock } from '../shared/code-block';
 import { Field, Fields } from '../shared/fields';
+import { ResultTable } from '../shared/result-table';
 import { stateDot } from '../shared/tone';
 
 /** How many of a query's requests show before "Show all". */
@@ -121,7 +121,7 @@ function RequestCard({ entry }: { entry: RequestEntry }) {
             </Field>
           </Fields>
           {entry.preview && entry.columns && (
-            <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />
+            <ResultTable columns={entry.columns} rows={entry.preview} total={entry.numRows} />
           )}
           <CodeBlock
             tab="input"
@@ -152,7 +152,7 @@ function RequestItem({ entry, shared }: { entry: RequestEntry; shared?: boolean 
         <CollapsibleContent className="space-y-2.5 border-t bg-muted/30 px-3 py-2.5">
           {entry.error && <p className="text-xs break-words text-destructive">{entry.error}</p>}
           {entry.preview && entry.columns && (
-            <Preview columns={entry.columns} rows={entry.preview} total={entry.numRows} />
+            <ResultTable columns={entry.columns} rows={entry.preview} total={entry.numRows} />
           )}
           <CodeBlock
             tab="input"
@@ -228,54 +228,5 @@ function inputOf(entry: RequestEntry): string | undefined {
   return kept.length ? JSON.stringify(Object.fromEntries(kept), null, 2) : aql;
 }
 
-/** The first rows of a result, as a table that scrolls both ways within its box. */
-function Preview({ columns, rows, total }: { columns: string[]; rows: unknown[][]; total?: number }) {
-  return (
-    <div>
-      <p className="mb-1 text-xs text-muted-foreground">
-        {rows.length === 0
-          ? 'No rows.'
-          : total !== undefined && total > rows.length
-            ? `First ${rows.length} of ${total} rows`
-            : plural(rows.length, 'row')}
-      </p>
-      {rows.length > 0 && (
-        // The table scrolls within its own container, so the cap goes there for the header to stick.
-        <div className="overflow-hidden rounded-md border [&_[data-slot=table-container]]:max-h-60 [&_[data-slot=table-container]]:overflow-auto">
-          <Table className="text-xs">
-            <TableHeader className="sticky top-0 bg-muted">
-              <TableRow>
-                {columns.map((column) => (
-                  <TableHead key={column} className="h-7 px-2 text-xs font-semibold">
-                    {column}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
-                <TableRow key={i}>
-                  {columns.map((column, j) => (
-                    <TableCell key={column} className="max-w-48 truncate px-2 py-1">
-                      {cell(row[j])}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-function cell(value: unknown): string {
-  if (value === null || value === undefined) return '∅';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}

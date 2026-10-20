@@ -111,7 +111,7 @@ export function countProblems(nodes: StructureNode[]): number {
 
 /**
  * The first query or control at or below the node with `key`, in document order: what a pick of a
- * container or block leads to in Data. Undefined when the node isn't there or holds none.
+ * container or block leads to in Queries. Undefined when the node isn't there or holds none.
  */
 export function firstEntityUnder(
   nodes: StructureNode[],

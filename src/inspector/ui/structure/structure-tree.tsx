@@ -23,7 +23,7 @@ interface Props {
   onPicked: () => void;
   onHighlight: (node: string | null) => void;
   onLocate: (node: string) => void;
-  /** Open a query's or control's row in the Data tab. */
+  /** Open a query's or control's row in the Queries tab. */
   onShowInData: (node: StructureNode) => void;
   /** Open a node in the Lineage tab. */
   onShowInLineage: (node: StructureNode) => void;
@@ -161,7 +161,7 @@ export function StructureTree({
                   variant="ghost"
                   size="icon"
                   className="size-6 shrink-0 text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-                  aria-label="Show in Data"
+                  aria-label="Show in Queries"
                   onClick={(event) => {
                     event.stopPropagation();
                     onShowInData(node);
@@ -170,7 +170,7 @@ export function StructureTree({
                   <Database className="size-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">Show in Data</TooltipContent>
+              <TooltipContent side="top">Show in Queries</TooltipContent>
             </Tooltip>
           )}
           {(node.kind === 'query' || node.kind === 'control') && (

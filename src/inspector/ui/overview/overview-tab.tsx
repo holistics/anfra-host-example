@@ -25,8 +25,8 @@ import { queriesOf, type RequestEntry } from '../../model/requests';
 import { appTrust, LEVELS, TRUST_LEVELS } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
-import { TargetsTooltip } from '../data/control-row';
-import { IconButton } from '../data/entity-row';
+import { TargetsTooltip } from '../queries/control-row';
+import { IconButton } from '../queries/entity-row';
 import { AgoTime } from '../shared/ago-time';
 import { Field, Fields, InfoHint, Note, SectionTitle } from '../shared/fields';
 import { toneText } from '../shared/tone';
@@ -146,9 +146,9 @@ function Stats({
             issues.length ? `${plural(errors, 'error')} · ${plural(warnings, 'warning')}` : 'None found'
           }
           onClick={
-            // Failed queries are what the Data tab's Errors filter lists; warnings have no such list.
+            // Failed queries are what the Queries tab's Errors filter lists; warnings have no such list.
             counts.error
-              ? () => onReveal({ tab: 'data', filter: 'errors' })
+              ? () => onReveal({ tab: 'queries', filter: 'errors' })
               : firstIssue
                 ? () => onReveal(firstIssue.target)
                 : undefined
@@ -167,7 +167,7 @@ function Stats({
           ]
             .filter(Boolean)
             .join(' · ')}
-          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
+          onClick={() => onReveal({ tab: 'queries', filter: 'all' })}
         />
         <Stat
           icon={<SlidersHorizontal />}
@@ -175,7 +175,7 @@ function Stats({
           value={controls.length}
           tone={unapplied ? 'warn' : undefined}
           detail={unapplied ? `${unapplied} unapplied` : 'All applied'}
-          onClick={() => onReveal({ tab: 'data', filter: 'all' })}
+          onClick={() => onReveal({ tab: 'queries', filter: 'all' })}
         />
       </div>
       <div className={cn('grid grid-cols-2', gap)}>
@@ -341,7 +341,7 @@ function Changes({
                     </IconButton>
                   )}
                   <IconButton
-                    label="Show in Data"
+                    label="Show in Queries"
                     onClick={() => onReveal({ entity: 'control', app: change.app, name: change.name })}
                   >
                     <ArrowRight />

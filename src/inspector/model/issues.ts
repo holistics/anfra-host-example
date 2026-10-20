@@ -49,7 +49,7 @@ export function issuesOf(snapshot: InspectorSnapshot, checks?: Check[][]): Issue
 
 /**
  * How many queries are in each state, and how many are dirty, across every app; and how many
- * controls are dirty, so that `dirty + dirtyControls` is what Data's dirty filter shows.
+ * controls are dirty, so that `dirty + dirtyControls` is what Queries' dirty filter shows.
  */
 export function queryCounts(apps: InspectedApp[]) {
   const counts = { success: 0, error: 0, executing: 0, idle: 0, dirty: 0, total: 0, dirtyControls: 0 };
