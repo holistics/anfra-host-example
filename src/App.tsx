@@ -1,4 +1,4 @@
-import { Download, History, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import { Download, History, MessageCircle, PencilLine, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { type AnchorRect, buildCommentPrompt, CommentCard, findNode } from '@/comments';
 import { AppInfo } from '@/components/app-info';
@@ -40,6 +40,7 @@ import {
   togglePromptMessage,
   toggleVersionsMessage,
 } from '@/data-app';
+import { EditPanel } from '@/edit';
 import {
   attributeFor,
   createInspectorStore,
@@ -80,10 +81,13 @@ export function App() {
   // Bumped to remount the Data App: the reload button, and live reload.
   const [revision, setRevision] = useState(0);
   // The right-hand panel: the inspector, the prompt that made the app, or its version history. One at a time.
-  const [panel, setPanel] = useState<'inspect' | 'prompt' | 'versions'>();
+  const [panel, setPanel] = useState<'inspect' | 'prompt' | 'versions' | 'edit'>();
   const inspecting = panel === 'inspect';
-  // The frame has one pick mode: for the inspector, or to comment on a node (src/comments/SPEC.md).
-  const [pickFor, setPickFor] = useState<'inspect' | 'comment'>();
+  // The frame has one pick mode: for the inspector, to comment on a node (src/comments/SPEC.md), or
+  // to choose the block to edit (src/edit/SPEC.md).
+  const [pickFor, setPickFor] = useState<'inspect' | 'comment' | 'edit'>();
+  // The block the edit panel is on: a structure key.
+  const [editNode, setEditNode] = useState<string>();
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
@@ -182,6 +186,7 @@ export function App() {
     setPickFor(undefined);
     setComment(undefined);
     setPendingComment(undefined);
+    setEditNode(undefined);
     heldHighlight.current = null;
   }, [inspector.mount]);
 
@@ -258,6 +263,31 @@ export function App() {
     if (picking) setPickFor(undefined);
     setPanel(versioning ? undefined : 'versions');
   };
+
+  // Editing: the panel opens picking, and a pick chooses the block it is on (src/edit/SPEC.md).
+  const editing = panel === 'edit' && !!app;
+  const toggleEditing = () => {
+    if (editing) {
+      if (pickFor === 'edit') setPickFor(undefined);
+      setPanel(undefined);
+      return;
+    }
+    closeComment();
+    setPanel('edit');
+    setPickFor('edit');
+  };
+  const toggleEditPicking = () => setPickFor(pickFor === 'edit' ? undefined : 'edit');
+  // Another panel taking the slot ends a pick for the edit panel.
+  useEffect(() => {
+    if (pickFor === 'edit' && panel !== 'edit') setPickFor(undefined);
+  }, [pickFor, panel]);
+  // The edited block stays outlined while the panel is on it; from an effect, so it lands after the
+  // stage's own clear when picking ends.
+  useEffect(() => {
+    if (!editing || !editNode || heldHighlight.current) return;
+    stage.current?.highlight(editNode);
+    return () => stage.current?.highlight(null);
+  }, [editing, editNode]);
 
   // Cmd/Ctrl+K for the palette, Alt+Shift+P, Alt+Shift+I and Alt+Shift+V, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
   // a ref, so the listeners don't change with every render.
@@ -338,6 +368,10 @@ export function App() {
         const { click, at } = lastClick.current;
         const recent = click && Date.now() - at < 500 ? click : undefined;
         lastClick.current = { at: 0 };
+        if (mode === 'edit') {
+          setEditNode(node);
+          return;
+        }
         if (mode === 'comment') {
           // Comment mode ends with the card opening, in one update: in between, the frame would stop
           // being inspected and drop the structure the highlight needs. The structure may still be
@@ -447,7 +481,7 @@ export function App() {
         path={path}
         datasets={datasets}
         // Commenting needs the structure, which the frame posts only while it is inspected.
-        inspecting={inspecting || commenting}
+        inspecting={inspecting || commenting || editing}
         picking={!!pickFor}
         cursor={pickFor === 'comment' ? 'comment' : undefined}
         onInspect={inspector.publish}
@@ -521,6 +555,15 @@ export function App() {
                   <History />
                 </ToolbarButton>
                 <ToolbarButton
+                  label={editing ? 'Close the edit panel' : 'Edit a block of the Data App'}
+                  disabled={!app}
+                  active={editing}
+                  onClick={toggleEditing}
+                  text="Edit"
+                >
+                  <PencilLine />
+                </ToolbarButton>
+                <ToolbarButton
                   ref={commentButton}
                   label={commenting ? 'Stop commenting' : 'Comment on an element'}
                   disabled={!app}
@@ -586,6 +629,23 @@ export function App() {
                 <ResizableHandle />
                 <ResizablePanel id="prompt" defaultSize="320px" minSize="220px" maxSize="60%">
                   <PromptPanel prompt={app.prompt} onClose={togglePrompt} />
+                </ResizablePanel>
+              </>
+            )}
+            {editing && path && datasets && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel id="edit" defaultSize="400px" minSize="280px" maxSize="60%">
+                  <EditPanel
+                    key={inspector.mount}
+                    source={inspector.source}
+                    path={path}
+                    datasets={datasets}
+                    node={editNode}
+                    picking={pickFor === 'edit'}
+                    onTogglePicking={toggleEditPicking}
+                    onClose={toggleEditing}
+                  />
                 </ResizablePanel>
               </>
             )}
