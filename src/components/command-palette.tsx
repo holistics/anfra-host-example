@@ -1,6 +1,7 @@
 import {
   AppWindowMac,
   Download,
+  History,
   MessageCircle,
   Moon,
   RotateCw,
@@ -38,6 +39,9 @@ interface Props {
   prompting: boolean;
   onInspect: () => void;
   onPrompt: () => void;
+  /** Whether the versions panel is open, so its item says it closes it. */
+  versioning: boolean;
+  onVersions: () => void;
   /** Whether comment mode is on, so its item says it stops it. */
   commenting: boolean;
   onComment: () => void;
@@ -56,6 +60,8 @@ export function CommandPalette({
   prompting,
   onInspect,
   onPrompt,
+  versioning,
+  onVersions,
   commenting,
   onComment,
 }: Props) {
@@ -95,6 +101,15 @@ export function CommandPalette({
               <ScanSearch />
               {inspecting ? 'Close the inspect panel' : 'Inspect'}
               <Shortcut letter="I" />
+            </CommandItem>
+            <CommandItem
+              value={versioning ? 'Close the versions panel' : 'Version history versions (demo, coming soon)'}
+              onSelect={run(onVersions)}
+            >
+              <History />
+              {versioning ? 'Close the versions panel' : 'Version history'}
+              {!versioning && <span className="text-xs text-muted-foreground">Demo data · coming soon</span>}
+              <Shortcut letter="V" />
             </CommandItem>
             <CommandItem
               value={commenting ? 'Stop commenting' : 'Comment on an element'}

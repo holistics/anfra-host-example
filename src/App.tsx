@@ -1,4 +1,4 @@
-import { Download, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import { Download, History, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { type AnchorRect, buildCommentPrompt, CommentCard, findNode } from '@/comments';
 import { AppInfo } from '@/components/app-info';
@@ -20,6 +20,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { VersionsPanel } from '@/components/versions-panel';
 import {
   clickMessage,
   commentCursor,
@@ -77,8 +78,8 @@ export function App() {
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
   // Bumped to remount the Data App: the reload button, and live reload.
   const [revision, setRevision] = useState(0);
-  // The right-hand panel: the inspector, or the prompt that made the app. One at a time.
-  const [panel, setPanel] = useState<'inspect' | 'prompt'>();
+  // The right-hand panel: the inspector, the prompt that made the app, or its version history. One at a time.
+  const [panel, setPanel] = useState<'inspect' | 'prompt' | 'versions'>();
   const inspecting = panel === 'inspect';
   // The frame has one pick mode: for the inspector, or to comment on a node (src/comments/SPEC.md).
   const [pickFor, setPickFor] = useState<'inspect' | 'comment'>();
@@ -250,12 +251,19 @@ export function App() {
     if (picking) setPickFor(undefined);
     setPanel(prompting ? undefined : 'prompt');
   };
+  // The versions panel (demo data for now) is chosen like the inspector: it shows for any open app.
+  const versioning = panel === 'versions' && !!app;
+  const toggleVersions = () => {
+    if (picking) setPickFor(undefined);
+    setPanel(versioning ? undefined : 'versions');
+  };
 
-  // Cmd/Ctrl+K for the palette, Alt+Shift+P and Alt+Shift+I, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
+  // Cmd/Ctrl+K for the palette, Alt+Shift+P, Alt+Shift+I and Alt+Shift+V, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
   // a ref, so the listeners don't change with every render.
   const shortcuts = useRef({
     togglePrompt,
     toggleInspecting,
+    toggleVersions,
     toggleCommenting,
     hasApp: !!app,
     hasPrompt: !!app?.prompt,
@@ -263,15 +271,18 @@ export function App() {
   shortcuts.current = {
     togglePrompt,
     toggleInspecting,
+    toggleVersions,
     toggleCommenting,
     hasApp: !!app,
     hasPrompt: !!app?.prompt,
   };
   useEffect(() => {
-    const run = (shortcut: 'prompt' | 'inspect' | 'comment') => {
-      const { togglePrompt, toggleInspecting, toggleCommenting, hasApp, hasPrompt } = shortcuts.current;
+    const run = (shortcut: 'prompt' | 'inspect' | 'versions' | 'comment') => {
+      const { togglePrompt, toggleInspecting, toggleVersions, toggleCommenting, hasApp, hasPrompt } =
+        shortcuts.current;
       if (shortcut === 'prompt' && hasPrompt) togglePrompt();
       if (shortcut === 'inspect' && hasApp) toggleInspecting();
+      if (shortcut === 'versions' && hasApp) toggleVersions();
       if (shortcut === 'comment' && hasApp) toggleCommenting();
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -286,9 +297,11 @@ export function App() {
           ? 'prompt'
           : event.code === 'KeyI'
             ? 'inspect'
-            : event.code === 'KeyC'
-              ? 'comment'
-              : undefined;
+            : event.code === 'KeyV'
+              ? 'versions'
+              : event.code === 'KeyC'
+                ? 'comment'
+                : undefined;
       if (!shortcut) return;
       event.preventDefault();
       run(shortcut);
@@ -497,6 +510,15 @@ export function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <ToolbarButton
+                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
+                  disabled={!app}
+                  active={versioning}
+                  onClick={toggleVersions}
+                  shortcut="V"
+                >
+                  <History />
+                </ToolbarButton>
+                <ToolbarButton
                   ref={commentButton}
                   label={commenting ? 'Stop commenting' : 'Comment on an element'}
                   disabled={!app}
@@ -565,6 +587,14 @@ export function App() {
                 </ResizablePanel>
               </>
             )}
+            {versioning && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel id="versions" defaultSize="360px" minSize="260px" maxSize="60%">
+                  <VersionsPanel onClose={toggleVersions} />
+                </ResizablePanel>
+              </>
+            )}
           </ResizablePanelGroup>
         </SidebarInset>
         <CommandPalette
@@ -579,6 +609,8 @@ export function App() {
           prompting={prompting}
           onInspect={toggleInspecting}
           onPrompt={togglePrompt}
+          versioning={versioning}
+          onVersions={toggleVersions}
           commenting={commenting}
           onComment={toggleCommenting}
         />
