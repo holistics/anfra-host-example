@@ -376,8 +376,12 @@ one click away.
     partial table has no download, so no one mistakes it for the full data.
   - **Technical details**: opens the query's row in Queries.
 - **States**, in plain words: "Loading this table…" before the first rows arrive, "This table
-  couldn't load." when the query is in error (the reason is in Queries), "No rows." for an empty
-  result. No AQL, SQL, status codes or cache tags appear here.
+  couldn't load." when the query is in error, even if an earlier request returned rows (the reason
+  is in Queries), "No rows." for an empty result, and "This table's rows aren't available here."
+  when the query succeeded but its request is no longer in the log. No AQL, SQL, status codes or
+  cache tags appear here.
+- **Paged queries**: the table is the first page's rows. A paged query's download only shows when
+  no page follows the first.
 - There is no filter, badge or pick behavior: a pick from this tab goes to Structure.
 - Multi-app: an "App N · title" header over each app's cards.
 
