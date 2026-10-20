@@ -2,27 +2,27 @@
 // inspector about the frame it mounted.
 import type { DatasetDescriptor, LineageResult, LineageTarget, User } from '@holistics/anfra-sdk/common';
 
-export type InspectorTab = 'overview' | 'structure' | 'data' | 'lineage' | 'wiring';
+export type InspectorTab = 'overview' | 'data' | 'structure' | 'queries' | 'lineage' | 'wiring';
 
 /** A structure node to select and reveal; a new nonce repeats a request for the same node. */
 export interface NodeRequest {
   key: string;
   nonce: number;
-  /** Go to the first query or control in the node, in the Data tab, rather than to the node in Structure. */
+  /** Go to the first query or control in the node, in the Queries tab, rather than to the node in Structure. */
   inData?: boolean;
 }
 
-/** What the Data tab shows: a search over names, datasets and labels, and a filter. */
-export interface DataFilter {
+/** What the Queries tab shows: a search over names, datasets and labels, and a filter. */
+export interface QueriesFilter {
   search: string;
   filter: 'all' | 'errors' | 'dirty';
 }
 
 /**
- * Which Data rows are open and which sections are closed. The panel keeps it, so it survives
- * switching tabs, which unmounts the Data tab.
+ * Which Queries rows are open and which sections are closed. The panel keeps it, so it survives
+ * switching tabs, which unmounts the Queries tab.
  */
-export interface DataExpansion {
+export interface QueriesExpansion {
   open: Set<string>;
   closedSections: Set<string>;
 }
@@ -30,8 +30,8 @@ export interface DataExpansion {
 /** Where a link in the panel goes. Every link resolves to one of these; see SPEC.md §4.8. */
 export type RevealTarget =
   | {
-      tab: InspectorTab /** Opens the Data tab with its filter set, and its search cleared. */;
-      filter?: DataFilter['filter'];
+      tab: InspectorTab /** Opens the Queries tab with its filter set, and its search cleared. */;
+      filter?: QueriesFilter['filter'];
     }
   | { entity: 'query' | 'control'; app: number; name: string }
   | { check: number; app: number }
@@ -51,7 +51,7 @@ export interface InspectorEnv {
   reader: User;
   /** The datasets the frame is provisioned with. */
   datasets: Record<string, DatasetDescriptor>;
-  /** What each dataset says of its metrics and fields, for the Data tab's metric tooltips. */
+  /** What each dataset says of its metrics and fields, for the Queries tab's metric tooltips. */
   metricDocs?: MetricDocs;
   /** The catalog's lineage, for the Lineage tab. Without it the tab draws what the page and `metricDocs` say. */
   lineage?: LineageSource;

@@ -258,7 +258,9 @@ function HoverActions({ node, actions }: { node: LineageGraphNode; actions: Line
       {entity && node.kind !== 'block' && (
         <ActionButton
           label={
-            node.kind === 'query' || node.kind === 'control' ? 'Show in Data' : `Show ${entity.name} in Data`
+            node.kind === 'query' || node.kind === 'control'
+              ? 'Show in Queries'
+              : `Show ${entity.name} in Queries`
           }
           onClick={() =>
             actions.reveal({

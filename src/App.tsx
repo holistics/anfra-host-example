@@ -216,8 +216,8 @@ export function App() {
   const togglePicking = () => {
     if (!picking) {
       setPanel('inspect');
-      // Data and Lineage take a pick themselves; any other tab goes to Structure.
-      if (tab !== 'data' && tab !== 'lineage') setTab('structure');
+      // Queries and Lineage take a pick themselves; any other tab goes to Structure.
+      if (tab !== 'queries' && tab !== 'lineage') setTab('structure');
       closeComment();
     }
     setPickFor(picking ? undefined : 'inspect');
@@ -331,11 +331,11 @@ export function App() {
           setPendingComment({ key: node, click: recent });
           return;
         }
-        // Shift goes to the node's first query or control in Data; the inspector picks the tab. Data
+        // Shift goes to the node's first query or control in Queries; the inspector picks the tab. Queries
         // and Lineage stay open and jump within themselves.
         const inData = !!recent?.shift;
         setPicked({ key: node, nonce: Date.now(), inData });
-        if (!inData && tab !== 'data' && tab !== 'lineage') setTab('structure');
+        if (!inData && tab !== 'queries' && tab !== 'lineage') setTab('structure');
       }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.

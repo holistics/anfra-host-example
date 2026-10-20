@@ -57,9 +57,9 @@ There is no modal or backdrop.
 
 **Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
 Picking a node selects and reveals it in the tree. **Shift-click** instead opens the first query or
-control at or below the picked node (the node itself, if it is one) in Data, switching to that tab;
+control at or below the picked node (the node itself, if it is one) in Queries, switching to that tab;
 a node with none lands in Structure as usual.
-From the **Data** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
+From the **Queries** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
 Lineage: it pins the first node of the picked subtree that the canvas draws (a control, block or query) and
 centers it; if a filter or focus hides them all, the pick is ignored. Other tabs switch to Structure. The frame's pick report doesn't carry modifier keys,
 so the host's injected script posts each click's Shift state just before it. The frame leaves pick
@@ -74,7 +74,7 @@ The inspector state also resets when the path changes or the repo revision chang
 ```
 ┌ Ecommerce Overview          [Copy report] [×] ┐
 │ ● 4 ok  ● 1 error  ◌ 1 running  ◆ 2 dirty     │   ← status bar (new)
-│ [Overview] [Structure ⚠2] [Data] [Lineage] [Wiring ⚠1] │
+│ [Overview] [Data] [Structure ⚠2] [Queries ⚠1] [Lineage] [Wiring ⚠1] │
 ├───────────────────────────────────────────────┤
 │  tab body (scrolls)                            │
 └───────────────────────────────────────────────┘
@@ -83,11 +83,11 @@ The inspector state also resets when the path changes or the repo revision chang
 - **Title**: the app's `title`. With several apps it reads "N apps", and the status bar
   totals across them.
 - **Status bar**: counts by query state, plus dirty queries. A count of zero is hidden.
-  Each count links to Data with the matching filter.
-- **Tabs**: Overview · Structure · Data · Lineage · Wiring, in that order. A tab shows a badge with its issue
+  Each count links to Queries with the matching filter.
+- **Tabs**: Overview · Data · Structure · Queries · Lineage · Wiring, in that order. A tab shows a badge with its issue
   count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Wiring counts checks at warn or error level.
-  Data counts failed queries.
-- **Default tab**: Overview. Pick switches to Structure, except from Data and Lineage.
+  Queries counts failed queries. Data (§4.11) has no badge.
+- **Default tab**: Overview. Pick switches to Structure, except from Queries and Lineage.
   Opening the panel again keeps the tab it was closed on.
 - **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
   or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is
@@ -104,7 +104,7 @@ The inspector state also resets when the path changes or the repo revision chang
 
 ### 4.2 Multi-app
 
-When the frame has more than one app, Data and Wiring group by app under a header like
+When the frame has more than one app, Data, Queries and Wiring group by app under a header like
 "App 2 · Sales · Europe/Paris · unapplied changes". Overview shows one trust card per app. With a
 single app there is no app header.
 
@@ -122,12 +122,12 @@ The landing tab. It answers "is this app healthy, and where do I look?"
    The app's level is its lowest query's level. An app with no queries is level 1 ("No queries
    found"). Level 4 ("Endorsed") is defined but never reached until the SDK reports endorsement.
 2. **Stat cards**, in a 2-column grid. Each one is a button that jumps somewhere:
-   - **Issues** (errors · warnings): goes to the first place with issues, in this order: Data with
+   - **Issues** (errors · warnings): goes to the first place with issues, in this order: Queries with
      the Errors filter, then Wiring checks, then Structure.
-   - **Queries** (ok / error / running / idle): goes to Data › Queries.
-   - **Controls** (count, and how many are unapplied): goes to Data › Controls.
+   - **Queries** (ok / error / running / idle): goes to Queries › Queries.
+   - **Controls** (count, and how many are unapplied): goes to Queries › Controls.
    - **Last request** (time, query, duration, cache or database), from the log: goes to that
-     query's row in Data.
+     query's row in Queries.
 3. **Issues list**: the five most severe issues, each a link to where it is (a query row, a check
    or a structure node). "Show all" appears when there are more.
 4. **Environment** (collapsible, closed by default):
@@ -147,16 +147,16 @@ The page's marked elements as a tree, the same as today:
 - **Hover** highlights the node in the frame. Leaving the tree clears the highlight.
 - **Click or Enter** selects the node and scrolls it into view in the frame (locate).
 - On hover or focus, a row shows **Copy handle** (`[Label](data-anfra-block="id")`, or just the
-  attribute), and for queries and controls with no problems, **Show in Data**.
+  attribute), and for queries and controls with no problems, **Show in Queries**.
 - **Picked** node: it is selected, its ancestors expand and it scrolls into view. A Shift pick goes
-  to Data instead, when the node holds a query or control.
+  to Queries instead, when the node holds a query or control.
 - Collapsed nodes stay collapsed across snapshots.
 - **Empty**: "Nothing is marked yet. Add data-anfra-container, … and they show up here."
 
 _(not built yet)_ A filter box at the top narrows the tree to matching nodes and their ancestors. A
 "Problems only" toggle shows only nodes that have problems.
 
-### 4.5 Data
+### 4.5 Queries
 
 Every app's queries, controls and selection. Each item is one line until opened. Which items and
 sections are open, and the code tab chosen, survive new snapshots.
@@ -220,7 +220,7 @@ How the app is put together, from `declaration`. One group per app.
 1. **Counts**: queries · controls · mappings · cross-filters.
 2. **Matrix**: rows are queries, columns are controls, then a "cross-filtered by" column. A cell
    shows ● when mapped (tooltip: field and aggregation) and · otherwise. Row and column headers are
-   links that reveal the entity in Data. The matrix scrolls sideways inside its box; the panel never
+   links that reveal the entity in Queries. The matrix scrolls sideways inside its box; the panel never
    scrolls sideways.
 3. **Checks**: static lint for mistakes the SDK reports late or never:
    - ✕ error: a cross-filter spans different datasets.
@@ -261,8 +261,8 @@ Every link inside the panel resolves to one action, `reveal(target)`. `target` i
 - `{ check, app, index }`
 - `{ node }`
 
-Revealing an entity switches to Data, clears a search or filter that would hide it, opens its
-section and row, scrolls it into view, and flashes it briefly. Today's "Show in Data" is one case
+Revealing an entity switches to Queries, clears a search or filter that would hide it, opens its
+section and row, scrolls it into view, and flashes it briefly. Today's "Show in Queries" is one case
 of this.
 
 ### 4.9 Keyboard and accessibility
@@ -294,7 +294,7 @@ with cross-filters linking one query to another.
   applied condition (`appliedCondition`, what the queries last ran with) as its **Value**
   (`formatCondition`), or "not set" when none is applied. A pending edit, one the reader has typed
   but not applied (`isDirty` and a different condition), is shown as a muted `pending:` line under
-  the value; it changes neither the value nor the edge's colour, as in the Data tab's Inputs.
+  the value; it changes neither the value nor the edge's colour, as in the Queries tab's Inputs.
   Unlike every other edge, which points from what uses to what it is built from, a control's edge
   means "filters": the control changes the query's numbers but is not part of where they come
   from. It is drawn orange when the control has an applied value and light gray when it is not set, so it
@@ -302,7 +302,7 @@ with cross-filters linking one query to another.
 - **Cross-filters**: a `crossFilter` mapping whose two queries are both in the graph is an edge
   from the source query to the target query, carrying the target's fields. Like a control's edge
   it means "filters". It is **active** (orange, as a control with a value) while the app's applied selection is in the
-  source query (`appliedSelection.source`, as in the Data tab's Inputs), and **inactive** (light gray, as a
+  source query (`appliedSelection.source`, as in the Queries tab's Inputs), and **inactive** (light gray, as a
   control that is not set) otherwise, including while a selection is only pending. A cross-filter from a query
   to itself is drawn too. The layout ignores these edges, so the queries stay in the one
   query column, but it lays queries that are joined by one next to each other. Each edge has its
@@ -331,7 +331,7 @@ with cross-filters linking one query to another.
   dataset. A click on the pane or Escape lets go. Pinning a block or query also outlines it on the
   page (`highlight`).
 - **Hover buttons** on a card: Locate on the page and Show in Structure (controls, blocks, queries),
-  Show in Data (controls, queries, fields), Focus.
+  Show in Queries (controls, queries, fields), Focus.
 - **Filter**: a chip per kind, with its count, shows or hides it. Hiding a kind joins across it:
   hiding queries links each block to the fields its queries return. A joined edge keeps a filter
   edge's kind (a control's stays "filters", orange or gray as before) and, where it meets a plain
@@ -357,6 +357,30 @@ with cross-filters linking one query to another.
 - **Edge legend**: a (?) button beside the expand button opens a popover that says what the purple
   and the orange and gray edges mean.
 
+### 4.11 Data
+
+The tables behind the page, for someone who doesn't write queries: only each query's raw result,
+none of the machinery. It sits right after Overview. Everything technical is in Queries (§4.5),
+one click away.
+
+- **Search**: the same box as Queries' (§4.5), pinned to the top while the tables scroll. It narrows
+  the tables by title; Escape clears it. When nothing matches: "No tables match '…'." Its text is
+  local to the tab, so no link sets it.
+- **One card per query**, in declaration order, grouped by app when there are several:
+  - **Title**: the label of the first block that draws the query, else the query's name.
+  - **Updated**: when the rows were returned.
+  - **Table**: the first rows of the latest successful request (the same preview as in Queries ›
+    Requests), with the columns' labels as headers, not their keys. "First N of M rows" when there
+    are more.
+  - **Download CSV**: only when `canExportData` is allowed *and* the preview holds every row. A
+    partial table has no download, so no one mistakes it for the full data.
+  - **Technical details**: opens the query's row in Queries.
+- **States**, in plain words: "Loading this table…" before the first rows arrive, "This table
+  couldn't load." when the query is in error (the reason is in Queries), "No rows." for an empty
+  result. No AQL, SQL, status codes or cache tags appear here.
+- There is no filter, badge or pick behavior: a pick from this tab goes to Structure.
+- Multi-app: an "App N · title" header over each app's cards.
+
 ## 5. Structure
 
 ### 5.1 Folder
@@ -380,8 +404,8 @@ src/inspector/
   ui/                     React; imports only from model/, source.ts and the host's shadcn ui
     inspector.tsx         shell: subscriptions, tabs, reveal()
     header.tsx            title, status bar, Copy report, close
-    overview/  structure/  data/  lineage/  wiring/
-    shared/               code-block, copy-button, fields, reveal, tone
+    overview/  data/  structure/  queries/  lineage/  wiring/
+    shared/               code-block, copy-button, fields, result-table, reveal, tone
 ```
 
 Rules:
