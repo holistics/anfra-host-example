@@ -103,7 +103,7 @@ export function CommandPalette({
               <Shortcut letter="I" />
             </CommandItem>
             <CommandItem
-              value={versioning ? 'Close the versions panel' : 'Version history versions (demo, coming soon)'}
+              value={versioning ? 'Close the versions panel' : 'Version history'}
               onSelect={run(onVersions)}
             >
               <History />

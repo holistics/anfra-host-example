@@ -159,6 +159,7 @@ export const toggleSidebarMessage = 'anfra-host:toggle-sidebar';
 export const togglePromptMessage = 'anfra-host:toggle-prompt';
 export const toggleInspectMessage = 'anfra-host:toggle-inspect';
 export const toggleCommentMessage = 'anfra-host:toggle-comment';
+export const toggleVersionsMessage = 'anfra-host:toggle-versions';
 /**
  * Posted for every click in a frame, with whether Shift was held: the frame's pick report doesn't
  * say, and a click's message always comes first, as the frame's listener sits on the window. It
@@ -204,7 +205,7 @@ export interface FrameClick {
  * Alt+Shift+P for the prompt, Alt+Shift+I for inspect, Alt+Shift+C to comment),
  * which the host answers, and reports each click for picking (see clickMessage).
  */
-const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':a&&e.code==='KeyC'?'${toggleCommentMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'?'${openPaletteMessage}':e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true);</script>`;
+const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.target,m=(e.metaKey||e.ctrlKey)&&!e.altKey,k=e.key.toLowerCase(),a=e.altKey&&e.shiftKey&&!e.metaKey&&!e.ctrlKey,r=a&&e.code==='KeyP'?'${togglePromptMessage}':a&&e.code==='KeyI'?'${toggleInspectMessage}':a&&e.code==='KeyC'?'${toggleCommentMessage}':a&&e.code==='KeyV'?'${toggleVersionsMessage}':m&&k==='b'?'${toggleSidebarMessage}':m&&k==='k'?'${openPaletteMessage}':e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))?'${focusFilterMessage}':0;if(r){e.preventDefault();parent.postMessage(r,'*')}},true);</script>`;
 
 /**
  * Appended too: reports each click with the closest marked element, and while the host asks

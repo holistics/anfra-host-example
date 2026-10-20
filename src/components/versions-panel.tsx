@@ -1,5 +1,5 @@
 import { GitCompare, History, Minus, Pencil, Plus, RotateCcw, X } from 'lucide-react';
-import { type ReactNode, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -23,7 +23,7 @@ interface Props {
  * each version and the disabled actions.
  */
 export function VersionsPanel({ onClose }: Props) {
-  const versions = useMemo(() => mockVersionsFor(), []);
+  const versions = mockVersionsFor();
 
   return (
     <div className="flex h-full flex-col border-l">

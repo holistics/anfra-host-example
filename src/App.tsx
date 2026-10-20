@@ -38,6 +38,7 @@ import {
   toggleCommentMessage,
   toggleInspectMessage,
   togglePromptMessage,
+  toggleVersionsMessage,
 } from '@/data-app';
 import {
   attributeFor,
@@ -311,6 +312,7 @@ export function App() {
       if (event.data === togglePromptMessage) run('prompt');
       if (event.data === toggleInspectMessage) run('inspect');
       if (event.data === toggleCommentMessage) run('comment');
+      if (event.data === toggleVersionsMessage) run('versions');
       if (event.data?.type === clickMessage && stage.current?.owns(event.source)) {
         lastClick.current = { click: event.data as FrameClick, at: Date.now() };
       }
@@ -510,15 +512,6 @@ export function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <ToolbarButton
-                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
-                  disabled={!app}
-                  active={versioning}
-                  onClick={toggleVersions}
-                  shortcut="V"
-                >
-                  <History />
-                </ToolbarButton>
-                <ToolbarButton
                   ref={commentButton}
                   label={commenting ? 'Stop commenting' : 'Comment on an element'}
                   disabled={!app}
@@ -528,6 +521,15 @@ export function App() {
                   shortcut="C"
                 >
                   <MessageCircle />
+                </ToolbarButton>
+                <ToolbarButton
+                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
+                  disabled={!app}
+                  active={versioning}
+                  onClick={toggleVersions}
+                  shortcut="V"
+                >
+                  <History />
                 </ToolbarButton>
                 <ToolbarButton
                   label={
