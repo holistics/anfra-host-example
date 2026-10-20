@@ -512,6 +512,15 @@ export function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <ToolbarButton
+                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
+                  disabled={!app}
+                  active={versioning}
+                  onClick={toggleVersions}
+                  shortcut="V"
+                >
+                  <History />
+                </ToolbarButton>
+                <ToolbarButton
                   ref={commentButton}
                   label={commenting ? 'Stop commenting' : 'Comment on an element'}
                   disabled={!app}
@@ -521,15 +530,6 @@ export function App() {
                   shortcut="C"
                 >
                   <MessageCircle />
-                </ToolbarButton>
-                <ToolbarButton
-                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
-                  disabled={!app}
-                  active={versioning}
-                  onClick={toggleVersions}
-                  shortcut="V"
-                >
-                  <History />
                 </ToolbarButton>
                 <ToolbarButton
                   label={
