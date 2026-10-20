@@ -40,7 +40,7 @@ import {
   togglePromptMessage,
   toggleVersionsMessage,
 } from '@/data-app';
-import { EditPanel } from '@/edit';
+import { EditPanel, type PreviewEdit } from '@/edit';
 import {
   attributeFor,
   createInspectorStore,
@@ -88,6 +88,8 @@ export function App() {
   const [pickFor, setPickFor] = useState<'inspect' | 'comment' | 'edit'>();
   // The block the edit panel is on: a structure key.
   const [editNode, setEditNode] = useState<string>();
+  // The edit panel's drafts the frame runs in place of what it declared (src/edit/SPEC.md).
+  const [previews, setPreviews] = useState<PreviewEdit[]>([]);
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
@@ -186,9 +188,14 @@ export function App() {
     setPickFor(undefined);
     setComment(undefined);
     setPendingComment(undefined);
-    setEditNode(undefined);
     heldHighlight.current = null;
   }, [inspector.mount]);
+  // The edit panel stays on its block, and its previews on, across a reload: only another app starts over.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each app
+  useEffect(() => {
+    setEditNode(undefined);
+    setPreviews((current) => (current.length ? [] : current));
+  }, [path]);
 
   // Live reload, in development: a changed Data App reloads if it is the one open; a changed AML
   // reloads the datasets, and with them the open Data App.
@@ -277,6 +284,11 @@ export function App() {
     setPickFor('edit');
   };
   const toggleEditPicking = () => setPickFor(pickFor === 'edit' ? undefined : 'edit');
+  // A preview reruns the queries it changes, in place: the frame never reloads.
+  const previewEdit = (edit: PreviewEdit) =>
+    setPreviews((current) => [...current.filter((p) => p.query !== edit.query), edit]);
+  const discardPreview = (query: string) =>
+    setPreviews((current) => current.filter((p) => p.query !== query));
   // Another panel taking the slot ends a pick for the edit panel.
   useEffect(() => {
     if (pickFor === 'edit' && panel !== 'edit') setPickFor(undefined);
@@ -487,6 +499,7 @@ export function App() {
         onInspect={inspector.publish}
         record={inspector.record}
         onPick={onPick}
+        previews={previews}
       >
         {comment && app && (
           <CommentCard
@@ -637,12 +650,15 @@ export function App() {
                 <ResizableHandle />
                 <ResizablePanel id="edit" defaultSize="400px" minSize="280px" maxSize="60%">
                   <EditPanel
-                    key={inspector.mount}
+                    key={path}
                     source={inspector.source}
                     path={path}
                     datasets={datasets}
                     node={editNode}
                     picking={pickFor === 'edit'}
+                    previews={previews}
+                    onPreview={previewEdit}
+                    onDiscard={discardPreview}
                     onTogglePicking={toggleEditPicking}
                     onClose={toggleEditing}
                   />

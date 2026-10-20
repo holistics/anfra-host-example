@@ -16,7 +16,13 @@ import type {
   RenderRequest,
   User,
 } from '@holistics/anfra-sdk/common';
-import { type CallContext, createHost, type Host, type Middleware } from '@holistics/anfra-sdk/host';
+import {
+  type CallContext,
+  createHost,
+  definePlugin,
+  type Host,
+  type Middleware,
+} from '@holistics/anfra-sdk/host';
 import {
   corePlugin,
   exportPlugin,
@@ -25,6 +31,7 @@ import {
   renderPlugin,
 } from '@holistics/anfra-sdk/plugins';
 import { dependencies } from '../package.json';
+import type { PreviewEdit } from './edit/model/preview';
 import type { LineageSource, MetricDoc, MetricDocs, ModelTable } from './inspector';
 
 export type {
@@ -227,6 +234,66 @@ export async function definition(path: string): Promise<{ html: string; baseHref
   };
 }
 
+/** Each mounted frame's previews: the Edit panel's drafts, in place of what the frame declared. */
+const previewsOf = new WeakMap<HTMLIFrameElement, PreviewEdit[]>();
+
+/**
+ * The Edit panel's preview (src/edit/SPEC.md): a query whose declared AQL is a draft's `from` is run
+ * with the draft's `to` instead. In the request, not the definition, so the frame never reloads and
+ * the reader's filters, dropdowns and selection stay as they are. Inside the recording middleware,
+ * so the request log still names the query by what it declared.
+ */
+const previewing: Middleware = {
+  name: 'edit.preview',
+  match: ['core.submitQuery', 'export.query'],
+  stage: 1,
+  handle(request, context, next) {
+    const edits = context.mount && previewsOf.get(context.mount.frame);
+    const aql = (request as { aql?: unknown } | null)?.aql;
+    const edit = edits?.find((e) => e.from === aql);
+    return edit ? next({ ...(request as object), aql: edit.to }) : next();
+  },
+};
+
+/**
+ * The Edit panel's frame half: `edit.refresh` runs again every app that declares one of the queries
+ * named, so a preview shows. It reruns what is there; the definition's code is left alone.
+ */
+const editFrameSetup = `__anfraPlugin = { default: function (k) {
+  k.handle('refresh', function (names) {
+    var apps = k.sdk.apps.filter(function (app) {
+      return (names || []).some(function (name) { return app.queries[name]; });
+    });
+    return Promise.all(apps.map(function (app) { return app.refresh(); })).then(function () { return apps.length; });
+  });
+} };`;
+
+const editPlugin = () => definePlugin({ name: 'edit', version: '0.1.0', frame: { setup: editFrameSetup } });
+
+/** What anfra says of a query's AQL: valid or not, and where each problem is. */
+export interface AqlCheck {
+  valid: boolean;
+  diagnostics: { message: string; severity: string; line?: number; column?: number }[];
+}
+
+/** Check AQL without running it. Only a host started with `EDIT=1` lets this through (server/anfra.ts). */
+export async function validateAql(dataset: string, query: string): Promise<AqlCheck> {
+  const response = await fetch('/api/core.query.validate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dataset, query, lang: 'aql' }),
+  });
+  if (response.status === 404) throw new Error('Editing is off. Start the host with EDIT=1 to edit.');
+  if (!response.ok) throw new Error(`Validating answered ${response.status}.`);
+  return (await response.json()) as AqlCheck;
+}
+
+/** Whether this host was started with `EDIT=1`. */
+export async function editEnabled(): Promise<boolean> {
+  const response = await fetch('/health');
+  return response.ok && ((await response.json()) as { edit?: boolean }).edit === true;
+}
+
 /** Records one of a frame's calls, then passes it on: a middleware's `handle`. */
 export type RecordCall = (
   request: unknown,
@@ -244,6 +311,8 @@ export interface MountOptions {
   onPick: (node: string | null) => void;
   /** Sees every call about this frame, through the host's middleware: to record them for the inspector. */
   record?: RecordCall;
+  /** The Edit panel's drafts, run in place of what the frame declared from its first query on. */
+  previews?: PreviewEdit[];
 }
 
 /** What the page does with a mounted Data App. */
@@ -259,6 +328,8 @@ export interface DataApp {
    * no CORS headers.
    */
   render: (request: RenderRequest) => Promise<Rendering>;
+  /** Run these drafts in place of what the frame declared, and run again the queries they change. */
+  setPreviews: (edits: PreviewEdit[]) => void;
   unmount: () => void;
 }
 
@@ -305,8 +376,9 @@ function hostFor(datasets: Record<string, DatasetDescriptor>): Host {
           lineagePlugin(backend),
           renderPlugin(),
           inspectPlugin(),
+          editPlugin(),
         ],
-        middleware: [recording],
+        middleware: [recording, previewing],
       }),
     };
   }
@@ -330,6 +402,7 @@ export async function mount(options: MountOptions): Promise<DataApp> {
   });
   // Before the frame's document loads, so its first calls are recorded.
   if (options.record) recorders.set(mounted.frame, options.record);
+  previewsOf.set(mounted.frame, options.previews ?? []);
   const stop = [
     mounted.on(
       'inspect.snapshot',
@@ -349,9 +422,23 @@ export async function mount(options: MountOptions): Promise<DataApp> {
     highlight: (node) => send('inspect.highlight', node),
     locate: (target) => send('inspect.locate', target),
     render: (request) => mounted.call<Rendering>('render.draw', request),
+    setPreviews(edits) {
+      const before = previewsOf.get(mounted.frame) ?? [];
+      previewsOf.set(mounted.frame, edits);
+      // Every query whose preview came, changed or went runs again.
+      const changed = [...before, ...edits]
+        .filter((e) => {
+          const was = before.find((b) => b.query === e.query);
+          const now = edits.find((n) => n.query === e.query);
+          return was?.to !== now?.to;
+        })
+        .map((e) => e.query);
+      if (changed.length) send('edit.refresh', [...new Set(changed)]);
+    },
     unmount() {
       for (const off of stop) off();
       recorders.delete(mounted.frame);
+      previewsOf.delete(mounted.frame);
       mounted.unmount();
     },
   };

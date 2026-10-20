@@ -12,6 +12,7 @@ import {
   type RenderRequest,
   trackMessage,
 } from '@/data-app';
+import type { PreviewEdit } from '@/edit';
 
 /** What the inspect panel and the toolbar do to the page in the stage. */
 export interface StageHandle {
@@ -35,6 +36,8 @@ interface Props {
   onPick: (node: string | null) => void;
   /** Read once per mount. */
   record?: MountOptions['record'];
+  /** The Edit panel's drafts, run in place of what the frame declared. A change reruns, never remounts. */
+  previews?: PreviewEdit[];
   ref?: Ref<StageHandle>;
   /** Drawn over the frame, in its coordinates: the comment card's anchor. */
   children?: ReactNode;
@@ -53,6 +56,7 @@ export function DataAppStage({
   onInspect,
   onPick,
   record,
+  previews,
   ref,
   children,
 }: Props) {
@@ -61,8 +65,8 @@ export function DataAppStage({
   const [error, setError] = useState<string>();
 
   // The latest callbacks, so a re-render doesn't remount the frame.
-  const callbacks = useRef({ onInspect, onPick, record });
-  callbacks.current = { onInspect, onPick, record };
+  const callbacks = useRef({ onInspect, onPick, record, previews });
+  callbacks.current = { onInspect, onPick, record, previews };
 
   useEffect(() => {
     const element = container.current;
@@ -77,6 +81,7 @@ export function DataAppStage({
       onInspect: (apps, structure) => callbacks.current.onInspect(apps, structure),
       onPick: (node) => callbacks.current.onPick(node),
       record: callbacks.current.record,
+      previews: callbacks.current.previews,
     }).then(
       (result) => {
         if (cancelled) return result.unmount();
@@ -92,6 +97,7 @@ export function DataAppStage({
       setApp(undefined);
     };
   }, [path, datasets]);
+  useEffect(() => app?.setPreviews(previews ?? []), [app, previews]);
 
   useEffect(() => app?.setInspecting(inspecting), [app, inspecting]);
   useEffect(() => app?.setPicking(picking), [app, picking]);

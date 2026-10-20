@@ -18,6 +18,9 @@ export const allowedOps = new Set([
   'core.search',
 ]);
 
+/** Ops the Edit panel needs, let through only when the host is started with `EDIT=1`. */
+export const editOps = new Set(['core.query.validate']);
+
 /**
  * Ops a visitor may ask only one exact question of. The Lineage tab draws each model's database
  * table, which `core.lineage` gives only for models a metric refers to: the catalog's models, with
@@ -76,7 +79,7 @@ export function callAnfra(config: Config, op: string, init: RequestInit = {}): P
 export function coreApi(config: Config, clientOf: (c: Context) => string): Hono {
   const guard: MiddlewareHandler = async (c, next) => {
     const op = c.req.param('op') ?? '';
-    if (c.req.method !== 'POST' || !allowedOps.has(op)) {
+    if (c.req.method !== 'POST' || !(allowedOps.has(op) || (config.edit && editOps.has(op)))) {
       return c.json({ error: { code: 'not_found', message: `${op} is not served here.` } }, 404);
     }
     // Your auth goes here.
@@ -133,6 +136,7 @@ export function coreApi(config: Config, clientOf: (c: Context) => string): Hono 
   // limit, counted on its own.
   api.use('/core.lineage', rateLimit(config.queryRateLimit, clientOf));
   api.use('/core.search', rateLimit(config.queryRateLimit, clientOf));
+  api.use('/core.query.validate', rateLimit(config.queryRateLimit, clientOf));
   api.all('/:op', guard, bodyLimit({ maxSize: 256 * 1024 }), narrow, forward);
   api.all('*', (c) => c.json({ error: { code: 'not_found', message: 'Not served here.' } }, 404));
   return api;
@@ -193,7 +197,7 @@ export async function health(c: Context, config: Config, hostVersion: string) {
     });
     if (!response.ok) throw new Error(`anfra answered ${response.status}`);
     const { version } = (await response.json()) as { version: string };
-    return c.json({ host: hostVersion, anfra: version });
+    return c.json({ host: hostVersion, anfra: version, edit: config.edit });
   } catch (err) {
     return c.json({ host: hostVersion, anfra: null, error: (err as Error).message }, 503);
   }

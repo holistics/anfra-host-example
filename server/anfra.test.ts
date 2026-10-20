@@ -43,6 +43,18 @@ describe('the core API', () => {
 
   test('other ops stay private', async () => {
     assert.equal((await post('core.ingest', {})).status, 404);
+    assert.equal((await post('core.query.validate', { query: 'x' })).status, 404);
     assert.equal(asked.length, 0);
+  });
+
+  test('core.query.validate is let through with EDIT=1', async () => {
+    const editing = coreApi(loadConfig({ ANFRA_URL: 'http://anfra.test', EDIT: '1' }), () => 'client');
+    const res = await editing.request('/core.query.validate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ dataset: 'ecommerce', query: 'explore {}', lang: 'aql' }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(asked[0]?.url, 'http://anfra.test/api/core.query.validate');
   });
 });

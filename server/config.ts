@@ -19,6 +19,11 @@ export interface Config {
   trustProxy: boolean;
   /** Pass anfra's MCP endpoint through at `/mcp`. */
   mcp: boolean;
+  /**
+   * Let the Edit panel change apps: validate AQL now, write the app's file later (src/edit/SPEC.md).
+   * For a host on the author's own machine only; a host others reach leaves it off.
+   */
+  edit: boolean;
   /** Where readers reach this host, for the absolute links in a page's preview; else each request's origin. */
   siteUrl?: string;
 }
@@ -35,6 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     exportRateLimit: Number(env.EXPORT_RATE_LIMIT ?? 10),
     trustProxy: env.TRUST_PROXY === '1',
     mcp: env.MCP === '1',
+    edit: env.EDIT === '1',
     siteUrl: siteUrlOf(env.ANFRA_SITE_URL),
   };
 }
