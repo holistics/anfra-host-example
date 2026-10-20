@@ -1,5 +1,5 @@
 // MOCK DATA. Apps have no version history yet; this stands in for it so the Versions panel can show
-// how it will look. Replace `mockVersionsFor` with the real history when it exists.See the Versions panel.
+// how it will look. Replace `mockVersionsFor` with the real history when it exists.
 
 export type MockChangeKind = 'added' | 'changed' | 'removed';
 
