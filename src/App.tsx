@@ -40,7 +40,15 @@ import {
   togglePromptMessage,
   toggleVersionsMessage,
 } from '@/data-app';
-import { EditPanel, type PreviewEdit } from '@/edit';
+import {
+  EditHistory,
+  EditPanel,
+  type EditRecord,
+  isUnsaved,
+  loadHistory,
+  type PreviewEdit,
+  revertEdit,
+} from '@/edit';
 import {
   attributeFor,
   createInspectorStore,
@@ -90,6 +98,12 @@ export function App() {
   const [editNode, setEditNode] = useState<string>();
   // The edit panel's drafts the frame runs in place of what it declared (src/edit/SPEC.md).
   const [previews, setPreviews] = useState<PreviewEdit[]>([]);
+  // The app's saved edits, when the host edits (EDIT=1); undefined otherwise, and Versions shows its mock.
+  const [history, setHistory] = useState<EditRecord[]>();
+  // Bumped when the panel writes the app's files, so what reads them reads them again.
+  const [filesVersion, setFilesVersion] = useState(0);
+  // Until when live reload leaves the open app alone: a save already runs, as a preview, what it wrote.
+  const quietUntil = useRef(0);
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
@@ -206,7 +220,9 @@ export function App() {
     return onRepoEvent((event) => {
       if (event.type === 'apps') {
         void refreshCatalog();
-        if (current.current && event.paths.includes(current.current)) setRevision((n) => n + 1);
+        if (current.current && event.paths.includes(current.current) && Date.now() > quietUntil.current) {
+          setRevision((n) => n + 1);
+        }
       } else {
         void refreshDatasets();
       }
@@ -287,8 +303,61 @@ export function App() {
   // A preview reruns the queries it changes, in place: the frame never reloads.
   const previewEdit = (edit: PreviewEdit) =>
     setPreviews((current) => [...current.filter((p) => p.query !== edit.query), edit]);
+  // Back to the file: a preview over AQL saved since the frame mounted goes back to what was saved.
   const discardPreview = (query: string) =>
-    setPreviews((current) => current.filter((p) => p.query !== query));
+    setPreviews((current) =>
+      current.flatMap((p) => (p.query !== query ? [p] : p.base === p.from ? [] : [{ ...p, to: p.base }])),
+    );
+  // After the panel writes the app's files: the frame keeps running, with the file's AQL as its preview.
+  const showFileAql = (query: string, file: string, aql: string) => {
+    const declared = inspector.source.getSnapshot()?.apps.find((a) => a.declaration.queries[query])
+      ?.declaration.queries[query]?.aql;
+    if (declared === undefined) {
+      // Nothing to run it through: read the file again.
+      setRevision((n) => n + 1);
+      return;
+    }
+    setPreviews((current) => {
+      const others = current.filter((p) => p.query !== query);
+      return declared === aql ? others : [...others, { query, file, from: declared, to: aql, base: aql }];
+    });
+  };
+  const onWriting = () => {
+    quietUntil.current = Date.now() + 3000;
+  };
+  const onSaved = (record: EditRecord) => {
+    setPreviews((current) =>
+      current.map((p) => (p.query === record.query ? { ...p, base: record.after } : p)),
+    );
+    setFilesVersion((n) => n + 1);
+  };
+  const revert = async (id: string) => {
+    if (!path) return;
+    onWriting();
+    const record = await revertEdit(path, id);
+    showFileAql(record.query, record.file, record.after);
+    setFilesVersion((n) => n + 1);
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the files are written
+  useEffect(() => {
+    if (!path) return;
+    let cancelled = false;
+    loadHistory(path).then(
+      (edits) => !cancelled && setHistory(edits),
+      () => !cancelled && setHistory(undefined),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [path, filesVersion]);
+  // A reload reads the files again: what was saved is now declared, and a preview not yet saved runs
+  // over what the file has.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a reload only
+  useEffect(() => {
+    setPreviews((current) =>
+      current.length ? current.filter(isUnsaved).map((p) => ({ ...p, from: p.base })) : current,
+    );
+  }, [revision]);
   // Another panel taking the slot ends a pick for the edit panel.
   useEffect(() => {
     if (pickFor === 'edit' && panel !== 'edit') setPickFor(undefined);
@@ -559,7 +628,13 @@ export function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <ToolbarButton
-                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
+                  label={
+                    versioning
+                      ? 'Close the versions panel'
+                      : history
+                        ? 'Show version history'
+                        : 'Show version history (demo data)'
+                  }
                   disabled={!app}
                   active={versioning}
                   onClick={toggleVersions}
@@ -659,6 +734,9 @@ export function App() {
                     previews={previews}
                     onPreview={previewEdit}
                     onDiscard={discardPreview}
+                    onSaved={onSaved}
+                    onWriting={onWriting}
+                    filesVersion={filesVersion}
                     onTogglePicking={toggleEditPicking}
                     onClose={toggleEditing}
                   />
@@ -669,7 +747,9 @@ export function App() {
               <>
                 <ResizableHandle />
                 <ResizablePanel id="versions" defaultSize="360px" minSize="260px" maxSize="60%">
-                  <VersionsPanel onClose={toggleVersions} />
+                  <VersionsPanel onClose={toggleVersions}>
+                    {history && <EditHistory edits={history} onRevert={revert} />}
+                  </VersionsPanel>
                 </ResizablePanel>
               </>
             )}

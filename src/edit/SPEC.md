@@ -3,18 +3,18 @@
 Change a block's query, and later its chart, from the page, without prompting the agent that wrote
 the app. This spec comes before the code. When the two disagree, fix one of them on purpose.
 
-Status: **phase 2, draft and preview.** With the host started with `EDIT=1`, a query at tier 1 or 2
-can be drafted, checked and previewed in the running app. Nothing is written to disk yet. Later phases are
-marked _(not built yet)_.
+Status: **phase 3, save and history.** With the host started with `EDIT=1`, a query at tier 2 can be
+drafted, checked, previewed in the running app, saved into the file it is written in, and reverted.
+Later phases are marked _(not built yet)_.
 
 ---
 
 ## 1. Principles
 
 - **Local only.** Editing writes the app's own file, so it is for a host on the author's machine.
-  A hosted host shows the panel read-only. _(Saving not built yet.)_
+  A hosted host shows the panel read-only: without `EDIT=1` the server serves no write route.
 - **The agent's file is the truth.** A saved edit goes into the app's file, where the agent sees it
-  on its next change. Nothing is applied at load. _(Saving not built yet.)_
+  on its next change. Nothing is applied at load.
 - **Reader state is not the query.** Dashboard filters, date drills, cross-filters and sort clicks
   reach a query as `input` beside its AQL. The panel shows them, read-only, and never edits them.
 - **Says why.** A query that cannot be edited says why: built at runtime, or its AQL is shared.
@@ -63,6 +63,19 @@ marked _(not built yet)_.
 - Drafts and previews last while the app is open; another app starts over. **Back to the file's
   version** ends a preview.
 
+## 3b. Save, history, revert
+
+- **Save** sends the file's AQL as the panel read it, the preview's AQL and the file's SHA-256 to
+  `POST /host/edits/<app>` (`server/edits.ts`). The server refuses when the file changed since, or
+  when the AQL isn't in it exactly once; else it replaces it, escaped as the string it sits in, writes
+  through a temporary file, reads it back, and appends a record to `<app>.edits.json` beside the app.
+- **No reload after a save.** The preview already runs what was saved, and a reload would reset the
+  reader's filters: the page holds off live reload for the write, and the preview stays on as saved.
+- **Versions** lists the history (`GET /host/edits/<app>`) in place of its mock, newest first.
+- **Revert** undoes one save, only if what it wrote is still in the file once; a later save over it
+  means it can't be undone alone. A revert is a record too.
+- Everything is left uncommitted: `git diff` is the review, `git checkout` the agent's original.
+
 ## 4. Tiers
 
 Tried in order, per query.
@@ -70,7 +83,7 @@ Tried in order, per query.
 | Tier | Found by | Edit |
 | --- | --- | --- |
 | 1 | A query manifest: `<script type="application/json" id="anfra-queries">` naming the query | Saved into the manifest _(not built yet)_ |
-| 2 | The declared AQL appears exactly once in the source | Saved in place _(not built yet)_ |
+| 2 | The declared AQL appears exactly once in the source | Saved in place |
 | 3 | Not found as written, and no other query declares the same AQL | Preview only, then Copy prompt _(not built yet)_ |
 | 4 | Another query declares the same AQL | Copy prompt only _(not built yet)_ |
 

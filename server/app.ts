@@ -3,10 +3,12 @@ import path from 'node:path';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { type Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { streamSSE } from 'hono/streaming';
 import { coreApi, exportDownload, health } from './anfra.js';
 import { catalog, type Read } from './catalog.js';
 import { appsDir, type Config } from './config.js';
+import { readHistory, revertEdit, type SaveRequest, saveEdit } from './edits.js';
 import { repoEvents } from './events.js';
 import { appFile, serveAppFile, versionOf } from './files.js';
 import { mcp } from './mcp.js';
@@ -88,6 +90,38 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
         unsubscribe();
       }),
     );
+  }
+
+  // The Edit panel's saves and reverts, and an app's history of them: only with EDIT=1, on the
+  // author's own machine (src/edit/SPEC.md). Off, they are not served at all.
+  if (config.edit) {
+    const appOf = (c: Context) => decodeURIComponent(c.req.path.slice('/host/edits/'.length));
+    app.get('/host/edits/*', (c) => {
+      const edits = readHistory(apps, appOf(c));
+      return edits ? c.json({ edits }, 200, { 'Cache-Control': 'no-store' }) : c.notFound();
+    });
+    app.post('/host/edits/*', bodyLimit({ maxSize: 256 * 1024 }), async (c) => {
+      let body: (Partial<SaveRequest> & { action?: string; id?: string }) | undefined;
+      try {
+        body = await c.req.json();
+      } catch {}
+      const text = (value: unknown) => (typeof value === 'string' ? value : undefined);
+      const app = appOf(c);
+      const result =
+        body?.action === 'revert' && text(body.id)
+          ? revertEdit(apps, app, body.id as string)
+          : body?.action === 'save' &&
+              text(body.query) &&
+              text(body.file) &&
+              text(body.before) !== undefined &&
+              text(body.after) !== undefined &&
+              text(body.hash)
+            ? saveEdit(apps, app, body as SaveRequest)
+            : ({ ok: false, status: 422, message: 'Ask to save or to revert.' } as const);
+      return result.ok
+        ? c.json({ record: result.record, hash: result.hash })
+        : c.json({ error: { message: result.message } }, result.status);
+    });
   }
 
   app.get('/health', (c) => health(c, config, hostVersion));

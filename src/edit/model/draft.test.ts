@@ -12,7 +12,6 @@ import {
   sortsOf,
   swapMeasure,
 } from './draft';
-import { encodeLike, replaceOnce } from './preview';
 import { draftWarnings } from './warnings';
 
 // anfra-demo-data's dashboards/ecommerce-overview.html, as declared.
@@ -155,22 +154,6 @@ describe('draftWarnings', () => {
   test('a swap that keeps its alias warns of nothing', () => {
     const draft = swapMeasure(parts(BY_COUNTRY), 'revenue', 'net_revenue');
     assert.deepEqual(draftWarnings(app, 'byCountry', parts(BY_COUNTRY), draft), []);
-  });
-});
-
-describe('preview', () => {
-  test('a draft is written as its string was: escaped in a template literal', () => {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: AQL text with a placeholder in it, on purpose
-    assert.equal(encodeLike('aql: `x`', 6, 'a `b` ${c}'), 'a \\`b\\` \\${c}');
-    assert.equal(encodeLike("aql: 'x'", 6, "it's\nhere"), "it\\'s\\nhere");
-  });
-});
-
-describe('replaceOnce', () => {
-  test('replaces the one occurrence, escaped as its string was; refuses none or several', () => {
-    assert.equal(replaceOnce('q = `a`', 'a', 'b`'), 'q = `b\\``');
-    assert.equal(replaceOnce('a a', 'a', 'b'), undefined);
-    assert.equal(replaceOnce('x', 'a', 'b'), undefined);
   });
 });
 

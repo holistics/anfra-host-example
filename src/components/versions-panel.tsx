@@ -15,6 +15,8 @@ const changeStyle: Record<MockChangeKind, { icon: ReactNode; className: string }
 
 interface Props {
   onClose: () => void;
+  /** The real history, when the host has one (the Edit panel's saves, src/edit): shown in place of the mock. */
+  children?: ReactNode;
 }
 
 /**
@@ -22,14 +24,14 @@ interface Props {
  * history yet. Every part that stands in for the real thing says so: the banner, the "Sample" tag on
  * each version and the disabled actions.
  */
-export function VersionsPanel({ onClose }: Props) {
+export function VersionsPanel({ onClose, children }: Props) {
   const versions = mockVersionsFor();
 
   return (
     <div className="flex h-full flex-col border-l">
       <div className="flex h-10 shrink-0 items-center gap-1 border-b px-2">
         <h2 className="min-w-0 flex-1 truncate pl-2 text-sm font-medium">Versions</h2>
-        <Badge variant="outline">Demo data</Badge>
+        {!children && <Badge variant="outline">Demo data</Badge>}
         <Button
           variant="ghost"
           size="icon"
@@ -41,14 +43,18 @@ export function VersionsPanel({ onClose }: Props) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-        <MockBanner />
-        <ol className="space-y-2">
-          {versions.map((version) => (
-            <li key={version.id}>
-              <VersionRow version={version} />
-            </li>
-          ))}
-        </ol>
+        {children ?? (
+          <>
+            <MockBanner />
+            <ol className="space-y-2">
+              {versions.map((version) => (
+                <li key={version.id}>
+                  <VersionRow version={version} />
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
       </div>
     </div>
   );

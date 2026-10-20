@@ -31,7 +31,8 @@ import {
   uses,
 } from '../model/draft';
 import { type FieldGroup, type FieldOption, fieldGroups } from '../model/fields';
-import type { PreviewEdit } from '../model/preview';
+import { type EditRecord, hashOf, saveEdit } from '../model/history';
+import { isUnsaved, type PreviewEdit } from '../model/preview';
 import { loadSources, type SourceFile, type TierResult, tierOf } from '../model/tier';
 import { draftWarnings } from '../model/warnings';
 
@@ -48,6 +49,12 @@ interface Props {
   onPreview: (edit: PreviewEdit) => void;
   /** Back to the query as the file has it. */
   onDiscard: (query: string) => void;
+  /** Just before a save writes the app's file: the page holds off live reload. */
+  onWriting: () => void;
+  /** A preview saved into the app's file. */
+  onSaved: (record: EditRecord) => void;
+  /** Changes when the app's files were written, so the panel reads them again. */
+  filesVersion: number;
   onTogglePicking: () => void;
   onClose: () => void;
 }
@@ -61,7 +68,7 @@ const tierTone: Record<TierResult['tier'], string> = {
 
 /**
  * The Edit panel: what the picked block queries, and a draft of each query to preview (SPEC.md).
- * Mounted once per app, not per frame, so drafts survive the remount a preview makes.
+ * Mounted once per app, not per frame, so drafts survive a reload.
  */
 export function EditPanel(props: Props) {
   const { source, path, datasets, node, picking, previews, onTogglePicking, onClose } = props;
@@ -72,9 +79,10 @@ export function EditPanel(props: Props) {
   // Each query's draft, by name, kept while the panel is open on this app.
   const [drafts, setDrafts] = useState<Record<string, ExploreParts>>({});
 
+  // Read again after the panel writes the files, to save the next edit over what is there now.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filesVersion says the files changed
   useEffect(() => {
     let cancelled = false;
-    setSources(undefined);
     setSourceError(undefined);
     loadSources(path).then(
       (read) => !cancelled && setSources(read),
@@ -83,7 +91,7 @@ export function EditPanel(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [path]);
+  }, [path, props.filesVersion]);
   useEffect(() => {
     editEnabled().then(setEnabled, () => setEnabled(false));
   }, []);
@@ -157,6 +165,9 @@ export function EditPanel(props: Props) {
               }
               onPreview={props.onPreview}
               onDiscard={props.onDiscard}
+              onSaved={props.onSaved}
+              onWriting={props.onWriting}
+              path={path}
             />
           ))
         )}
@@ -176,6 +187,9 @@ function QuerySection({
   setDraft,
   onPreview,
   onDiscard,
+  onSaved,
+  onWriting,
+  path,
 }: {
   queryRef: QueryRef;
   app: InspectedApp | undefined;
@@ -187,13 +201,19 @@ function QuerySection({
   setDraft: (parts: ExploreParts | undefined) => void;
   onPreview: (edit: PreviewEdit) => void;
   onDiscard: (query: string) => void;
+  onSaved: (record: EditRecord) => void;
+  onWriting: () => void;
+  path: string;
 }) {
   const name = queryRef.name;
   const declaration = app?.declaration.queries[name];
   const dataset = declaration ? datasets[declaration.dataset] : undefined;
-  // The AQL as the file has it, and as the frame runs it now: the same unless a preview is on.
-  const base = preview?.from ?? declaration?.aql ?? '';
-  const running = preview?.to ?? base;
+  // What the frame declared; the AQL as the file has it now (after a save, not what the frame
+  // declared); and what the frame runs, with a preview on.
+  const declared = declaration?.aql ?? '';
+  const base = preview?.base ?? declared;
+  const running = preview?.to ?? declared;
+  const unsaved = !!preview && isUnsaved(preview);
   const baseParts = useMemo(() => parseExplore(base), [base]);
   const runningParts = useMemo(() => parseExplore(running), [running]);
   const draft = kept ?? runningParts;
@@ -213,6 +233,10 @@ function QuerySection({
   const [check, setCheck] = useState<
     { state: 'checking' } | { state: 'failed'; error: string } | ({ state: 'done' } & AqlCheck)
   >();
+  const [saving, setSaving] = useState<{ state: 'saving' } | { state: 'failed'; error: string }>();
+  // What runs changed (applied, saved over, reverted): a draft kept from before would read as a change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a change of what runs only
+  useEffect(() => setDraft(undefined), [running]);
 
   if (!declaration) return <Note tone="error">No query named {name} in the app.</Note>;
 
@@ -226,15 +250,35 @@ function QuerySection({
     try {
       const result = await validateAql(declaration.dataset, draftAql);
       setCheck({ state: 'done', ...result });
-      if (result.valid) onPreview({ query: name, file: tier.file, from: base, to: draftAql });
+      if (result.valid) onPreview({ query: name, file: tier.file, from: declared, to: draftAql, base });
     } catch (err) {
       setCheck({ state: 'failed', error: (err as Error).message });
     }
   };
   const discard = () => {
     setCheck(undefined);
+    setSaving(undefined);
     setDraft(undefined);
-    if (preview) onDiscard(name);
+    if (preview && !dirty) onDiscard(name);
+  };
+  const save = async () => {
+    const file = preview && sources?.find((f) => f.file === preview.file);
+    if (!preview || !file) return;
+    setSaving({ state: 'saving' });
+    onWriting();
+    try {
+      const record = await saveEdit(path, {
+        query: name,
+        file: preview.file,
+        before: preview.base,
+        after: preview.to,
+        hash: await hashOf(file.text),
+      });
+      setSaving(undefined);
+      onSaved(record);
+    } catch (err) {
+      setSaving({ state: 'failed', error: (err as Error).message });
+    }
   };
 
   return (
@@ -243,7 +287,8 @@ function QuerySection({
         <div className="flex items-center gap-2">
           <span className="min-w-0 truncate font-medium">{name}</span>
           <span className="truncate text-xs text-muted-foreground">{declaration.dataset}</span>
-          {preview && <Badge variant="secondary">Previewing</Badge>}
+          {preview && unsaved && <Badge variant="secondary">Previewing</Badge>}
+          {preview && !unsaved && <Badge variant="secondary">Saved</Badge>}
           <span className="flex-1" />
           {tier ? (
             <Badge variant="outline" className={tierTone[tier.tier]}>
@@ -371,20 +416,36 @@ function QuerySection({
         </ul>
       )}
 
-      {editable && (dirty || preview) && (
-        <div className="flex items-center gap-2">
-          {dirty && (
-            <Button size="sm" onClick={apply} disabled={check?.state === 'checking'}>
-              {check?.state === 'checking' ? 'Checking…' : 'Apply'}
-            </Button>
-          )}
+      {saving?.state === 'failed' && <Note tone="error">{saving.error}</Note>}
+
+      {editable && dirty && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={apply} disabled={check?.state === 'checking'}>
+            {check?.state === 'checking' ? 'Checking…' : 'Apply'}
+          </Button>
           <Button size="sm" variant="outline" onClick={discard}>
-            {preview ? "Back to the file's version" : 'Discard'}
+            Discard
+          </Button>
+          <span className="text-xs text-muted-foreground">Checks the AQL, then previews it.</span>
+        </div>
+      )}
+      {editable && !dirty && unsaved && preview && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={save} disabled={saving?.state === 'saving'}>
+            {saving?.state === 'saving' ? 'Saving…' : 'Save'}
+          </Button>
+          <Button size="sm" variant="outline" onClick={discard}>
+            Back to the file's version
           </Button>
           <span className="text-xs text-muted-foreground">
-            {dirty ? 'Checks the AQL, then previews it.' : 'Previewing. Nothing is saved.'}
+            Previewing. Save writes it into {preview.file}.
           </span>
         </div>
+      )}
+      {!dirty && preview && !unsaved && (
+        <p className="text-xs text-muted-foreground">
+          Saved into {preview.file}, uncommitted. Revert it from Versions.
+        </p>
       )}
     </section>
   );
