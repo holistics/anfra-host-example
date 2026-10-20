@@ -9,7 +9,7 @@ import { coreApi, exportDownload, health } from './anfra.js';
 import { catalog, type Read } from './catalog.js';
 import { appsDir, type Config } from './config.js';
 import { readHistory, revertEdit, type SaveRequest, saveEdit } from './edits.js';
-import { repoEvents } from './events.js';
+import { type ContentSeen, repoEvents } from './events.js';
 import { appFile, serveAppFile, versionOf } from './files.js';
 import { mcp } from './mcp.js';
 import { appPreview, defaultImage, type Preview, withImageFile, withPreview } from './preview.js';
@@ -73,9 +73,14 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
     return serveAppFile(c, apps, rel, production ? 'short' : 'none');
   });
 
+  // What each Data App's file last held, as live reload saw it or the Edit panel wrote it: a file whose
+  // content didn't change is no news.
+  const seen: ContentSeen = new Map();
+  const written = (rel: string, hash: string) => seen.set(rel, hash);
+
   // Live reload, in development: what changed in the repo, as server-sent events.
   if (!production) {
-    const events = repoEvents(config.repoDir);
+    const events = repoEvents(config.repoDir, 150, seen);
     app.get('/host/events', (c) =>
       streamSSE(c, async (stream) => {
         const unsubscribe = events.subscribe((event) => {
@@ -109,14 +114,14 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
       const app = appOf(c);
       const result =
         body?.action === 'revert' && text(body.id)
-          ? revertEdit(apps, app, body.id as string)
+          ? revertEdit(apps, app, body.id as string, written)
           : body?.action === 'save' &&
               text(body.query) &&
               text(body.file) &&
               text(body.before) !== undefined &&
               text(body.after) !== undefined &&
               text(body.hash)
-            ? saveEdit(apps, app, body as SaveRequest)
+            ? saveEdit(apps, app, body as SaveRequest, written)
             : ({ ok: false, status: 422, message: 'Ask to save or to revert.' } as const);
       return result.ok
         ? c.json({ record: result.record, hash: result.hash })

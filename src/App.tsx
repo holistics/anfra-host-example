@@ -102,8 +102,6 @@ export function App() {
   const [history, setHistory] = useState<EditRecord[]>();
   // Bumped when the panel writes the app's files, so what reads them reads them again.
   const [filesVersion, setFilesVersion] = useState(0);
-  // Until when live reload leaves the open app alone: a save already runs, as a preview, what it wrote.
-  const quietUntil = useRef(0);
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
@@ -220,9 +218,8 @@ export function App() {
     return onRepoEvent((event) => {
       if (event.type === 'apps') {
         void refreshCatalog();
-        if (current.current && event.paths.includes(current.current) && Date.now() > quietUntil.current) {
-          setRevision((n) => n + 1);
-        }
+        // The server tells only of content that changed, and never of the Edit panel's own writes.
+        if (current.current && event.paths.includes(current.current)) setRevision((n) => n + 1);
       } else {
         void refreshDatasets();
       }
@@ -322,9 +319,6 @@ export function App() {
       return declared === aql ? others : [...others, { query, file, from: declared, to: aql, base: aql }];
     });
   };
-  const onWriting = () => {
-    quietUntil.current = Date.now() + 3000;
-  };
   const onSaved = (record: EditRecord) => {
     setPreviews((current) =>
       current.map((p) => (p.query === record.query ? { ...p, base: record.after } : p)),
@@ -333,7 +327,6 @@ export function App() {
   };
   const revert = async (id: string) => {
     if (!path) return;
-    onWriting();
     const record = await revertEdit(path, id);
     showFileAql(record.query, record.file, record.after);
     setFilesVersion((n) => n + 1);
@@ -728,6 +721,7 @@ export function App() {
                     key={path}
                     source={inspector.source}
                     path={path}
+                    appLabel={app.label}
                     datasets={datasets}
                     node={editNode}
                     picking={pickFor === 'edit'}
@@ -735,7 +729,6 @@ export function App() {
                     onPreview={previewEdit}
                     onDiscard={discardPreview}
                     onSaved={onSaved}
-                    onWriting={onWriting}
                     filesVersion={filesVersion}
                     onTogglePicking={toggleEditPicking}
                     onClose={toggleEditing}

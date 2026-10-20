@@ -1,12 +1,14 @@
 import type { DatasetDescriptor, InspectedApp } from '@holistics/anfra-sdk/common';
-import { ArrowDown, ArrowUp, Crosshair, PencilLine, Plus, Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronRight, Crosshair, PencilLine, Plus, Search, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { findNode } from '@/comments';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { type AqlCheck, editEnabled, validateAql } from '@/data-app';
-import type { InspectorSource } from '@/inspector';
+import { copyText, type InspectorSource } from '@/inspector';
 import { dedent } from '@/inspector/model/declaration-code';
 import { queryInputs } from '@/inspector/model/inputs';
 import { CodeBlock } from '@/inspector/ui/shared/code-block';
@@ -33,13 +35,16 @@ import {
 import { type FieldGroup, type FieldOption, fieldGroups } from '../model/fields';
 import { type EditRecord, hashOf, saveEdit } from '../model/history';
 import { isUnsaved, type PreviewEdit } from '../model/preview';
+import { buildEditPrompt } from '../model/prompt';
+import { codeOf, readsColumn } from '../model/reads';
 import { loadSources, type SourceFile, type TierResult, tierOf } from '../model/tier';
 import { draftWarnings } from '../model/warnings';
 
 interface Props {
   source: InspectorSource;
-  /** The open Data App's path under `apps/`. */
+  /** The open Data App's path under `apps/`, and what it is called. */
   path: string;
+  appLabel: string;
   datasets: Record<string, DatasetDescriptor>;
   /** The picked node's structure key, or none yet. */
   node: string | undefined;
@@ -49,8 +54,6 @@ interface Props {
   onPreview: (edit: PreviewEdit) => void;
   /** Back to the query as the file has it. */
   onDiscard: (query: string) => void;
-  /** Just before a save writes the app's file: the page holds off live reload. */
-  onWriting: () => void;
   /** A preview saved into the app's file. */
   onSaved: (record: EditRecord) => void;
   /** Changes when the app's files were written, so the panel reads them again. */
@@ -78,6 +81,8 @@ export function EditPanel(props: Props) {
   const [enabled, setEnabled] = useState<boolean>();
   // Each query's draft, by name, kept while the panel is open on this app.
   const [drafts, setDrafts] = useState<Record<string, ExploreParts>>({});
+  // Which query sections the reader opened, by name. Every one starts collapsed.
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
 
   // Read again after the panel writes the files, to save the next edit over what is there now.
   // biome-ignore lint/correctness/useExhaustiveDependencies: filesVersion says the files changed
@@ -98,6 +103,7 @@ export function EditPanel(props: Props) {
 
   const refs = node ? queriesOfNode(snapshot?.structure, node) : [];
   const title = node ? nodeTitle(snapshot?.structure, node) : undefined;
+  const picked = node && snapshot ? findNode(snapshot.structure.nodes, node) : undefined;
 
   return (
     <div className="flex h-full flex-col border-l">
@@ -148,6 +154,8 @@ export function EditPanel(props: Props) {
           refs.map((ref) => (
             <QuerySection
               key={`${ref.app}/${ref.name}`}
+              open={opened[ref.name] ?? false}
+              onOpenChange={(open) => setOpened((all) => ({ ...all, [ref.name]: open }))}
               queryRef={ref}
               app={snapshot.apps[ref.app]}
               datasets={datasets}
@@ -166,8 +174,9 @@ export function EditPanel(props: Props) {
               onPreview={props.onPreview}
               onDiscard={props.onDiscard}
               onSaved={props.onSaved}
-              onWriting={props.onWriting}
               path={path}
+              appLabel={props.appLabel}
+              picked={picked}
             />
           ))
         )}
@@ -188,8 +197,11 @@ function QuerySection({
   onPreview,
   onDiscard,
   onSaved,
-  onWriting,
   path,
+  appLabel,
+  picked,
+  open,
+  onOpenChange,
 }: {
   queryRef: QueryRef;
   app: InspectedApp | undefined;
@@ -202,8 +214,11 @@ function QuerySection({
   onPreview: (edit: PreviewEdit) => void;
   onDiscard: (query: string) => void;
   onSaved: (record: EditRecord) => void;
-  onWriting: () => void;
   path: string;
+  appLabel: string;
+  picked: ReturnType<typeof findNode>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const name = queryRef.name;
   const declaration = app?.declaration.queries[name];
@@ -226,9 +241,48 @@ function QuerySection({
     if (preview) declared[name] = base;
     return tierOf(name, base, sources, declared);
   }, [sources, app, name, base, preview]);
-  const editable = enabled && !!draft && !!tier?.file && (tier.tier === 1 || tier.tier === 2);
+  // Every tier drafts. Tiers 1 to 3 preview: the middleware finds the query by what it declared, and
+  // only a twin's AQL (4) can't be told apart. Tiers 1 and 2 save: only they are found in the file.
+  const editable = enabled && !!draft && !!tier;
+  const canPreview = editable && !!tier && tier.tier <= 3;
+  const canSave = editable && !!tier?.file && (tier.tier === 1 || tier.tier === 2);
+  const declaredParts = useMemo(() => parseExplore(declared), [declared]);
+  // The page's own code, every query's AQL taken out: what it reads off a result row is what it can
+  // draw. A column the query returns that the code never reads shows nowhere; one the code reads that
+  // the query no longer returns leaves a gap.
+  const code = useMemo(
+    () =>
+      sources && app
+        ? codeOf(sources, [
+            ...Object.values(app.declaration.queries).map((q) => q.aql),
+            base,
+            running,
+            draftAql,
+          ])
+        : undefined,
+    [sources, app, base, running, draftAql],
+  );
+  const reads = (alias: string) => (code === undefined ? true : readsColumn(code, alias));
+  const columnsOf = (parts: ExploreParts | undefined) => (parts ? aliasesOf(parts) : []);
+  const gapsFor = (parts: ExploreParts | undefined) => ({
+    notShown: columnsOf(parts).filter((a) => !reads(a)),
+    blank: [...new Set([...columnsOf(declaredParts), ...columnsOf(baseParts)])].filter(
+      (a) => !columnsOf(parts).includes(a) && reads(a),
+    ),
+  });
+  const gaps = gapsFor(runningParts);
+  // How a reader knows a column: the field's label, else its name.
+  const labelOf = (alias: string) => {
+    const entry = [...(runningParts?.dimensions ?? []), ...(runningParts?.measures ?? [])].find(
+      (e) => e.alias === alias,
+    );
+    const option = groups.flatMap((g) => g.options).find((o) => o.ref === entry?.expression);
+    return option?.label ?? alias;
+  };
+  const blockName = picked?.node.label ?? picked?.node.id ?? 'this block';
+  const [copied, setCopied] = useState<{ ok: boolean; text: string }>();
   const inputs = app ? queryInputs(app, name) : [];
-  const warnings = baseParts && draft ? draftWarnings(app, name, baseParts, draft) : [];
+  const warnings = baseParts && draft ? draftWarnings(app, name, baseParts, draft, reads) : [];
   const [codeTab, setCodeTab] = useState<'draft' | 'file'>('draft');
   const [check, setCheck] = useState<
     { state: 'checking' } | { state: 'failed'; error: string } | ({ state: 'done' } & AqlCheck)
@@ -245,12 +299,14 @@ function QuerySection({
     setDraft(baseParts ? keepAliases(baseParts, next) : next);
   };
   const apply = async () => {
-    if (!tier?.file || !draft) return;
+    // A query built at runtime is in no file: it previews all the same, and only Save needs one.
+    if (!tier || !draft) return;
     setCheck({ state: 'checking' });
     try {
       const result = await validateAql(declaration.dataset, draftAql);
       setCheck({ state: 'done', ...result });
-      if (result.valid) onPreview({ query: name, file: tier.file, from: declared, to: draftAql, base });
+      if (result.valid)
+        onPreview({ query: name, file: tier.file ?? path, from: declared, to: draftAql, base });
     } catch (err) {
       setCheck({ state: 'failed', error: (err as Error).message });
     }
@@ -261,11 +317,38 @@ function QuerySection({
     setDraft(undefined);
     if (preview && !dirty) onDiscard(name);
   };
+  // A prompt for the agent: the AQL from `from` (what the file has) to `to`, and the columns to draw.
+  const copyPrompt = async (to: string, from = declared) => {
+    if (!tier) return;
+    const text = buildEditPrompt({
+      app: { label: appLabel, file: `apps/${path}` },
+      node: picked?.node,
+      ancestors: picked?.ancestors,
+      query: name,
+      dataset: declaration.dataset,
+      tier,
+      from,
+      to,
+      added: gapsFor(parseExplore(to)).notShown,
+      removed: gapsFor(parseExplore(to)).blank,
+    });
+    setCopied({ ok: await copyText(text), text });
+  };
+  // A twin's draft can't be previewed: check it, then hand it to the agent.
+  const checkAndCopy = async () => {
+    setCheck({ state: 'checking' });
+    try {
+      const result = await validateAql(declaration.dataset, draftAql);
+      setCheck({ state: 'done', ...result });
+      if (result.valid) await copyPrompt(draftAql);
+    } catch (err) {
+      setCheck({ state: 'failed', error: (err as Error).message });
+    }
+  };
   const save = async () => {
     const file = preview && sources?.find((f) => f.file === preview.file);
     if (!preview || !file) return;
     setSaving({ state: 'saving' });
-    onWriting();
     try {
       const record = await saveEdit(path, {
         query: name,
@@ -282,172 +365,266 @@ function QuerySection({
   };
 
   return (
-    <section className="space-y-3 rounded-lg border p-3">
-      <header className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0 truncate font-medium">{name}</span>
-          <span className="truncate text-xs text-muted-foreground">{declaration.dataset}</span>
-          {preview && unsaved && <Badge variant="secondary">Previewing</Badge>}
-          {preview && !unsaved && <Badge variant="secondary">Saved</Badge>}
-          <span className="flex-1" />
-          {tier ? (
-            <Badge variant="outline" className={tierTone[tier.tier]}>
-              Tier {tier.tier}
-            </Badge>
-          ) : (
-            <Badge variant="outline">Reading source…</Badge>
-          )}
-        </div>
-        {tier && <p className="text-xs text-muted-foreground">{tier.reason}</p>}
-        {tier && !editable && (
-          <p className="text-xs text-muted-foreground">
-            {!enabled
-              ? 'Read-only: start the host with EDIT=1 to edit.'
-              : tier.tier >= 3
-                ? 'Not editable here yet: Copy prompt for this kind of query comes in phase 4.'
-                : 'Not an explore the panel can read.'}
-          </p>
-        )}
-      </header>
-
-      {draft && (
-        <InQuery
-          draft={draft}
-          groups={groups}
-          editable={editable}
-          onRemove={(alias) => change(removeAlias(draft, alias))}
-          onSwap={(alias, ref) => change(swapMeasure(draft, alias, ref))}
-        />
-      )}
-
-      <Fields
-        groups={groups}
-        isTicked={(option) => !!draft && uses(draft, option)}
-        editable={editable}
-        onToggle={(option, on) =>
-          draft && change(on ? addField(draft, option) : removeField(draft, option.ref))
-        }
-      />
-
-      <Group
-        title="Filters in the query"
-        count={draft?.filters.length ?? 0}
-        empty={editable ? undefined : 'None.'}
-      >
-        {draft?.filters.map((entry, index) => (
-          <Row
-            // A filter is its text; two the same would be one condition written twice.
-            key={entry.expression}
-            label={entry.expression}
-            onRemove={editable ? () => change(removeAt(draft, 'filters', index)) : undefined}
-          />
-        ))}
-        {editable && draft && <AddFilter groups={groups} onAdd={(text) => change(addFilter(draft, text))} />}
-      </Group>
-
-      <Group
-        title="Dashboard filters"
-        count={inputs.length}
-        hint="Set by the reader, sent beside the AQL. Editing the query never changes them, and a preview keeps them."
-        empty="None mapped to this query."
-      >
-        {inputs.map((input) => (
-          <Row
-            key={`${input.kind}:${input.source}:${input.field}`}
-            // A cross-filter has no field until something is selected: say what it is instead of a dash.
-            label={
-              input.kind === 'crossFilter'
-                ? `${input.source} · cross-filter${input.field === '—' ? '' : ` on ${input.field}`}`
-                : `${input.source} · ${input.field}`
-            }
-            detail={input.value}
-          />
-        ))}
-      </Group>
-
-      {draft && <Sorts draft={draft} editable={editable} onChange={change} />}
-
-      {warnings.length > 0 && (
-        <ul className="space-y-1">
-          {warnings.map((warning) => (
-            <li
-              key={warning.message}
-              className={cn(
-                'rounded border px-2 py-1 text-xs',
-                warning.level === 'warn'
-                  ? 'border-amber-500/40 text-amber-700 dark:text-amber-300'
-                  : 'text-muted-foreground',
-              )}
+    <Collapsible open={open} onOpenChange={onOpenChange} asChild>
+      <section className="space-y-3 rounded-lg border p-3">
+        <header className="space-y-1.5">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-left"
+              aria-label={`${open ? 'Collapse' : 'Expand'} ${name}`}
             >
-              {warning.message}
-            </li>
-          ))}
-        </ul>
-      )}
+              <ChevronRight
+                className={cn(
+                  'size-4 shrink-0 text-muted-foreground transition-transform',
+                  open && 'rotate-90',
+                )}
+              />
+              <span className="min-w-0 truncate font-medium">{name}</span>
+              <span className="truncate text-xs text-muted-foreground">{declaration.dataset}</span>
+              {preview && unsaved && <Badge variant="secondary">Previewing</Badge>}
+              {preview && !unsaved && <Badge variant="secondary">Saved</Badge>}
+              <span className="flex-1" />
+              {tier ? (
+                <Badge variant="outline" className={tierTone[tier.tier]}>
+                  Tier {tier.tier}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Reading source…</Badge>
+              )}
+            </button>
+          </CollapsibleTrigger>
+          {open && tier && <p className="text-xs text-muted-foreground">{tier.reason}</p>}
+          {open && tier && !editable && (
+            <p className="text-xs text-muted-foreground">
+              {!enabled
+                ? 'Read-only: start the host with EDIT=1 to edit.'
+                : 'Not an explore the panel can read.'}
+            </p>
+          )}
+          {open && editable && tier && tier.tier >= 3 && (
+            <p className="text-xs text-muted-foreground">
+              {tier.tier === 3
+                ? "The host can preview an edit but can't save it. Copy prompt asks the agent to make it in the code."
+                : "The host can't preview or save an edit. Copy prompt asks the agent to make it."}
+            </p>
+          )}
+        </header>
+        <CollapsibleContent className="space-y-5 pt-2">
+          {draft && (
+            <InQuery
+              draft={draft}
+              groups={groups}
+              editable={editable}
+              onRemove={(alias) => change(removeAlias(draft, alias))}
+              onSwap={(alias, ref) => change(swapMeasure(draft, alias, ref))}
+            />
+          )}
 
-      <CodeBlock
-        tab={codeTab}
-        onTab={setCodeTab}
-        sources={{
-          draft: {
-            label: dirty ? 'Draft AQL' : 'AQL',
-            code: dedent(draftAql),
-            lang: 'aql',
-            empty: 'No AQL.',
-          },
-          file: {
-            label: 'In the file',
-            code: base !== draftAql ? dedent(base) : undefined,
-            lang: 'aql',
-            empty: 'Same as the draft.',
-          },
-        }}
-      />
+          <Fields
+            groups={groups}
+            isTicked={(option) => !!draft && uses(draft, option)}
+            editable={editable}
+            onToggle={(option, on) =>
+              draft && change(on ? addField(draft, option) : removeField(draft, option.ref))
+            }
+          />
 
-      {check?.state === 'failed' && <Note tone="error">{check.error}</Note>}
-      {check?.state === 'done' && !check.valid && (
-        <ul className="space-y-1 text-xs text-destructive">
-          {check.diagnostics.map((d) => (
-            <li key={`${d.line}:${d.column}:${d.message}`}>
-              {d.line ? `Line ${d.line}${d.column ? `, column ${d.column}` : ''}: ` : ''}
-              {d.message}
-            </li>
-          ))}
-        </ul>
-      )}
+          <Group
+            title="Filters in the query"
+            count={draft?.filters.length ?? 0}
+            empty={editable ? undefined : 'None.'}
+          >
+            {draft?.filters.map((entry, index) => (
+              <Row
+                // A filter is its text; two the same would be one condition written twice.
+                key={entry.expression}
+                label={entry.expression}
+                onRemove={editable ? () => change(removeAt(draft, 'filters', index)) : undefined}
+              />
+            ))}
+            {editable && draft && (
+              <AddFilter groups={groups} onAdd={(text) => change(addFilter(draft, text))} />
+            )}
+          </Group>
 
-      {saving?.state === 'failed' && <Note tone="error">{saving.error}</Note>}
+          <Group
+            title="Dashboard filters"
+            defaultOpen={false}
+            count={inputs.length}
+            hint="Set by the reader, sent beside the AQL. Editing the query never changes them, and a preview keeps them."
+            empty="None mapped to this query."
+          >
+            {inputs.map((input) => (
+              <Row
+                key={`${input.kind}:${input.source}:${input.field}`}
+                // A cross-filter has no field until something is selected: say what it is instead of a dash.
+                label={
+                  input.kind === 'crossFilter'
+                    ? `${input.source} · cross-filter${input.field === '—' ? '' : ` on ${input.field}`}`
+                    : `${input.source} · ${input.field}`
+                }
+                detail={input.value}
+              />
+            ))}
+          </Group>
 
-      {editable && dirty && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={apply} disabled={check?.state === 'checking'}>
-            {check?.state === 'checking' ? 'Checking…' : 'Apply'}
-          </Button>
-          <Button size="sm" variant="outline" onClick={discard}>
-            Discard
-          </Button>
-          <span className="text-xs text-muted-foreground">Checks the AQL, then previews it.</span>
-        </div>
-      )}
-      {editable && !dirty && unsaved && preview && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={save} disabled={saving?.state === 'saving'}>
-            {saving?.state === 'saving' ? 'Saving…' : 'Save'}
-          </Button>
-          <Button size="sm" variant="outline" onClick={discard}>
-            Back to the file's version
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Previewing. Save writes it into {preview.file}.
-          </span>
-        </div>
-      )}
-      {!dirty && preview && !unsaved && (
-        <p className="text-xs text-muted-foreground">
-          Saved into {preview.file}, uncommitted. Revert it from Versions.
-        </p>
-      )}
-    </section>
+          {draft && <Sorts draft={draft} editable={editable} onChange={change} />}
+
+          {warnings.length > 0 && (
+            <ul className="space-y-1">
+              {warnings.map((warning) => (
+                <li
+                  key={warning.message}
+                  className={cn(
+                    'rounded border px-2 py-1 text-xs',
+                    warning.level === 'warn'
+                      ? 'border-amber-500/40 text-amber-700 dark:text-amber-300'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {warning.message}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <CodeBlock
+            tab={codeTab}
+            onTab={setCodeTab}
+            sources={{
+              draft: {
+                label: dirty ? 'Draft AQL' : 'AQL',
+                code: dedent(draftAql),
+                lang: 'aql',
+                empty: 'No AQL.',
+              },
+              file: {
+                label: 'In the file',
+                code: base !== draftAql ? dedent(base) : undefined,
+                lang: 'aql',
+                empty: 'Same as the draft.',
+              },
+            }}
+          />
+
+          {check?.state === 'failed' && <Note tone="error">{check.error}</Note>}
+          {check?.state === 'done' && !check.valid && (
+            <ul className="space-y-1 text-xs text-destructive">
+              {check.diagnostics.map((d) => (
+                <li key={`${d.line}:${d.column}:${d.message}`}>
+                  {d.line ? `Line ${d.line}${d.column ? `, column ${d.column}` : ''}: ` : ''}
+                  {d.message}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {saving?.state === 'failed' && <Note tone="error">{saving.error}</Note>}
+
+          {editable && dirty && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canPreview ? (
+                <Button size="sm" onClick={apply} disabled={check?.state === 'checking'}>
+                  {check?.state === 'checking' ? 'Checking…' : 'Apply'}
+                </Button>
+              ) : (
+                <Button size="sm" onClick={checkAndCopy} disabled={check?.state === 'checking'}>
+                  {check?.state === 'checking' ? 'Checking…' : 'Check and copy prompt'}
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={discard}>
+                Discard
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {canPreview
+                  ? 'Checks the AQL, then previews it.'
+                  : 'Checks the AQL, then copies a prompt for the agent.'}
+              </span>
+            </div>
+          )}
+          {editable && !dirty && unsaved && preview && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canSave ? (
+                <Button size="sm" onClick={save} disabled={saving?.state === 'saving'}>
+                  {saving?.state === 'saving' ? 'Saving…' : 'Save'}
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => copyPrompt(preview.to)}>
+                  Copy prompt
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={discard}>
+                Back to the file's version
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {canSave
+                  ? `Previewing. Save writes it into ${preview.file}.`
+                  : 'Previewing. The agent makes it real: paste the prompt into it.'}
+              </span>
+            </div>
+          )}
+          {!dirty && preview && !unsaved && (
+            <p className="text-xs text-muted-foreground">
+              Saved into {preview.file}, uncommitted. Revert it from Versions.
+            </p>
+          )}
+          {editable &&
+            !dirty &&
+            preview &&
+            canSave &&
+            (gaps.notShown.length > 0 || gaps.blank.length > 0) && (
+              <div
+                role="alert"
+                className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200"
+              >
+                {gaps.notShown.length > 0 && (
+                  <>
+                    <p className="font-medium">
+                      {list(gaps.notShown.map(labelOf))} won't show on {blockName}.
+                    </p>
+                    <p>
+                      The query returns {gaps.notShown.length === 1 ? 'it' : 'them'}, but the page's code
+                      never reads {gaps.notShown.map((a) => `\`${a}\``).join(', ')}, so nothing draws{' '}
+                      {gaps.notShown.length === 1 ? 'it' : 'them'}. Editing the query can't change that code;
+                      the agent that wrote the app can.
+                    </p>
+                  </>
+                )}
+                {gaps.blank.length > 0 && (
+                  <>
+                    <p className="font-medium">Part of {blockName} will be blank.</p>
+                    <p>
+                      The page's code reads {gaps.blank.map((a) => `\`${a}\``).join(', ')}, which the query no
+                      longer returns. The agent can take that part out, or you can put the column back.
+                    </p>
+                  </>
+                )}
+                <Button size="sm" variant="outline" onClick={() => copyPrompt(preview.to, preview.base)}>
+                  {gaps.notShown.length ? 'Ask the agent to draw it' : 'Ask the agent to fix it'}
+                </Button>
+                <p className="text-muted-foreground">
+                  Copies a prompt to paste into Claude Code in the app's repo.
+                </p>
+              </div>
+            )}
+          {copied && (
+            <div className="space-y-1">
+              <p className={cn('text-xs', copied.ok ? 'text-muted-foreground' : 'text-destructive')}>
+                {copied.ok
+                  ? 'Copied. Paste it into Claude Code in the app’s repo.'
+                  : "Couldn't reach the clipboard. Copy the prompt from here:"}
+              </p>
+              {!copied.ok && (
+                <pre className="max-h-40 overflow-auto rounded border bg-code p-2 font-mono text-[11px] whitespace-pre-wrap">
+                  {copied.text}
+                </pre>
+              )}
+            </div>
+          )}
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
@@ -663,7 +840,12 @@ function Sorts({
   const sorts = sortsOf(draft);
   const free = aliasesOf(draft).filter((alias) => !sorts.some((s) => s.alias === alias));
   return (
-    <Group title="Sorts" count={sorts.length} empty={editable ? undefined : 'None in the query.'}>
+    <Group
+      title="Sorts"
+      count={sorts.length}
+      empty={editable ? undefined : 'None in the query.'}
+      defaultOpen={false}
+    >
       {sorts.map((sort, index) => (
         <div
           key={sort.alias}
@@ -742,23 +924,42 @@ function Group({
   count,
   hint,
   empty,
+  defaultOpen = true,
   children,
 }: {
   title: string;
   count: number;
   hint?: string;
   empty?: string;
+  /** Whether it starts open; the reader folds and unfolds it from its title. */
+  defaultOpen?: boolean;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline gap-1.5">
-        <h3 className="text-xs font-medium">{title}</h3>
-        <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
-      </div>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {count === 0 && empty ? <p className="text-xs text-muted-foreground">{empty}</p> : children}
-    </div>
+    // Each group under a rule of its own, so the sections read apart.
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="space-y-2 border-t pt-4 first:border-t-0 first:pt-0"
+    >
+      <CollapsibleTrigger asChild>
+        <button type="button" className="flex w-full items-baseline gap-1.5 text-left">
+          <ChevronRight
+            className={cn(
+              'size-3.5 shrink-0 self-center text-muted-foreground transition-transform',
+              open && 'rotate-90',
+            )}
+          />
+          <h3 className="text-sm font-medium">{title}</h3>
+          <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2">
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {count === 0 && empty ? <p className="text-xs text-muted-foreground">{empty}</p> : children}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -788,4 +989,9 @@ function Note({ tone, children }: { tone?: 'error'; children: ReactNode }) {
       {children}
     </p>
   );
+}
+
+/** Names as a reader says them: `a`, `a and b`, `a, b and c`. */
+function list(names: string[]): string {
+  return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 }

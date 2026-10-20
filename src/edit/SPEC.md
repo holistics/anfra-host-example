@@ -3,7 +3,7 @@
 Change a block's query, and later its chart, from the page, without prompting the agent that wrote
 the app. This spec comes before the code. When the two disagree, fix one of them on purpose.
 
-Status: **phase 3, save and history.** With the host started with `EDIT=1`, a query at tier 2 can be
+Status: **phase 4, Copy prompt.** With the host started with `EDIT=1`, a query at tier 2 can be
 drafted, checked, previewed in the running app, saved into the file it is written in, and reverted.
 Later phases are marked _(not built yet)_.
 
@@ -34,7 +34,7 @@ Later phases are marked _(not built yet)_.
 
 - **Opening.** The toolbar's Edit button opens the panel and starts picking. A pick in the page
   chooses the block. Pick again from the panel's header.
-- **One section per query** of the block, each with:
+- **One section per query** of the block, collapsed until opened, each with sections that fold:
   - name, dataset and tier, with the tier's reason
   - **Fields:** every metric and dimension of the dataset, with a search. The ones the query uses
     are ticked and listed first. Tick to add, untick to take out (with any dimension built on it).
@@ -76,6 +76,29 @@ Later phases are marked _(not built yet)_.
   means it can't be undone alone. A revert is a record too.
 - Everything is left uncommitted: `git diff` is the review, `git checkout` the agent's original.
 
+## 3c. Copy prompt
+
+What the host can't do itself, it hands to the agent that wrote the app, as a prompt to paste
+(`model/prompt.ts`): the app and its file, the block's handle, the query and dataset, the AQL from
+and to (checked by anfra), and the columns the page's code must start or stop drawing.
+
+- **Tier 3:** draft, Apply previews it as usual; Copy prompt asks the agent to change the code that
+  builds the AQL.
+- **Tier 4:** draft, then Check and copy prompt: no preview, since the request can't tell it from
+  its twin.
+- **A column the page's code never reads** won't show, and one it reads that the query no longer
+  returns leaves a gap. The panel checks the app's code for reads (`r.x`, `row['x']`, `{ x }`, every
+  query's AQL taken out; `model/reads.ts`), says which field won't show on which block, and offers
+  **Ask the agent to draw it**. Before Apply, the same check decides the warnings.
+- Without a clipboard, the prompt is shown to copy by hand.
+
+## 3d. Live reload
+
+The server tells the page of a Data App's file only when its content changed since it last told
+(`changedPaths`, `server/events.ts`): the watcher's repeated reports of one write (on macOS, again
+seconds later) are one change, and the Edit panel's own writes are seen as they are made. A save or a
+revert never reloads the app; an edit by anyone else does, once.
+
 ## 4. Tiers
 
 Tried in order, per query.
@@ -84,8 +107,8 @@ Tried in order, per query.
 | --- | --- | --- |
 | 1 | A query manifest: `<script type="application/json" id="anfra-queries">` naming the query | Saved into the manifest _(not built yet)_ |
 | 2 | The declared AQL appears exactly once in the source | Saved in place |
-| 3 | Not found as written, and no other query declares the same AQL | Preview only, then Copy prompt _(not built yet)_ |
-| 4 | Another query declares the same AQL | Copy prompt only _(not built yet)_ |
+| 3 | Not found as written, and no other query declares the same AQL | Preview, then Copy prompt |
+| 4 | Another query declares the same AQL | Check, then Copy prompt |
 
 ## 5. Out of scope
 

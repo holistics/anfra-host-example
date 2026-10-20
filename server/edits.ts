@@ -90,13 +90,17 @@ function append(appsDir: string, app: string, record: EditRecord) {
   writeAtomic(file, `${JSON.stringify({ app, edits }, null, 2)}\n`);
 }
 
+/** Told of each file the panel writes, with its new content's hash: live reload then knows it's no news. */
+export type OnWritten = (rel: string, hash: string) => void;
+
 /** Replace `from` with `to` in a file under the apps folder, if its hash is as expected and `from` is there once. */
 function rewrite(
   appsDir: string,
   rel: string,
   from: string,
   to: string,
-  hash?: string,
+  hash: string | undefined,
+  onWritten: OnWritten | undefined,
 ): { ok: true; hash: string } | { ok: false; status: 404 | 409; message: string } {
   const found = appFile(appsDir, rel);
   if (!found) return { ok: false, status: 404, message: `No file at ${rel}.` };
@@ -116,6 +120,8 @@ function rewrite(
       message: `The AQL isn't in ${rel} exactly once as it was, so it can't be changed safely.`,
     };
   }
+  // Before the write, so the watcher's first report of it already reads as seen.
+  onWritten?.(rel, sha256(next));
   writeAtomic(found.file, next);
   const written = readFileSync(found.file, 'utf8');
   if (written !== next)
@@ -124,12 +130,17 @@ function rewrite(
 }
 
 /** Save an edit into the file the query is written in, and keep it in the app's history. */
-export function saveEdit(appsDir: string, app: string, request: SaveRequest): EditResult {
+export function saveEdit(
+  appsDir: string,
+  app: string,
+  request: SaveRequest,
+  onWritten?: OnWritten,
+): EditResult {
   if (!historyPath(appsDir, app)) return { ok: false, status: 404, message: `No Data App at ${app}.` };
   if (!request.after.trim() || request.after === request.before) {
     return { ok: false, status: 422, message: 'Nothing to save.' };
   }
-  const written = rewrite(appsDir, request.file, request.before, request.after, request.hash);
+  const written = rewrite(appsDir, request.file, request.before, request.after, request.hash, onWritten);
   if (!written.ok) return written;
   const record: EditRecord = {
     id: randomUUID(),
@@ -148,14 +159,14 @@ export function saveEdit(appsDir: string, app: string, request: SaveRequest): Ed
  * Undo one saved edit: its AQL goes back to what it was, if what it saved is still in the file once.
  * An edit made after it on the same query has replaced that text, so it can't be undone alone.
  */
-export function revertEdit(appsDir: string, app: string, id: string): EditResult {
+export function revertEdit(appsDir: string, app: string, id: string, onWritten?: OnWritten): EditResult {
   const history = readHistory(appsDir, app);
   const target = history?.find((r) => r.id === id && r.kind === 'save');
   if (!history || !target) return { ok: false, status: 404, message: 'No such saved edit.' };
   if (history.some((r) => r.kind === 'revert' && r.of === id)) {
     return { ok: false, status: 409, message: 'That edit is already reverted.' };
   }
-  const written = rewrite(appsDir, target.file, target.after, target.before);
+  const written = rewrite(appsDir, target.file, target.after, target.before, undefined, onWritten);
   if (!written.ok) {
     return written.status === 409
       ? {

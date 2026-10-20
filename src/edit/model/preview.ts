@@ -4,7 +4,7 @@
 export interface PreviewEdit {
   /** The query's name. */
   query: string;
-  /** The file under `apps/` its AQL is written in. */
+  /** The file under `apps/` its AQL is written in; the app's own for a query built at runtime, which Save never writes. */
   file: string;
   /** The AQL the frame declared: what its requests carry, and what the preview swaps out. */
   from: string;

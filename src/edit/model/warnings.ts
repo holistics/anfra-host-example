@@ -15,23 +15,26 @@ export function draftWarnings(
   name: string,
   base: ExploreParts,
   draft: ExploreParts,
+  /** Whether the page's code reads a column (`model/reads.ts`); without it, every column counts as read. */
+  reads: (alias: string) => boolean = () => true,
 ): Warning[] {
   const warnings: Warning[] = [];
   const before = aliasesOf(base);
   const after = aliasesOf(draft);
-  const removed = before.filter((alias) => !after.includes(alias));
-  const added = after.filter((alias) => !before.includes(alias));
+  // Only what the code reads leaves a gap; only what it never reads won't show.
+  const removed = before.filter((alias) => !after.includes(alias) && reads(alias));
+  const added = after.filter((alias) => !before.includes(alias) && !reads(alias));
 
   if (removed.length) {
     warnings.push({
       level: 'warn',
-      message: `The page's code reads columns by name. It will find nothing for ${list(removed)}, so what it draws from ${removed.length === 1 ? 'it' : 'them'} goes blank.`,
+      message: `The page's code reads ${list(removed)}, which the query won't return, so what it draws from ${removed.length === 1 ? 'it' : 'them'} goes blank.`,
     });
   }
   if (added.length) {
     warnings.push({
       level: 'info',
-      message: `The page's code doesn't know ${list(added)} yet, so the chart won't show ${added.length === 1 ? 'it' : 'them'}. The query returns ${added.length === 1 ? 'it' : 'them'}; Copy prompt will ask the agent to draw ${added.length === 1 ? 'it' : 'them'} (phase 4).`,
+      message: `The query will return ${list(added)}, but the page's code never reads ${added.length === 1 ? 'it' : 'them'}, so nothing will show ${added.length === 1 ? 'it' : 'them'}. Once saved, the agent can draw ${added.length === 1 ? 'it' : 'them'}.`,
     });
   }
   if (!app) return warnings;

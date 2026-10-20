@@ -110,3 +110,26 @@ describe('edits', () => {
     );
   });
 });
+
+describe('live reload after a write', () => {
+  test('a file is news once per change of content, and never after the panel wrote it', async () => {
+    const { changedPaths } = await import('./events.js');
+    const dir = mkdtempSync(path.join(tmpdir(), 'host-seen-'));
+    const apps = path.join(dir, 'apps');
+    mkdirSync(apps, { recursive: true });
+    const file = path.join(apps, 'a.html');
+    writeFileSync(file, 'one');
+    const seen = new Map<string, string>();
+    assert.deepEqual(changedPaths(apps, ['a.html'], seen), ['a.html']);
+    // The watcher's echo of the same write.
+    assert.deepEqual(changedPaths(apps, ['a.html'], seen), []);
+    // The panel writes, and says so first.
+    seen.set('a.html', sha256('two'));
+    writeFileSync(file, 'two');
+    assert.deepEqual(changedPaths(apps, ['a.html'], seen), []);
+    // Someone else edits it.
+    writeFileSync(file, 'three');
+    assert.deepEqual(changedPaths(apps, ['a.html'], seen), ['a.html']);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
