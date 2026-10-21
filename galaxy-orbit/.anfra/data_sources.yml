@@ -1,0 +1,9 @@
+data_sources:
+  publisher:
+    type: duckdb
+    connection:
+      path: data/publisher.duckdb?access_mode=read_only&enable_external_access=false
+  galaxy_demo:
+    type: duckdb
+    connection:
+      path: data/galaxy-demo-2026.duckdb?access_mode=read_only&enable_external_access=false

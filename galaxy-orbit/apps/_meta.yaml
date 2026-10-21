@@ -1,0 +1,4 @@
+apps:
+  galaxy-orbit.html:
+    name: The Galaxy Orbit
+    order: 1
