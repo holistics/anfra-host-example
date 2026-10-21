@@ -7,9 +7,11 @@ import { streamSSE } from 'hono/streaming';
 import { coreApi, exportDownload, health } from './anfra.js';
 import { catalog, type Read } from './catalog.js';
 import { appsDir, type Config } from './config.js';
+import { allowOriginsHeader } from './entry.js';
 import { repoEvents } from './events.js';
 import { appFile, serveAppFile, versionOf } from './files.js';
 import { mcp } from './mcp.js';
+import { readAllowOrigins } from './policy.js';
 import { appPreview, defaultImage, type Preview, withImageFile, withPreview } from './preview.js';
 import { redirectOf } from './redirect.js';
 
@@ -56,6 +58,10 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
     return c.json({ entries, redirects }, 200, { 'Cache-Control': 'no-store' });
   });
 
+  // The repo's allowed origins (`.anfra/config.yml`), sent with each definition for the page to pass
+  // the SDK. Development reads them each time, so an edit applies at the next mount.
+  const allowOrigins = production ? readAllowOrigins(config.repoDir) : undefined;
+
   // A definition, or a file it refers to. A query, as a preview image's `?v=`, is not part of the path.
   // A file of a Data App since moved (`<old>.html`, its `<old>.jpg`), or in a folder since moved,
   // redirects to the file of the same name where it went.
@@ -68,6 +74,8 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
       );
       if (to) return moved(c, `/host/files/${encodePath(to + ext)}`);
     }
+    if (/\.html$/i.test(rel))
+      c.header(allowOriginsHeader, (allowOrigins ?? readAllowOrigins(config.repoDir)).join(' '));
     return serveAppFile(c, apps, rel, production ? 'short' : 'none');
   });
 

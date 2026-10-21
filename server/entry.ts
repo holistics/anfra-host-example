@@ -37,6 +37,13 @@ export interface Catalog {
   redirects: Record<string, string>;
 }
 
+/**
+ * Sent with a definition (`/host/files/<path>.html`): the origins the repo's Data Apps may load from
+ * beyond the SDK's CDNs (`apps.allow_origins`), space-separated, each `https://<host>[:<port>]`, as
+ * the SDK takes them. The page passes them to the SDK for the app's content policy.
+ */
+export const allowOriginsHeader = 'X-Anfra-Allow-Origins';
+
 /** The prompt that made a Data App, from its `<script type="application/json" id="data-app-metadata">`. */
 export interface AppPrompt {
   prompt: string;
