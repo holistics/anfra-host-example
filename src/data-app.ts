@@ -25,6 +25,7 @@ import {
   renderPlugin,
 } from '@holistics/anfra-sdk/plugins';
 import { dependencies } from '../package.json';
+import { allowOriginsHeader } from '../server/entry';
 import type { LineageSource, MetricDoc, MetricDocs, ModelTable } from './inspector';
 
 export type {
@@ -214,16 +215,17 @@ const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.tar
  */
 const clickReporter = `<script>(function(){var K=['container','block','query','control'],S=K.map(function(k){return'[data-anfra-'+k+']'}).join(','),el=null,on=false,raf=0;function box(n){var r=n.getBoundingClientRect();return{x:r.left,y:r.top,width:r.width,height:r.height}}function attr(n){for(var i=0;i<K.length;i++){var v=n.getAttribute('data-anfra-'+K[i]);if(v!==null)return'data-anfra-'+K[i]+'="'+v+'"'}}addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest(S):null;el=t;parent.postMessage({type:'${clickMessage}',shift:e.shiftKey,x:e.clientX,y:e.clientY,attr:t?attr(t):undefined,rect:t?box(t):undefined},'*')},true);function post(){raf=0;if(on&&el&&el.isConnected)parent.postMessage({type:'${rectMessage}',rect:box(el)},'*')}function queue(){if(on&&!raf)raf=requestAnimationFrame(post)}addEventListener('scroll',queue,true);addEventListener('resize',queue);var css=null;function cursor(show){if(show&&!css){css=document.createElement('style');css.textContent=${JSON.stringify(commentCursorCss)};document.head.appendChild(css)}document.documentElement.toggleAttribute('data-anfra-host-cursor',show)}addEventListener('message',function(e){if(e.source!==parent||!e.data)return;if(e.data.type==='${trackMessage}'){on=!!e.data.on;queue()}if(e.data.type==='${cursorMessage}')cursor(!!e.data.on)})})()</script>`;
 
-/** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
-export async function definition(path: string): Promise<{ html: string; baseHref: string }> {
+/**
+ * A Data App definition, as its author wrote it, with this host's scripts appended, and the origins
+ * it may load from beyond the SDK's CDNs, which the server sends with it (`allowOriginsHeader`).
+ */
+export async function definition(path: string): Promise<{ html: string; allowOrigins: string[] }> {
   const file = path.split('/').map(encodeURIComponent).join('/');
   const response = await fetch(`/host/files/${file}`);
   if (!response.ok) throw new Error(`Couldn't read ${path}: the server answered ${response.status}.`);
-  const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
-  // Absolute: the frame's document is a srcdoc, so a relative base would resolve against nothing useful.
   return {
     html: (await response.text()) + keyForwarder + clickReporter,
-    baseHref: `${window.location.origin}/host/files/${dir}`,
+    allowOrigins: (response.headers.get(allowOriginsHeader) ?? '').split(' ').filter(Boolean),
   };
 }
 
@@ -291,13 +293,17 @@ const recording: Middleware = {
  *   host's own (src/inspector).
  *
  * A Data App sees what is installed as `Anfra.plugins`: leave one out, and apps offer none of it.
+ * Its frames load from the SDK's CDNs and the repo's allowed origins alone (`allowOrigins`); made
+ * again when those change too.
  */
-let host: { datasets: Record<string, DatasetDescriptor>; runtime: Host } | undefined;
-function hostFor(datasets: Record<string, DatasetDescriptor>): Host {
-  if (host?.datasets !== datasets) {
+let host: { datasets: Record<string, DatasetDescriptor>; origins: string; runtime: Host } | undefined;
+function hostFor(datasets: Record<string, DatasetDescriptor>, allowOrigins: string[]): Host {
+  const origins = allowOrigins.join(' ');
+  if (host?.datasets !== datasets || host.origins !== origins) {
     const backend = coreApiBackend(api, { datasets });
     host = {
       datasets,
+      origins,
       runtime: createHost({
         plugins: [
           corePlugin(backend),
@@ -307,6 +313,7 @@ function hostFor(datasets: Record<string, DatasetDescriptor>): Host {
           inspectPlugin(),
         ],
         middleware: [recording],
+        allowOrigins,
       }),
     };
   }
@@ -319,11 +326,10 @@ function hostFor(datasets: Record<string, DatasetDescriptor>): Host {
  * over the bridge, and the plugins answer them (see `hostFor`).
  */
 export async function mount(options: MountOptions): Promise<DataApp> {
-  const { html, baseHref } = await definition(options.path);
-  const mounted = hostFor(options.datasets).mount({
+  const { html, allowOrigins } = await definition(options.path);
+  const mounted = hostFor(options.datasets, allowOrigins).mount({
     container: options.container,
     definition: html,
-    baseHref,
     datasets: options.datasets,
     user: reader,
     title: options.path,
