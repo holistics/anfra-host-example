@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Hash,
   type LucideIcon,
+  Sigma,
   ToggleLeft,
   Type,
 } from 'lucide-react';
@@ -22,3 +23,8 @@ export const typeIcon: Record<ColumnMeta['semantic_type'], LucideIcon> = {
   json: Braces,
   unknown: CircleHelp,
 };
+
+/** A column's icon: Sigma for a metric, otherwise its semantic type's. */
+export function columnIcon(column: Pick<ColumnMeta, 'isMeasure' | 'semantic_type'>): LucideIcon {
+  return column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+}

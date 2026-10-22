@@ -17,6 +17,7 @@ export function TrustPopover({
   trust: Trust;
   /** The trigger's content; a small (i) when omitted. */
   children?: ReactNode;
+  /** The (i)'s accessible name; a trigger passed as children names itself. */
   label?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
