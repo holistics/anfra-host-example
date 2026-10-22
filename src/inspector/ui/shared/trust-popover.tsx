@@ -1,12 +1,15 @@
 import { Info } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { LEVELS, TRUST_LEVELS, type Trust } from '../../model/trust';
 import { toneText } from './tone';
 import { TrustBars } from './trust-bars';
 
-/** A trigger that opens the trust levels: where this app stands, then every level with what it means. */
+/** Grace period so the pointer can travel from the trigger into the popover without it closing. */
+const HOVER_CLOSE_DELAY_MS = 120;
+
+/** A trigger that opens the trust levels on hover (or click): where this app stands, then every level with what it means. */
 export function TrustPopover({
   trust,
   children,
@@ -21,9 +24,22 @@ export function TrustPopover({
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
 }) {
+  const [open, setOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  const show = () => {
+    clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const hideSoon = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild onPointerEnter={show} onPointerLeave={hideSoon}>
         {children ?? (
           <button
             type="button"
@@ -37,6 +53,9 @@ export function TrustPopover({
       <PopoverContent
         side={side}
         align={align}
+        onPointerEnter={show}
+        onPointerLeave={hideSoon}
+        onOpenAutoFocus={(event) => event.preventDefault()}
         className="w-80 p-0 text-sm font-normal tracking-normal normal-case"
       >
         <TrustLevels trust={trust} />
@@ -65,7 +84,7 @@ function TrustLevels({ trust }: { trust: Trust }) {
         </p>
         <ol className="space-y-1">
           {LEVELS.map((level) => {
-            const { name, hint, tone } = TRUST_LEVELS[level];
+            const { name, points, tone } = TRUST_LEVELS[level];
             const current = level === trust.level;
             return (
               <li
@@ -79,11 +98,12 @@ function TrustLevels({ trust }: { trust: Trust }) {
                 <span className="min-w-0 space-y-0.5">
                   <span className="block font-medium">
                     {level}. {name}
-                    {current && (
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">You are here</span>
-                    )}
                   </span>
-                  <span className="block text-xs leading-snug text-muted-foreground">{hint}</span>
+                  <ul className="list-disc space-y-0.5 pl-4 text-xs leading-snug text-muted-foreground">
+                    {points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
                 </span>
               </li>
             );
