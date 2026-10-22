@@ -1,7 +1,8 @@
 import type { InspectedApp } from '@holistics/anfra-sdk/common';
-import { CircleAlert, Info, TriangleAlert } from 'lucide-react';
+import { ChevronRight, CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -11,7 +12,7 @@ import { declarationCode } from '../../model/declaration-code';
 import type { RevealTarget } from '../../model/types';
 import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
-import { Note, SectionTitle } from '../shared/fields';
+import { InfoHint, Note, SectionTitle } from '../shared/fields';
 import { scrollToAndFlash } from '../shared/reveal';
 
 interface Props {
@@ -48,9 +49,9 @@ export function WiringTab({ apps, checks, focus, onFocused, onReveal }: Props) {
             </p>
           )}
           <Counts app={app} />
-          <Matrix app={app} index={index} onReveal={onReveal} />
           <Checks checks={checks[index] ?? []} index={index} onReveal={onReveal} />
           <Declaration app={app} />
+          <Matrix app={app} index={index} onReveal={onReveal} />
         </section>
       ))}
     </div>
@@ -97,11 +98,17 @@ function Matrix({
   );
 
   return (
-    <div>
-      <SectionTitle hint="Which controls and cross-filters feed which queries, as declared by the app.">
-        Wiring
-      </SectionTitle>
-      <div className="mt-1 rounded-md border">
+    <Collapsible className="group/wiring">
+      <div className="flex items-center gap-1">
+        <CollapsibleTrigger className="flex items-center gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-data-[state=open]/wiring:rotate-90" />
+          <SectionTitle className="px-0">Wiring</SectionTitle>
+        </CollapsibleTrigger>
+        <InfoHint label="About this section">
+          Which controls and cross-filters feed which queries, as declared by the app.
+        </InfoHint>
+      </div>
+      <CollapsibleContent className="mt-1 rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -144,8 +151,8 @@ function Matrix({
             })}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

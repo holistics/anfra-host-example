@@ -74,7 +74,7 @@ The inspector state also resets when the path changes or the repo revision chang
 ```
 ┌ Ecommerce Overview          [Copy report] [×] ┐
 │ ● 4 ok  ● 1 error  ◌ 1 running  ◆ 2 dirty     │   ← status bar (new)
-│ [Overview] [Data] [Structure ⚠2] [Queries ⚠1] [Lineage] [Wiring ⚠1] │
+│ [Overview] [Data] [Structure ⚠2] [Queries ⚠1] [Lineage] [Declaration ⚠1] │
 ├───────────────────────────────────────────────┤
 │  tab body (scrolls)                            │
 └───────────────────────────────────────────────┘
@@ -84,8 +84,8 @@ The inspector state also resets when the path changes or the repo revision chang
   totals across them.
 - **Status bar**: counts by query state, plus dirty queries. A count of zero is hidden.
   Each count links to Queries with the matching filter.
-- **Tabs**: Overview · Data · Structure · Queries · Lineage · Wiring, in that order. A tab shows a badge with its issue
-  count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Wiring counts checks at warn or error level.
+- **Tabs**: Overview · Data · Structure · Queries · Lineage · Declaration, in that order. A tab shows a badge with its issue
+  count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Declaration counts checks at warn or error level.
   Queries counts failed queries. Data (§4.11) has no badge.
 - **Default tab**: Overview. Pick switches to Structure, except from Queries and Lineage.
   Opening the panel again keeps the tab it was closed on.
@@ -104,7 +104,7 @@ The inspector state also resets when the path changes or the repo revision chang
 
 ### 4.2 Multi-app
 
-When the frame has more than one app, Data, Queries and Wiring group by app under a header like
+When the frame has more than one app, Data, Queries and Declaration group by app under a header like
 "App 2 · Sales · Europe/Paris · unapplied changes". Overview shows one trust card per app. With a
 single app there is no app header.
 
@@ -123,7 +123,7 @@ The landing tab. It answers "is this app healthy, and where do I look?"
    found"). Level 4 ("Endorsed") is defined but never reached until the SDK reports endorsement.
 2. **Stat cards**, in a 2-column grid. Each one is a button that jumps somewhere:
    - **Issues** (errors · warnings): goes to the first place with issues, in this order: Queries with
-     the Errors filter, then Wiring checks, then Structure.
+     the Errors filter, then Declaration checks, then Structure.
    - **Queries** (ok / error / running / idle): goes to Queries › Queries.
    - **Controls** (count, and how many are unapplied): goes to Queries › Controls.
    - **Last request** (time, query, duration, cache or database), from the log: goes to that
@@ -213,16 +213,12 @@ filter.
 **Unattributed requests**: requests that matched no query (§5.3) appear in an
 "Other requests" section at the end, so nothing is hidden.
 
-### 4.6 Wiring
+### 4.6 Declaration
 
 How the app is put together, from `declaration`. One group per app.
 
 1. **Counts**: queries · controls · mappings · cross-filters.
-2. **Matrix**: rows are queries, columns are controls, then a "cross-filtered by" column. A cell
-   shows ● when mapped (tooltip: field and aggregation) and · otherwise. Row and column headers are
-   links that reveal the entity in Queries. The matrix scrolls sideways inside its box; the panel never
-   scrolls sideways.
-3. **Checks**: static lint for mistakes the SDK reports late or never:
+2. **Checks**: static lint for mistakes the SDK reports late or never:
    - ✕ error: a cross-filter spans different datasets.
    - ⚠ warn: a control maps to no query, so it has no effect.
    - ⚠ warn: a date drill maps to a field that the query's AQL never mentions (whole-name match),
@@ -230,9 +226,13 @@ How the app is put together, from `declaration`. One group per app.
    - ℹ info: a query has no controls and no cross-filters, so it never changes.
 
    Each check links to the entity it is about. When there are none: "No issues found."
-4. **Declaration**: the app's declaration written back out as JS (`createQuery`, `createFilter`,
+3. **Declaration code**: the app's declaration written back out as JS (`createQuery`, `createFilter`,
    `createDateDrill`, `mapControl`, `mapCrossFilter`), syntax-highlighted and copyable. It is meant
    for pasting to an agent or diffing against the source.
+4. **Wiring**: rows are queries, columns are controls, then a "cross-filtered by" column. A cell
+   shows ● when mapped (tooltip: field and aggregation) and · otherwise. Row and column headers are
+   links that reveal the entity in Queries. Collapsed by default, and last. The matrix scrolls sideways inside its box; the panel never
+   scrolls sideways.
 
 ### 4.7 Copy report
 
