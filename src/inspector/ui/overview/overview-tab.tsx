@@ -22,15 +22,16 @@ import { plural, usageOf } from '../../model/format';
 import { controlTargets } from '../../model/inputs';
 import { type Issue, issuesOf, queryCounts } from '../../model/issues';
 import { queriesOf, type RequestEntry } from '../../model/requests';
-import { appTrust, LEVELS, TRUST_LEVELS } from '../../model/trust';
+import { appTrust, TRUST_LEVELS } from '../../model/trust';
 import type { InspectorEnv, RevealTarget } from '../../model/types';
 import type { InspectorSnapshot } from '../../source';
 import { TargetsTooltip } from '../queries/control-row';
 import { IconButton } from '../queries/entity-row';
 import { AgoTime } from '../shared/ago-time';
-import { Field, Fields, InfoHint, Note, SectionTitle } from '../shared/fields';
+import { Field, Fields, Note, SectionTitle } from '../shared/fields';
 import { toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
+import { TrustPopover } from '../shared/trust-popover';
 
 interface Props {
   snapshot: InspectorSnapshot | undefined;
@@ -85,16 +86,7 @@ function TrustCard({ app, label }: { app: InspectedApp; label?: string }) {
             {label && <span className="font-medium text-foreground">{label} · </span>}
             Trust level
           </p>
-          <InfoHint label="About trust levels" side="bottom" className="max-w-72 space-y-1.5 py-2 text-xs">
-            {LEVELS.map((level) => (
-              <p key={level}>
-                <span className="font-medium">
-                  {level}. {TRUST_LEVELS[level].name}
-                </span>
-                : {TRUST_LEVELS[level].hint}
-              </p>
-            ))}
-          </InfoHint>
+          <TrustPopover trust={trust} side="bottom" />
         </div>
         <div className="mt-2 flex items-center gap-3">
           <TrustBars trust={trust} size="lg" />
