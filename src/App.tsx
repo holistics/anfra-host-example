@@ -96,7 +96,7 @@ export function App() {
   pickMenuRef.current = pickMenu;
   // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the menu.
   const [pendingPick, setPendingPick] = useState<PendingPick>();
-  // The last click in the frame: whether it held Shift, and where; a pick's click is reported just before the pick.
+  // The last click in the frame, and where; a pick's click is reported just before the pick.
   const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
   // The last node picked for the menu, and when: a click reported just after it is that pick's own.
   const lastPick = useRef<{ key: string; at: number }>(undefined);
@@ -216,9 +216,6 @@ export function App() {
     });
   }, [refreshCatalog, refreshDatasets]);
 
-  const pickMenuNode = pickMenu
-    ? findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], pickMenu.key)?.node
-    : undefined;
   const app = entries && path ? findApp(entries, path) : undefined;
   if (app) document.title = `${app.label} · anfra demo`;
 
@@ -333,7 +330,7 @@ export function App() {
     const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
     if (!found) return;
     setPickMenu((menu) =>
-      menu?.key === key && !menu.rect ? { key, ...anchorFor(found.node, click) } : menu,
+      menu?.key === key && !menu.rect ? { key, node: found.node, ...anchorFor(found.node, click) } : menu,
     );
   };
   useEffect(() => {
@@ -376,7 +373,11 @@ export function App() {
         const click = event.data as FrameClick;
         lastClick.current = { click, at: Date.now() };
         const pick = lastPick.current;
-        if (pick && Date.now() - pick.at < 500) anchorPick.current?.(pick.key, click);
+        if (pick && Date.now() - pick.at < 500) {
+          // Only the first click is the pick's own; a later one closes the menu like any other.
+          lastPick.current = undefined;
+          anchorPick.current?.(pick.key, click);
+        }
         // Clicks in the frame never reach this document, so the pick menu's own outside-click can't see them.
         else closePickMenu();
       }
@@ -399,7 +400,7 @@ export function App() {
     if (node) {
       if (mode !== 'comment') lastPick.current = { key: node, at: Date.now() };
       // The frame's click message may land just after the pick report, so read it a moment later, and
-      // only if it is that click's: a pick that isn't from a click doesn't inherit an old Shift or rect.
+      // only if it is that click's: a pick that isn't from a click doesn't inherit an old rect.
       setTimeout(() => {
         const { click, at } = lastClick.current;
         const recent = click && Date.now() - at < 500 ? click : undefined;
@@ -435,7 +436,7 @@ export function App() {
     const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
     if (!found) return false;
     setPendingPick(undefined);
-    setPickMenu({ key, ...anchorFor(found.node, click) });
+    setPickMenu({ key, node: found.node, ...anchorFor(found.node, click) });
     return true;
   };
   // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
@@ -448,10 +449,16 @@ export function App() {
     if (pickMenuTracked) stage.current?.track(true);
   }, [pickMenuKey, pickMenuTracked]);
   // The page re-rendered without the node (a reload, new data): the menu goes with it, and its hold.
+  // With the node still there, the menu takes its latest shape.
   useEffect(() => {
     if (!pickMenuKey) return;
     const check = () => {
-      if (!findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], pickMenuKey)) closePickMenu();
+      const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], pickMenuKey);
+      if (!found) closePickMenu();
+      else
+        setPickMenu((menu) =>
+          menu?.key === pickMenuKey && menu.node !== found.node ? { ...menu, node: found.node } : menu,
+        );
     };
     check();
     return inspector.source.subscribe(check);
@@ -557,11 +564,11 @@ export function App() {
         record={inspector.record}
         onPick={onPick}
       >
-        {pickMenuNode && (
+        {pickMenu && (
           <PickMenu
-            key={pickMenuNode.key}
-            node={pickMenuNode}
-            rect={pickMenu?.rect}
+            key={pickMenu.key}
+            node={pickMenu.node}
+            rect={pickMenu.rect}
             onChoose={choosePick}
             onClose={closePickMenu}
           />
@@ -758,6 +765,7 @@ function anchorFor(
 
 interface PickMenuAt {
   key: string;
+  node: StructureNode;
   rect: AnchorRect | undefined;
   /** Whether the frame reports the node's rect as it moves. */
   tracked: boolean;

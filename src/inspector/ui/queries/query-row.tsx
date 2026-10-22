@@ -3,10 +3,8 @@ import {
   Boxes,
   ChartColumn,
   ChevronRight,
-  CircleHelp,
   GitFork,
   type LucideIcon,
-  Sigma,
   SlidersHorizontal,
   Table2,
 } from 'lucide-react';
@@ -15,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { columnDoc, fieldKey } from '../../model/column-kind';
+import { columnDoc, columnKind, fieldKey } from '../../model/column-kind';
 import { dedent } from '../../model/declaration-code';
 import { plural, prettyJson } from '../../model/format';
 import type { QueryInput } from '../../model/inputs';
@@ -27,7 +25,7 @@ import { EntityLink } from '../shared/entity-link';
 import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
 import { QueryIndicators, queryFilters } from '../shared/query-indicators';
-import { typeIcon } from '../shared/type-icon';
+import { columnIcon } from '../shared/type-icon';
 import { MapsTo } from './control-row';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
 import { RequestList } from './request-list';
@@ -235,11 +233,11 @@ export function QueryRow({
                       ? SlidersHorizontal
                       : ChartColumn;
                 const column = filteredColumn(query.columns, input.field);
-                const fieldType = column?.semantic_type ?? input.type;
-                const FieldIcon = column?.isMeasure
-                  ? Sigma
-                  : (typeIcon[fieldType ?? 'unknown'] ?? CircleHelp);
-                const fieldKind = column?.isMeasure ? 'metric' : `dimension · ${fieldType ?? 'unknown type'}`;
+                // A field the query doesn't return is known only by the type of the value it's filtered by.
+                const FieldIcon = columnIcon(
+                  column ?? { isMeasure: false, semantic_type: input.type ?? 'unknown' },
+                );
+                const fieldKind = column ? columnKind(column) : `Dimension · ${input.type ?? 'unknown type'}`;
                 const from =
                   input.kind === 'declared'
                     ? "Declared in this query's AQL filters block"
@@ -424,10 +422,8 @@ function FieldList({
     <Section title={title} count={columns.length}>
       <ul className="divide-y rounded-lg border bg-background">
         {columns.map((column) => {
-          const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
-          const kind = column.isMeasure
-            ? `metric${column.aggregation ? ` · ${column.aggregation}` : ''}`
-            : `dimension · ${column.semantic_type}`;
+          const Icon = columnIcon(column);
+          const kind = columnKind(column);
           const unlabelled = !column.label || column.label === column.name;
           const summary = (
             <>

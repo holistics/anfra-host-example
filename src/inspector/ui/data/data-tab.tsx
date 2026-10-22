@@ -1,5 +1,5 @@
 import type { ColumnMeta, InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
-import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
+import { ChevronRight, Database, Download, Search } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -17,7 +17,7 @@ import { HoverPopover } from '../shared/hover-popover';
 import { QueryIndicators, queryFilters } from '../shared/query-indicators';
 import { ResultTable, rowCount } from '../shared/result-table';
 import { scrollToAndFlash } from '../shared/reveal';
-import { typeIcon } from '../shared/type-icon';
+import { columnIcon } from '../shared/type-icon';
 
 interface Props {
   apps: InspectedApp[] | undefined;
@@ -64,14 +64,16 @@ export function DataTab({
     return filters;
   }, [apps]);
 
+  // Held until the tables are there to find: a pick can land before the snapshot's apps.
+  const ready = !!apps;
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per search
   useEffect(() => {
-    if (!focus) return;
+    if (!focus || !ready) return;
     // A search that would hide it goes.
     setSearch('');
     scrollToAndFlash(`[data-entity="${CSS.escape(focus.key)}"]`);
     onFocused();
-  }, [focus]);
+  }, [focus, ready]);
 
   if (!apps) return <Note>Waiting for the Data App…</Note>;
   if (apps.length === 0) return <Note>This Data App hasn't created an SDK app.</Note>;
@@ -209,13 +211,16 @@ function TableCard({
       className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}
     >
       <div className="flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
-        <CollapsibleTrigger className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-          <h3 className="min-w-0 truncate font-medium">{name}</h3>
-          {query.state === 'error' && (
-            <span className="shrink-0 text-xs text-destructive">couldn't load</span>
-          )}
-          <span className="ml-auto" />
-        </CollapsibleTrigger>
+        {/* The heading holds the button, not the other way round: a button may hold only phrasing content. */}
+        <h3 className="flex h-full min-w-0 flex-1">
+          <CollapsibleTrigger className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <span className="min-w-0 truncate font-medium">{name}</span>
+            {query.state === 'error' && (
+              <span className="shrink-0 text-xs text-destructive">couldn't load</span>
+            )}
+            <span className="ml-auto" />
+          </CollapsibleTrigger>
+        </h3>
         <QueryIndicators query={query} declaration={declaration} active={filters} showState={false} />
         {toolbar}
         <CollapsibleTrigger
@@ -277,7 +282,7 @@ function ColumnHeader({
   column: ColumnMeta;
   doc: MetricDoc | undefined;
 }) {
-  const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+  const Icon = columnIcon(column);
   const rows: [string, ReactNode][] = [
     ['Type', doc?.type ?? columnKind(column)],
     ['Format', doc?.format && <code className="font-mono">{doc.format}</code>],
@@ -297,10 +302,14 @@ function ColumnHeader({
       align="start"
       className="w-72 space-y-2 p-3 text-xs font-normal tracking-normal normal-case"
       trigger={
-        <span className="inline-flex cursor-help items-center gap-1">
+        // Focusable, so a keyboard opens it too: Enter or Space clicks it.
+        <button
+          type="button"
+          className="inline-flex cursor-help items-center gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
           <Icon className="size-3 shrink-0 text-muted-foreground" />
           {label}
-        </span>
+        </button>
       }
     >
       <div className="text-sm font-medium">{doc?.label || label}</div>

@@ -1,7 +1,7 @@
 import type { ColumnMeta } from '@holistics/anfra-sdk/common';
 import type { MetricDoc, MetricDocs } from './types';
 
-/** What a result column is, in the words the Data tab shows: "Metric · sum", "Dimension · date". */
+/** What a result column is, in the words the inspector shows: "Metric · sum", "Dimension · date". */
 export function columnKind(column: Pick<ColumnMeta, 'isMeasure' | 'aggregation' | 'semantic_type'>): string {
   return column.isMeasure
     ? `Metric${column.aggregation ? ` · ${column.aggregation}` : ''}`

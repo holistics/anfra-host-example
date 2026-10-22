@@ -161,10 +161,9 @@ export const toggleInspectMessage = 'anfra-host:toggle-inspect';
 export const toggleCommentMessage = 'anfra-host:toggle-comment';
 export const toggleVersionsMessage = 'anfra-host:toggle-versions';
 /**
- * Posted for every click in a frame, with whether Shift was held: the frame's pick report doesn't
- * say, and a click's message always comes first, as the frame's listener sits on the window. It
- * also carries the click point and the closest marked element's attribute and rect, which the
- * pick report doesn't either: a comment's card is anchored to them.
+ * Posted for every click in a frame, with the click point and the closest marked element's attribute
+ * and rect, which the frame's pick report doesn't carry: a comment's card and the pick menu are
+ * anchored to them.
  */
 export const clickMessage = 'anfra-host:click';
 /** Posted by the host to a frame: keep reporting the last clicked marked element's rect, or stop. */
@@ -191,7 +190,6 @@ export interface FrameRect {
 /** What a frame's click message says. */
 export interface FrameClick {
   type: typeof clickMessage;
-  shift: boolean;
   x: number;
   y: number;
   /** The closest marked element's attribute, as written: `data-anfra-block="river"`. */
@@ -212,7 +210,7 @@ const keyForwarder = `<script>addEventListener('keydown',function(e){var t=e.tar
  * (trackMessage), that element's rect whenever it may have moved, at most once a frame. On
  * cursorMessage it shows the comment cursor, or stops.
  */
-const clickReporter = `<script>(function(){var K=['container','block','query','control'],S=K.map(function(k){return'[data-anfra-'+k+']'}).join(','),el=null,on=false,raf=0;function box(n){var r=n.getBoundingClientRect();return{x:r.left,y:r.top,width:r.width,height:r.height}}function attr(n){for(var i=0;i<K.length;i++){var v=n.getAttribute('data-anfra-'+K[i]);if(v!==null)return'data-anfra-'+K[i]+'="'+v+'"'}}addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest(S):null;el=t;parent.postMessage({type:'${clickMessage}',shift:e.shiftKey,x:e.clientX,y:e.clientY,attr:t?attr(t):undefined,rect:t?box(t):undefined},'*')},true);function post(){raf=0;if(on&&el&&el.isConnected)parent.postMessage({type:'${rectMessage}',rect:box(el)},'*')}function queue(){if(on&&!raf)raf=requestAnimationFrame(post)}addEventListener('scroll',queue,true);addEventListener('resize',queue);var css=null;function cursor(show){if(show&&!css){css=document.createElement('style');css.textContent=${JSON.stringify(commentCursorCss)};document.head.appendChild(css)}document.documentElement.toggleAttribute('data-anfra-host-cursor',show)}addEventListener('message',function(e){if(e.source!==parent||!e.data)return;if(e.data.type==='${trackMessage}'){on=!!e.data.on;queue()}if(e.data.type==='${cursorMessage}')cursor(!!e.data.on)})})()</script>`;
+const clickReporter = `<script>(function(){var K=['container','block','query','control'],S=K.map(function(k){return'[data-anfra-'+k+']'}).join(','),el=null,on=false,raf=0;function box(n){var r=n.getBoundingClientRect();return{x:r.left,y:r.top,width:r.width,height:r.height}}function attr(n){for(var i=0;i<K.length;i++){var v=n.getAttribute('data-anfra-'+K[i]);if(v!==null)return'data-anfra-'+K[i]+'="'+v+'"'}}addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest(S):null;el=t;parent.postMessage({type:'${clickMessage}',x:e.clientX,y:e.clientY,attr:t?attr(t):undefined,rect:t?box(t):undefined},'*')},true);function post(){raf=0;if(on&&el&&el.isConnected)parent.postMessage({type:'${rectMessage}',rect:box(el)},'*')}function queue(){if(on&&!raf)raf=requestAnimationFrame(post)}addEventListener('scroll',queue,true);addEventListener('resize',queue);var css=null;function cursor(show){if(show&&!css){css=document.createElement('style');css.textContent=${JSON.stringify(commentCursorCss)};document.head.appendChild(css)}document.documentElement.toggleAttribute('data-anfra-host-cursor',show)}addEventListener('message',function(e){if(e.source!==parent||!e.data)return;if(e.data.type==='${trackMessage}'){on=!!e.data.on;queue()}if(e.data.type==='${cursorMessage}')cursor(!!e.data.on)})})()</script>`;
 
 /** A Data App definition, as its author wrote it, and where its relative URLs resolve. */
 export async function definition(path: string): Promise<{ html: string; baseHref: string }> {

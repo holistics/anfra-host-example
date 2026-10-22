@@ -180,7 +180,7 @@ function CopyReport({ report }: { report: () => string }) {
 function TrustPill({ trust }: { trust: Trust }) {
   const { name } = TRUST_LEVELS[trust.level];
   return (
-    <TrustPopover trust={trust} side="bottom" align="start" label="About the trust level">
+    <TrustPopover trust={trust} side="bottom" align="start">
       <Badge
         asChild
         className="cursor-pointer gap-1.5 bg-secondary px-2.5 py-1 font-semibold text-secondary-foreground hover:bg-secondary/70"
