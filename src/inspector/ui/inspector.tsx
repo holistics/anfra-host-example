@@ -1,5 +1,5 @@
 import type { StructureNode } from '@holistics/anfra-sdk/common';
-import { Cable, Database, GitFork, LayoutDashboard, ListTree, Sheet } from 'lucide-react';
+import { Code, Database, GitFork, LayoutDashboard, ListTree, Sheet } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -183,7 +183,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               Lineage
             </TabsTrigger>
             <TabsTrigger value="wiring">
-              <Cable />
+              <Code />
               Declaration
               <Count n={warnings} />
             </TabsTrigger>
