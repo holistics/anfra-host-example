@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { plural } from '../../model/format';
 
@@ -10,11 +11,14 @@ export function ResultTable({
   rows,
   total,
   labels,
+  renderHeader,
 }: {
   columns: string[];
   rows: unknown[][];
   total?: number;
   labels?: Record<string, string>;
+  /** Draws a column's header in place of its plain label, e.g. to add an icon. */
+  renderHeader?: (column: string, label: string) => ReactNode;
 }) {
   return (
     <div>
@@ -33,7 +37,9 @@ export function ResultTable({
               <TableRow>
                 {columns.map((column) => (
                   <TableHead key={column} className="h-7 px-2 text-xs font-semibold">
-                    {labels?.[column] ?? column}
+                    {renderHeader
+                      ? renderHeader(column, labels?.[column] ?? column)
+                      : (labels?.[column] ?? column)}
                   </TableHead>
                 ))}
               </TableRow>

@@ -366,15 +366,19 @@ one click away.
 - **Search**: the same box as Queries' (§4.5), pinned to the top while the tables scroll. It narrows
   the tables by title; Escape clears it. When nothing matches: "No tables match '…'." Its text is
   local to the tab, so no link sets it.
-- **One card per query**, in declaration order, grouped by app when there are several:
+- **One card per query**, in declaration order, grouped by app when there are several. Cards are
+  closed by default, like Queries' rows; the title row opens one, and which are open survives a
+  switch of tab:
   - **Title**: the label of the first block that draws the query, else the query's name.
   - **Updated**: when the rows were returned.
   - **Table**: the first rows of the latest successful request (the same preview as in Queries ›
-    Requests), with the columns' labels as headers, not their keys. "First N of M rows" when there
+    Requests), with the columns' labels as headers, not their keys. Each header has an icon (Σ for a metric, the
+    type's icon for a dimension) whose tooltip gives "Metric · sum" or "Dimension · date" and the
+    dataset's description of the field, when it has one. "First N of M rows" when there
     are more.
-  - **Download CSV**: only when `canExportData` is allowed *and* the preview holds every row. A
+  - **Download CSV**: an icon button with a tooltip; only when `canExportData` is allowed *and* the preview holds every row. A
     partial table has no download, so no one mistakes it for the full data.
-  - **Technical details**: opens the query's row in Queries.
+  - **Query**: a button with a code icon beside the download; opens the query's row in Queries.
 - **States**, in plain words: "Loading this table…" before the first rows arrive, "This table
   couldn't load." when the query is in error, even if an earlier request returned rows (the reason
   is in Queries), "No rows." for an empty result, and "This table's rows aren't available here."
