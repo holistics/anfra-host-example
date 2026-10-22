@@ -8,9 +8,12 @@ export type InspectorTab = 'overview' | 'data' | 'structure' | 'queries' | 'line
 export interface NodeRequest {
   key: string;
   nonce: number;
-  /** Go to the first query or control in the node, in the Queries tab, rather than to the node in Structure. */
-  inData?: boolean;
+  /** Where the pick goes; Structure when unset. */
+  to?: PickTarget;
 }
+
+/** What a reader can check about a picked node: its data, its queries, its lineage or its place in the page. */
+export type PickTarget = 'data' | 'queries' | 'lineage' | 'structure';
 
 /** What the Queries tab shows: a search over names, datasets and labels, and a filter. */
 export interface QueriesFilter {

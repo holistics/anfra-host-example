@@ -109,20 +109,29 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     }
   };
 
-  // A pick lands on its node in Structure; with Shift, or from the Queries tab, on the first query or
-  // control in it, in Queries; from the Lineage tab, on the first of its nodes the canvas draws.
+  // A pick goes where the reader chose in the host's pick menu: Data opens the first query's table,
+  // Queries its row, Lineage pins the first of the nodes the canvas draws, Structure the node itself.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per pick, not per snapshot
   useEffect(() => {
     if (!picked) return setNode(undefined);
     // A pick already handled before this mount (the panel was closed and reopened) isn't a new one.
     if (picked.nonce === handledPick.current) return;
     handledPick.current = picked.nonce;
-    if (tab === 'lineage' && !picked.inData && structure) {
+    if (picked.to === 'lineage' && structure) {
       setLineagePick({ keys: keysUnder(structure.nodes, picked.key), nonce: picked.nonce });
+      onTab('lineage');
       return;
     }
-    const toData = picked.inData || tab === 'queries';
-    const entity = toData && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
+    if (picked.to === 'data' && structure) {
+      const query = firstEntityUnder(structure.nodes, picked.key, 'query');
+      if (query) {
+        setDataOpen((prev) => new Set(prev).add(entityKey('query', query.app, query.name)));
+        onTab('data');
+        return;
+      }
+    }
+    const entity =
+      picked.to === 'queries' && structure ? firstEntityUnder(structure.nodes, picked.key) : undefined;
     if (entity) reveal(entity);
     else {
       setNode(picked);

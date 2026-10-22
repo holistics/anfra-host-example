@@ -111,11 +111,12 @@ export function countProblems(nodes: StructureNode[]): number {
 
 /**
  * The first query or control at or below the node with `key`, in document order: what a pick of a
- * container or block leads to in Queries. Undefined when the node isn't there or holds none.
+ * container or block leads to in Queries (with `only`, the first query: what leads to Data). Undefined when the node isn't there or holds none.
  */
 export function firstEntityUnder(
   nodes: StructureNode[],
   key: string,
+  only?: 'query',
 ): { entity: LocateKind; app: number; name: string } | undefined {
   const find = (list: StructureNode[]): StructureNode | undefined => {
     for (const node of list) {
@@ -125,7 +126,7 @@ export function firstEntityUnder(
     }
   };
   const first = (node: StructureNode): StructureNode | undefined =>
-    node.kind === 'query' || node.kind === 'control'
+    node.kind === 'query' || (node.kind === 'control' && !only)
       ? node
       : node.children.map(first).find((entity) => entity !== undefined);
   const root = find(nodes);
