@@ -1,13 +1,10 @@
 import { Info } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { LEVELS, TRUST_LEVELS, type Trust } from '../../model/trust';
+import { HoverPopover } from './hover-popover';
 import { toneText } from './tone';
 import { TrustBars } from './trust-bars';
-
-/** Grace period so the pointer can travel from the trigger into the popover without it closing. */
-const HOVER_CLOSE_DELAY_MS = 120;
 
 /** A trigger that opens the trust levels on hover (or click): where this app stands, then every level with what it means. */
 export function TrustPopover({
@@ -24,23 +21,13 @@ export function TrustPopover({
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
 }) {
-  const [open, setOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
-
-  const show = () => {
-    clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const hideSoon = () => {
-    clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
-  };
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild onPointerEnter={show} onPointerLeave={hideSoon}>
-        {children ?? (
+    <HoverPopover
+      side={side}
+      align={align}
+      className="w-80 p-0 text-sm font-normal tracking-normal normal-case"
+      trigger={
+        children ?? (
           <button
             type="button"
             aria-label={label}
@@ -48,19 +35,11 @@ export function TrustPopover({
           >
             <Info className="size-3" />
           </button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent
-        side={side}
-        align={align}
-        onPointerEnter={show}
-        onPointerLeave={hideSoon}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        className="w-80 p-0 text-sm font-normal tracking-normal normal-case"
-      >
-        <TrustLevels trust={trust} />
-      </PopoverContent>
-    </Popover>
+        )
+      }
+    >
+      <TrustLevels trust={trust} />
+    </HoverPopover>
   );
 }
 
