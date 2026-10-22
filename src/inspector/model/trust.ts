@@ -15,27 +15,36 @@ export interface Trust {
 }
 
 /** Name, tone and explanation of each level, for the meter's tooltip. */
-export const TRUST_LEVELS: Record<TrustLevel, { tone: Tone; name: string; hint: string }> = {
+export const TRUST_LEVELS: Record<TrustLevel, { tone: Tone; name: string; points: string[] }> = {
   // Level 4 shows in the meter and its tooltip now, though nothing reaches it yet: see isEndorsed.
   1: {
     tone: 'error',
     name: 'Unverified',
-    hint: "Some queries declare no dataset, so they bypass the semantic layer, or the app has no queries. Results can't be traced back to governed definitions.",
+    points: [
+      'A query has no dataset, or there are no queries',
+      "Numbers can't be traced to the semantic layer",
+    ],
   },
   2: {
     tone: 'warn',
     name: 'Verified, incomplete',
-    hint: "Every query goes through the semantic layer, but some failed or haven't returned yet, so what the app shows may be incomplete.",
+    points: [
+      'All queries use the semantic layer',
+      "Some failed or haven't returned yet, so the app may be incomplete",
+    ],
   },
   3: {
     tone: 'ok',
     name: 'Semantic layer verified',
-    hint: 'Every query goes through the semantic layer and none failed. Some fields may still be ad hoc expressions.',
+    points: ['All queries use the semantic layer and succeeded', 'Some fields are still ad hoc expressions'],
   },
   4: {
     tone: 'ok',
     name: 'Endorsed',
-    hint: 'Semantic layer verified, and every field is a governed definition with no ad hoc expressions.',
+    points: [
+      'All queries use the semantic layer and succeeded',
+      'Every field is an endorsed object from the semantic layer, none ad hoc',
+    ],
   },
 };
 
