@@ -89,14 +89,19 @@ export function App() {
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
-  // The node just picked, while the menu asks what to check about it; its rect is where it was clicked.
-  const [pickMenu, setPickMenu] = useState<{ key: string; rect: AnchorRect | undefined }>();
+  // The node just picked, while the menu asks what to check about it; its rect is where it was clicked,
+  // `tracked` while the frame reports it as the node moves.
+  const [pickMenu, setPickMenu] = useState<PickMenuAt>();
+  const pickMenuRef = useRef(pickMenu);
+  pickMenuRef.current = pickMenu;
+  // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the menu.
+  const [pendingPick, setPendingPick] = useState<PendingPick>();
   // The last click in the frame: whether it held Shift, and where; a pick's click is reported just before the pick.
   const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
   // The node being commented on, and where its card is anchored; `tracked` while the frame reports its rect.
   const [comment, setComment] = useState<Commented>();
   // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the card.
-  const [pendingComment, setPendingComment] = useState<PendingComment>();
+  const [pendingComment, setPendingComment] = useState<PendingPick>();
   const commenting = pickFor === 'comment' || !!comment || !!pendingComment;
   const commentButton = useRef<HTMLButtonElement>(null);
   // While set, the comment owns the frame outline: the Structure tree's hover/clear must not steal it.
@@ -184,6 +189,7 @@ export function App() {
   useEffect(() => {
     setPicked(undefined);
     setPickMenu(undefined);
+    setPendingPick(undefined);
     setPickFor(undefined);
     setComment(undefined);
     setPendingComment(undefined);
@@ -223,9 +229,16 @@ export function App() {
 
   // Pick works on the structure, which the frame reads only while it is inspected: picking opens
   // the panel, and closing the panel ends picking.
+  // Only the menu's own hold is let go: a comment card may hold the outline at the same time.
   const closePickMenu = useCallback(() => {
-    heldHighlight.current = null;
-    stage.current?.highlight(null);
+    const open = pickMenuRef.current;
+    if (!open) return;
+    pickMenuRef.current = undefined;
+    if (heldHighlight.current === open.key) {
+      heldHighlight.current = null;
+      stage.current?.highlight(null);
+    }
+    if (open.tracked) stage.current?.track(false);
     setPickMenu(undefined);
   }, []);
   const choosePick = (to: PickTarget) => {
@@ -338,6 +351,7 @@ export function App() {
       if (event.data?.type === rectMessage && stage.current?.owns(event.source)) {
         const rect = event.data.rect as AnchorRect;
         setComment((current) => (current?.tracked ? { ...current, rect } : current));
+        setPickMenu((current) => (current?.tracked ? { ...current, rect } : current));
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -366,15 +380,8 @@ export function App() {
           return;
         }
         // The reader chooses where it goes in the pick menu, beside the node; the inspector picks the tab.
-        const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], node);
-        if (!found) return;
-        const rect =
-          recent?.rect && recent.attr === attributeFor(found.node)
-            ? recent.rect
-            : recent
-              ? { x: recent.x, y: recent.y, width: 0, height: 0 }
-              : undefined;
-        setPickMenu({ key: node, rect });
+        // The structure may still be on its way; pendingPick waits for it (see the effect below).
+        setPendingPick({ key: node, click: recent });
       }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
@@ -392,13 +399,25 @@ export function App() {
     setComment({ ...found, rect, tracked });
     return true;
   };
+  // The menu anchors like the comment card: to the clicked element's rect when it is the node's, and follows it.
+  const openPickMenu = (key: string, click: FrameClick | undefined) => {
+    const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
+    if (!found) return false;
+    const tracked = !!click?.rect && click.attr === attributeFor(found.node);
+    const rect = tracked ? click?.rect : click ? { x: click.x, y: click.y, width: 0, height: 0 } : undefined;
+    setPendingPick(undefined);
+    setPickMenu({ key, rect, tracked });
+    return true;
+  };
   // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
   const pickMenuKey = pickMenu?.key;
+  const pickMenuTracked = pickMenu?.tracked;
   useEffect(() => {
     if (!pickMenuKey) return;
     heldHighlight.current = pickMenuKey;
     stage.current?.highlight(pickMenuKey);
-  }, [pickMenuKey]);
+    if (pickMenuTracked) stage.current?.track(true);
+  }, [pickMenuKey, pickMenuTracked]);
   // The comment cursor on the page itself too, so it shows the moment Ask AI is clicked, not only
   // once the pointer reaches the frame.
   useEffect(() => {
@@ -409,14 +428,11 @@ export function App() {
     return () => style.remove();
   }, [pickFor]);
   // A pick can land before the frame's first snapshot; wait for one, then give up.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
-  useEffect(() => {
-    if (!pendingComment) return;
-    const { key, click } = pendingComment;
-    if (commentOn(key, click)) return;
+  const awaitStructure = (open: () => boolean, giveUp: () => void) => {
+    if (open()) return;
     let done = false;
     const undo = inspector.source.subscribe(() => {
-      if (done || !commentOn(key, click)) return;
+      if (done || !open()) return;
       done = true;
       clearTimeout(timer);
     });
@@ -424,7 +440,7 @@ export function App() {
       if (done) return;
       done = true;
       undo();
-      setPendingComment(undefined);
+      giveUp();
       setToast({ tone: 'error', text: "Couldn't find that element in the page's structure." });
     }, 2000);
     return () => {
@@ -432,7 +448,25 @@ export function App() {
       undo();
       clearTimeout(timer);
     };
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
+  useEffect(() => {
+    if (!pendingComment) return;
+    const { key, click } = pendingComment;
+    return awaitStructure(
+      () => commentOn(key, click),
+      () => setPendingComment(undefined),
+    );
   }, [pendingComment, inspector.source]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: openPickMenu closes over the current store
+  useEffect(() => {
+    if (!pendingPick) return;
+    const { key, click } = pendingPick;
+    return awaitStructure(
+      () => openPickMenu(key, click),
+      () => setPendingPick(undefined),
+    );
+  }, [pendingPick, inspector.source]);
   // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
   const commentKey = comment?.node.key;
   const commentTracked = comment?.tracked;
@@ -489,7 +523,6 @@ export function App() {
           <PickMenu
             key={pickMenuNode.key}
             node={pickMenuNode}
-            nodes={inspector.source.getSnapshot()?.structure.nodes ?? []}
             rect={pickMenu?.rect}
             onChoose={choosePick}
             onClose={closePickMenu}
@@ -672,7 +705,15 @@ interface Commented {
   tracked: boolean;
 }
 
-interface PendingComment {
+interface PickMenuAt {
+  key: string;
+  rect: AnchorRect | undefined;
+  /** Whether the frame reports the node's rect as it moves. */
+  tracked: boolean;
+}
+
+/** A picked node waiting for the structure, with the click that picked it. */
+interface PendingPick {
   key: string;
   click: FrameClick | undefined;
 }

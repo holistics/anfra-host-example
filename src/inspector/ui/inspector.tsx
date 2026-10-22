@@ -81,6 +81,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     closedSections: new Set(),
   });
   const [dataOpen, setDataOpen] = useState<Set<string>>(new Set());
+  const [dataFocus, setDataFocus] = useState<{ key: string; nonce: number }>();
   const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set(), crossFilters: false });
   const [lineage, setLineage] = useState<LineageFetch>();
   const [lineagePick, setLineagePick] = useState<LineagePick>();
@@ -125,7 +126,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     if (picked.to === 'data' && structure) {
       const query = firstEntityUnder(structure.nodes, picked.key, 'query');
       if (query) {
-        setDataOpen((prev) => new Set(prev).add(entityKey('query', query.app, query.name)));
+        const key = entityKey('query', query.app, query.name);
+        setDataOpen((prev) => new Set(prev).add(key));
+        setDataFocus({ key, nonce: picked.nonce });
         onTab('data');
         return;
       }
@@ -221,6 +224,8 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               metricDocs={source.env.metricDocs}
               open={dataOpen}
               onToggle={(key) => setDataOpen((prev) => toggleIn(prev, key))}
+              focus={dataFocus}
+              onFocused={() => setDataFocus(undefined)}
               onReveal={reveal}
             />
           </div>

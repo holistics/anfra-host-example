@@ -1,6 +1,6 @@
 import type { ColumnMeta, InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { AgoTime } from '../shared/ago-time';
 import { Note } from '../shared/fields';
 import { QueryIndicators, queryFilters } from '../shared/query-indicators';
 import { ResultTable, rowCount } from '../shared/result-table';
+import { scrollToAndFlash } from '../shared/reveal';
 import { typeIcon } from '../shared/type-icon';
 
 interface Props {
@@ -29,14 +30,49 @@ interface Props {
   /** The tables opened, kept by the panel so they survive a switch of tab. */
   open: Set<string>;
   onToggle: (key: string) => void;
+  /** A table to bring into view and flash, opened already; a new nonce repeats a request for the same table. */
+  focus?: { key: string; nonce: number };
+  onFocused: () => void;
   onReveal: (target: RevealTarget) => void;
 }
 
 /**
  * The tables behind the page, for someone who doesn't write queries: one per query, titled by its name, with the rows it last returned. See SPEC.md §4.11.
  */
-export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle, onReveal }: Props) {
+export function DataTab({
+  apps,
+  requests,
+  canExport,
+  metricDocs,
+  open,
+  onToggle,
+  focus,
+  onFocused,
+  onReveal,
+}: Props) {
   const [search, setSearch] = useState('');
+  // The filters narrowing each table, keyed `<app>/<name>`: worked out per snapshot, not per request.
+  const filters = useMemo(() => {
+    const filters = new Map<string, QueryInput[]>();
+    apps?.forEach((app, index) => {
+      for (const name of Object.keys(app.queries))
+        filters.set(
+          `${index}/${name}`,
+          queryFilters(app.declaration.queries[name], queryInputs(app, name)).active,
+        );
+    });
+    return filters;
+  }, [apps]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per request, not per search
+  useEffect(() => {
+    if (!focus) return;
+    // A search that would hide it goes.
+    setSearch('');
+    scrollToAndFlash(`[data-entity="${CSS.escape(focus.key)}"]`);
+    onFocused();
+  }, [focus]);
+
   if (!apps) return <Note>Waiting for the Data App…</Note>;
   if (apps.length === 0) return <Note>This Data App hasn't created an SDK app.</Note>;
 
@@ -60,9 +96,9 @@ export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle,
       <div className="space-y-6 px-3 pt-1 pb-3">
         {total === 0 && <Note>This app has no tables yet.</Note>}
         {apps.map((app, index) => {
-          const tables = Object.entries(app.queries)
-            .map(([name, query]) => ({ name, query, title: name }))
-            .filter(({ title }) => !term || title.toLowerCase().includes(term));
+          const tables = Object.entries(app.queries).filter(
+            ([name]) => !term || name.toLowerCase().includes(term),
+          );
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
             <section key={index} className="space-y-2">
@@ -72,12 +108,11 @@ export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle,
                 </p>
               )}
               {tables.length === 0 && term && <Note>No tables match "{search.trim()}".</Note>}
-              {tables.map(({ name, query, title }) => (
+              {tables.map(([name, query]) => (
                 <TableCard
                   key={name}
                   index={index}
                   name={name}
-                  title={title}
                   query={query}
                   // The first page's rows: a later page isn't the start of the table.
                   latest={
@@ -91,7 +126,7 @@ export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle,
                   canExport={canExport}
                   docs={metricDocs?.[app.declaration.queries[name]?.dataset ?? '']}
                   declaration={app.declaration.queries[name]}
-                  filters={queryFilters(app.declaration.queries[name], queryInputs(app, name)).active}
+                  filters={filters.get(`${index}/${name}`) ?? []}
                   open={open.has(entityKey('query', index, name))}
                   onToggle={() => onToggle(entityKey('query', index, name))}
                   onTechnical={() => onReveal({ entity: 'query', app: index, name })}
@@ -108,7 +143,6 @@ export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle,
 function TableCard({
   index,
   name,
-  title,
   query,
   latest,
   canExport,
@@ -121,7 +155,6 @@ function TableCard({
 }: {
   index: number;
   name: string;
-  title: string;
   query: InspectedQuery;
   latest: RequestEntry | undefined;
   canExport: boolean;
@@ -150,7 +183,7 @@ function TableCard({
               variant="ghost"
               size="icon-xs"
               aria-label="Download CSV"
-              onClick={() => download(`${title}.csv`, toCsv(rows.columns, rows.preview, labels))}
+              onClick={() => download(`${name}.csv`, toCsv(rows.columns, rows.preview, labels))}
             >
               <Download />
             </Button>
@@ -177,7 +210,7 @@ function TableCard({
     >
       <div className="flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <CollapsibleTrigger className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-          <h3 className="min-w-0 truncate font-medium">{title}</h3>
+          <h3 className="min-w-0 truncate font-medium">{name}</h3>
           {query.state === 'error' && (
             <span className="shrink-0 text-xs text-destructive">couldn't load</span>
           )}

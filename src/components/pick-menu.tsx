@@ -1,15 +1,14 @@
 import type { StructureNode } from '@holistics/anfra-sdk/common';
 import { Code, GitFork, ListTree, Sheet } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { type AnchorRect, nameOf } from '@/comments';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import { attributeFor, firstEntityUnder, kindIcons, kindPills, type PickTarget } from '@/inspector';
+import { attributeFor, kindIcons, kindPills, type PickTarget } from '@/inspector';
 import { cn } from '@/lib/utils';
 
 interface Props {
+  /** The picked node, with what is under it: whether it holds a query or control decides the choices. */
   node: StructureNode;
-  /** The nodes of the page, to tell whether the picked one holds a query. */
-  nodes: StructureNode[];
   /** Where the node is drawn; without one the menu sits at the top centre of the stage. */
   rect: AnchorRect | undefined;
   onChoose: (target: PickTarget) => void;
@@ -27,11 +26,13 @@ const choices: { target: PickTarget; label: string; hint: string; icon: typeof S
  * What to look at for a picked node, floating beside it in the stage. Render it inside the stage's
  * `relative` wrapper: its anchor is placed at `rect` there. See the inspector's SPEC §3.
  */
-export function PickMenu({ node, nodes, rect, onChoose, onClose }: Props) {
+export function PickMenu({ node, rect, onChoose, onClose }: Props) {
   const Icon = kindIcons[node.kind];
-  const holdsQuery = !!firstEntityUnder(nodes, node.key, 'query');
-  const holdsEntity = !!firstEntityUnder(nodes, node.key);
-  const missing: Partial<Record<PickTarget, boolean>> = { data: !holdsQuery, queries: !holdsEntity };
+  const held = kindsUnder(node);
+  const missing: Partial<Record<PickTarget, boolean>> = {
+    data: !held.has('query'),
+    queries: !held.has('query') && !held.has('control'),
+  };
 
   return (
     <Popover open onOpenChange={(open) => !open && onClose()}>
@@ -61,7 +62,7 @@ export function PickMenu({ node, nodes, rect, onChoose, onClose }: Props) {
             {nameOf(node)}
           </span>
         </div>
-        <div role="menu" className="flex flex-col">
+        <div role="menu" aria-orientation="vertical" className="flex flex-col" onKeyDown={moveFocus}>
           {choices.map(({ target, label, hint, icon: ChoiceIcon }) => {
             const disabled = missing[target];
             return (
@@ -85,6 +86,32 @@ export function PickMenu({ node, nodes, rect, onChoose, onClose }: Props) {
       </PopoverContent>
     </Popover>
   );
+}
+
+/** The kinds of the node and everything under it. */
+function kindsUnder(node: StructureNode, kinds = new Set<StructureNode['kind']>()) {
+  kinds.add(node.kind);
+  for (const child of node.children) kindsUnder(child, kinds);
+  return kinds;
+}
+
+/** Up and Down move between the choices, wrapping; Home and End go to the first and last, as a menu's keys do. */
+function moveFocus(event: KeyboardEvent<HTMLDivElement>) {
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  const at = items.indexOf(document.activeElement as HTMLElement);
+  const next =
+    event.key === 'ArrowDown'
+      ? (at + 1) % items.length
+      : event.key === 'ArrowUp'
+        ? (at - 1 + items.length) % items.length
+        : event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? items.length - 1
+            : undefined;
+  if (next === undefined) return;
+  event.preventDefault();
+  items[next]?.focus();
 }
 
 /** The anchor at the node's rect, kept inside the stage so the menu never floats off it. */
