@@ -12,6 +12,7 @@ export function ResultTable({
   total,
   labels,
   renderHeader,
+  hideCount,
 }: {
   columns: string[];
   rows: unknown[][];
@@ -19,16 +20,12 @@ export function ResultTable({
   labels?: Record<string, string>;
   /** Draws a column's header in place of its plain label, e.g. to add an icon. */
   renderHeader?: (column: string, label: string) => ReactNode;
+  /** Leaves out the row count, for a caller that shows it elsewhere. */
+  hideCount?: boolean;
 }) {
   return (
     <div>
-      <p className="mb-1 text-xs text-muted-foreground">
-        {rows.length === 0
-          ? 'No rows.'
-          : total !== undefined && total > rows.length
-            ? `First ${rows.length} of ${total} rows`
-            : plural(rows.length, 'row')}
-      </p>
+      {!hideCount && <p className="mb-1 text-xs text-muted-foreground">{rowCount(rows.length, total)}</p>}
       {rows.length > 0 && (
         // The table scrolls within its own container, so the cap goes there for the header to stick.
         <div className="overflow-hidden rounded-md border [&_[data-slot=table-container]]:max-h-60 [&_[data-slot=table-container]]:overflow-auto">
@@ -67,4 +64,10 @@ export function cell(value: unknown): string {
   if (value === null || value === undefined) return '∅';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+}
+
+/** How many rows a result holds, or how many of them its preview shows. */
+export function rowCount(shown: number, total?: number): string {
+  if (shown === 0) return 'No rows.';
+  return total !== undefined && total > shown ? `First ${shown} of ${total} rows` : plural(shown, 'row');
 }
