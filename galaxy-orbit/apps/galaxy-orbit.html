@@ -6130,7 +6130,7 @@ explore {
       button=e.target.closest('[data-plan-open-goal]');if(button){OWNER_PLAN.selected=button.dataset.planOpenGoal;ownerPlanningRefresh(ownerPlan().initiatives.length?'initiatives':'goals');el('owner-planning-content').querySelector('[data-anfra-block="goal-'+OWNER_PLAN.selected+'"]')?.scrollIntoView({block:'nearest'});return;}
       button=e.target.closest('[data-plan-open-initiative]');if(button){OWNER_PLAN.selected=button.dataset.planOpenInitiative;ownerPlanningRefresh('initiatives');return;}
       button=e.target.closest('[data-plan-goal-analysis]');if(button){const goal=ownerPlan().goals.find(g=>g.id===button.dataset.planGoalAnalysis),m=catalogFind(goal.metric);if(m.route)catalogOpenAnalysis(m.id);else{CATALOG.search='';CATALOG.focus='';CATALOG.journey='';CATALOG.selected=m.id;ownerSelect('catalog');}return;}
-      button=e.target.closest('[data-plan-campaign]');if(button){openFocus('comet',button.dataset.planCampaign);return;}
+      button=e.target.closest('[data-plan-campaign]');if(button){ownerOpenCampaign(button.dataset.planCampaign);return;}
       button=e.target.closest('[data-plan-add-task]');if(button){const i=ownerPlan().initiatives.find(i=>i.id===button.dataset.planAddTask),title=root.querySelector('[name="task-title-'+i.id+'"]'),owner=root.querySelector('[name="task-owner-'+i.id+'"]');if(!title.value.trim()){title.setCustomValidity?.('Name the task.');title.reportValidity?.();return;}i.tasks.push({id:ownerPlanId('task'),title:title.value.trim(),owner:owner.value.trim(),done:false});OWNER_PLAN.selected=i.id;ownerPlanningRefresh();return;}
       if(e.target.closest('[data-plan-transfer]')){OWNER_PLAN.transfer=true;OWNER_PLAN.message='';ownerPlanningRefresh();return;}
       if(e.target.closest('[data-plan-transfer-close]')){OWNER_PLAN.transfer=false;ownerPlanningRefresh();return;}
@@ -6152,7 +6152,7 @@ explore {
     const header=el('dashboard-identity'),bar=document.createElement('div');bar.id='dashboard-location-bar';bar.hidden=true;bar.append(el('context-path'));
     const back=document.createElement('button');back.id='dashboard-return';back.type='button';back.className='link';back.dataset.ownerReturn='';back.innerHTML='<span aria-hidden="true">‹</span>';back.addEventListener('click',ownerReturn);bar.prepend(back);const forward=document.createElement('button');forward.id='dashboard-forward';forward.type='button';forward.className='link';forward.innerHTML='<span aria-hidden="true">›</span>';forward.addEventListener('click',ownerForward);back.after(forward);el('cinema-dock').querySelector('.dock-bar').prepend(bar);
     const local=document.createElement('div');local.id='dashboard-local-nav';header.append(local);
-    el('panel').addEventListener('keydown',e=>{if(e.altKey&&e.key==='ArrowLeft'&&OWNER.trails.get(state.focus?.name)?.length&&!e.target.closest('input,textarea')){e.preventDefault();ownerReturn();}});
+    el('panel').addEventListener('keydown',e=>{if(e.altKey&&e.key==='ArrowLeft'&&(OWNER.trails.get(state.focus?.name)?.length||ownerCampaignReturn())&&!e.target.closest('input,textarea')){e.preventDefault();ownerReturn();}});
   }
   function ownerWorkspaceSync () {
     if(!OWNER.ready||!el('planet-areas'))return;
@@ -6163,8 +6163,8 @@ explore {
     header.classList.toggle('workspace-header',appView);el('dashboard-location-bar').hidden=!focus;ownerSquadSync();document.body.style.setProperty('--owner-scene-width',Math.max(0,G.w-ownerPanelWidth()-24)+'px');
     el('panel-close').hidden=!!focus;ownerNavSync();ownerNavigationSync();ownerCabinSync();document.body.dataset.metricCanvas=String(appView&&['journey','northstar'].includes(OWNER.sections.get(name))&&primary==='growth');
     ownerGrowthFitInspector();periodDockSync();
-    const previous=OWNER.trails.get(name)?.at(-1),next=OWNER.forwards.get(name)?.at(-1),back=el('dashboard-return'),forward=el('dashboard-forward');
-    for(const [button,target,direction]of [[back,previous,'Back'],[forward,next,'Forward']]){button.disabled=!target||focus?.type!=='planet';const label=direction+(target?' to '+ownerSnapshotLabel(target):'');button.setAttribute('aria-label',label);button.title=label;}
+    const campaignBack=ownerCampaignReturn(),previous=campaignBack||OWNER.trails.get(name)?.at(-1),next=campaignBack?null:OWNER.forwards.get(name)?.at(-1),back=el('dashboard-return'),forward=el('dashboard-forward');
+    for(const [button,target,direction]of [[back,previous,'Back'],[forward,next,'Forward']]){button.disabled=!target||focus?.type!=='planet'&&!(campaignBack&&target===campaignBack);const label=direction+(target?' to '+ownerSnapshotLabel(target):'');button.setAttribute('aria-label',label);button.title=label;}
 
   }
   function ownerSnapshot () {
@@ -6194,10 +6194,25 @@ explore {
       if(state.month!==entry.month)setMonth(entry.month);
       OWNER.scrolls.set(entry.name+'|'+entry.section,entry.scroll);
       if(entry.area&&entry.area!=='overview')cinemaAreaSelect(entry.area);else ownerSelect(entry.section);
-      el('panel-body').scrollTop=entry.scroll;
+      el('panel-body').scrollTop=entry.scroll;OWNER.holdScroll=entry.scroll;
     }finally{OWNER.historyPause=false;}ownerWorkspaceSync();
   }
+  // A campaign opened from an app page remembers that view, so Back returns to it at the same scroll.
+  function ownerOpenCampaign (name) {
+    OWNER.campaignReturn=state.focus?.type==='planet'?{...ownerSnapshot(),campaign:name}:null;
+    openFocus('comet',name);ownerWorkspaceSync();
+  }
+  // The app page lays out over a few frames after a focus change; until then the browser clamps scrollTop to 0.
+  function ownerSettleScroll (entry) {
+    const apply=()=>{const body=el('panel-body');if(state.focus?.name===entry.name&&OWNER.sections.get(entry.name)===entry.section&&body.scrollTop<entry.scroll)body.scrollTop=entry.scroll;};
+    requestAnimationFrame(()=>requestAnimationFrame(apply));for(const ms of [150,400,900])setTimeout(apply,ms);
+  }
+  function ownerCampaignReturn () {
+    const entry=OWNER.campaignReturn;return state.focus?.type==='comet'&&entry?.campaign===state.focus.name?entry:null;
+  }
   function ownerReturn () {
+    const back=ownerCampaignReturn();
+    if(back){OWNER.campaignReturn=null;if(state.stack.at(-1)?.type==='planet'&&state.stack.at(-1).name===back.name)state.stack.pop();openFocus('planet',back.name,true);ownerRestoreView(back);ownerSettleScroll(back);return;}
     const name=state.focus?.name,entry=OWNER.trails.get(name)?.pop();if(!entry)return;
     const forwards=OWNER.forwards.get(name)||[];forwards.push(ownerSnapshot());OWNER.forwards.set(name,forwards.slice(-20));ownerRestoreView(entry);
   }
@@ -7011,7 +7026,7 @@ SOFTWARE.
         data:rows.map(r=>{const up=(Number(r.revenue)||0)>=Number(r.spend);return {value:[Number(r.spend),Number(r.revenue)||0],itemStyle:{color:up?OWNER_TONE.up:OWNER_TONE.down,borderColor:'#273950',borderWidth:2}};}),
         label:{show:true,position:'right',distance:8,formatter:x=>short(rows[x.dataIndex].campaign)},
         markLine:{silent:true,symbol:'none',lineStyle:{color:OWNER_TONE.muted,type:'dashed',width:1},label:{show:true,position:'insideEndTop',formatter:'$1 back per $1',color:OWNER_TONE.muted,fontSize:11},data:[[{coord:[0,0]},{coord:[top,top]}]]}}]});
-    chart.on('click',x=>{const r=rows[x.dataIndex];if(r)openFocus('comet',r.campaign);});
+    chart.on('click',x=>{const r=rows[x.dataIndex];if(r)ownerOpenCampaign(r.campaign);});
   }
   function ownerChartsRender (p,section) {
     if(section==='monetization'){ownerMixChart(p);ownerMixDonut(p);ownerCountryChart(p);}
