@@ -27,7 +27,7 @@ import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
 import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
-import { stateDot, toneText } from '../shared/tone';
+import { stateDot } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
 import { typeIcon } from '../shared/type-icon';
 import { MapsTo } from './control-row';
@@ -69,10 +69,10 @@ export function QueryRow({
   const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
   const trust = queryTrust(declaration, query);
-  // When it ran, where its rows came from, and how long that took: one line, whichever parts are known.
+  // Where its rows came from, when it ran, and how long that took: one line, whichever parts are known.
   const lastRun = [
-    query.debug?.executedAt && <AgoTime at={query.debug.executedAt} />,
     query.debug && (query.debug.fromCache ? 'cache' : 'database'),
+    query.debug?.executedAt && <AgoTime at={query.debug.executedAt} />,
     latest?.durationMs !== undefined && `${latest.durationMs} ms`,
   ].filter(Boolean);
   const allFilters = [...declaredFilters(declaration?.aql), ...inputs];
@@ -190,57 +190,53 @@ export function QueryRow({
 
   return (
     <EntityRow kind="query" summary={summary} below={below} {...props}>
-      <Fields>
-        <Field label="Trust">
-          <span className={cn('font-medium', toneText[trust.tone])}>
-            Level {trust.level} · {TRUST_LEVELS[trust.level].name}
-          </span>
-          <span className="block text-muted-foreground">{trust.text}</span>
-        </Field>
-        <Field label="Dataset">
-          <span className="inline-flex items-center gap-1.5">
-            <Boxes className="size-3.5 shrink-0 text-muted-foreground" />
-            {declaration?.dataset || 'none declared'}
-          </span>
-        </Field>
-        {lastRun.length > 0 && (
-          <Field label="Last run">
-            {lastRun.map((part, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered line
-              <span key={i}>
-                {i > 0 && ' · '}
-                {part}
-              </span>
-            ))}
+      <Section title="Details">
+        <Fields>
+          <Field label="Dataset">
+            <span className="inline-flex items-center gap-1.5">
+              <Boxes className="size-3.5 shrink-0 text-muted-foreground" />
+              {declaration?.dataset || 'none declared'}
+            </span>
           </Field>
-        )}
-        <Field label="On the page">
-          <Drawn
-            kind="query"
-            app={props.app}
-            name={props.name}
-            usage={props.usage}
-            blockKey={props.blockKey}
-            onReveal={onReveal}
-            onLocate={props.onLocate}
-          />
-        </Field>
-        <Field label="Cross-filters">
-          <MapsTo
-            app={props.app}
-            targets={crossTargets}
-            onReveal={onReveal}
-            empty={<span className="text-muted-foreground">No query</span>}
-          />
-        </Field>
-        {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
-        {(query.hasMore || query.page > 1) && (
-          <Field label="Page">
-            {query.page}
-            {query.hasMore && ', more available'}
+          {lastRun.length > 0 && (
+            <Field label="Last run">
+              {lastRun.map((part, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered line
+                <span key={i}>
+                  {i > 0 && ' · '}
+                  {part}
+                </span>
+              ))}
+            </Field>
+          )}
+          <Field label="On the page">
+            <Drawn
+              kind="query"
+              app={props.app}
+              name={props.name}
+              usage={props.usage}
+              blockKey={props.blockKey}
+              onReveal={onReveal}
+              onLocate={props.onLocate}
+            />
           </Field>
-        )}
-      </Fields>
+          <Field label="Cross-filters">
+            <MapsTo
+              app={props.app}
+              targets={crossTargets}
+              onReveal={onReveal}
+              empty={<span className="text-muted-foreground">No query</span>}
+            />
+          </Field>
+          {query.selectedRowCount > 0 && <Field label="Selected">{query.selectedRowCount} rows</Field>}
+          {(query.hasMore || query.page > 1) && (
+            <Field label="Page">
+              {query.page}
+              {query.hasMore && ', more available'}
+            </Field>
+          )}
+        </Fields>
+      </Section>
 
       {query.columns.length === 0 ? (
         <Section title="Definition">
@@ -452,7 +448,7 @@ function Section({
         {count !== undefined && <span className="font-normal text-muted-foreground">· {count}</span>}
         {action && <div className="ml-auto">{action}</div>}
       </div>
-      <CollapsibleContent className="space-y-2">{children}</CollapsibleContent>
+      <CollapsibleContent className="space-y-2 pl-[18px]">{children}</CollapsibleContent>
     </Collapsible>
   );
 }
