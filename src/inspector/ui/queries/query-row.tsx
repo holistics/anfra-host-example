@@ -1,22 +1,15 @@
 import type { ColumnMeta, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import {
-  Binary,
   Boxes,
-  Braces,
-  Calendar,
-  CalendarClock,
   ChartColumn,
   ChevronRight,
   CircleHelp,
   GitFork,
-  Hash,
   ListFilter,
   type LucideIcon,
   Sigma,
   SlidersHorizontal,
   Table2,
-  ToggleLeft,
-  Type,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -36,23 +29,12 @@ import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
 import { stateDot, toneText } from '../shared/tone';
 import { TrustBars } from '../shared/trust-bars';
+import { typeIcon } from '../shared/type-icon';
 import { MapsTo } from './control-row';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
 import { RequestList } from './request-list';
 
 type CodeTab = 'declared' | 'aql' | 'sql' | 'signature';
-
-/** The icon of a column's semantic type. */
-const typeIcon: Record<ColumnMeta['semantic_type'], LucideIcon> = {
-  text: Type,
-  number: Hash,
-  date: Calendar,
-  datetime: CalendarClock,
-  truefalse: ToggleLeft,
-  bit: Binary,
-  json: Braces,
-  unknown: CircleHelp,
-};
 
 export function QueryRow({
   query,

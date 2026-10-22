@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { toggleIn } from '@/lib/utils';
 import { wiringChecks } from '../model/checks';
 import { countProblems, entityKey, firstEntityUnder, keysUnder } from '../model/format';
 import { queryCounts } from '../model/issues';
@@ -79,6 +80,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
     open: new Set(),
     closedSections: new Set(),
   });
+  const [dataOpen, setDataOpen] = useState<Set<string>>(new Set());
   const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set(), crossFilters: false });
   const [lineage, setLineage] = useState<LineageFetch>();
   const [lineagePick, setLineagePick] = useState<LineagePick>();
@@ -208,6 +210,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               structure={structure}
               requests={attributed.byQuery}
               canExport={source.env.reader.permissions.canExportData}
+              metricDocs={source.env.metricDocs}
+              open={dataOpen}
+              onToggle={(key) => setDataOpen((prev) => toggleIn(prev, key))}
               onReveal={reveal}
             />
           </div>
