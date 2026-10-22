@@ -5,7 +5,7 @@ import type {
   InspectedStructure,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
-import { ChevronRight, CircleHelp, Code2, Download, Search, Sigma, Table2 } from 'lucide-react';
+import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -178,7 +178,6 @@ function TableCard({
       className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}
     >
       <CollapsibleTrigger className="group flex h-10 w-full items-center gap-2.5 rounded-md pr-2 pl-3 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50">
-        <Table2 className="size-3.5 shrink-0 text-muted-foreground" />
         <h3 className="min-w-0 truncate font-medium">{title}</h3>
         {query.state === 'error' && <span className="shrink-0 text-xs text-destructive">couldn't load</span>}
         <span className="ml-auto shrink-0 text-xs text-muted-foreground">
@@ -226,7 +225,7 @@ function TableCard({
             </Tooltip>
           )}
           <Button variant="ghost" size="xs" onClick={onTechnical}>
-            <Code2 />
+            <Database />
             Query
           </Button>
         </div>
