@@ -184,7 +184,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
             </TabsTrigger>
             <TabsTrigger value="wiring">
               <Cable />
-              Wiring
+              Declaration
               <Count n={warnings} />
             </TabsTrigger>
           </TabsList>
