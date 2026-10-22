@@ -58,8 +58,8 @@ There is no modal or backdrop.
 **Pick** lives in the panel's header: it enters pick mode in the frame and opens the panel. Picking
 a node holds it highlighted and opens the **pick menu** beside it (anchored to the clicked element's
 rect, like the comment card in `src/comments/SPEC.md` §4.3), asking what to check:
-- **Data**: opens the table of the first query at or below the node, in Data, and switches to that tab.
-- **Queries**: opens the row of the first query or control at or below the node, in Queries.
+- **Data** ("Underlying data"): opens the table of the first query at or below the node, in Data, and switches to that tab.
+- **Queries** ("How data is constructed"): opens the row of the first query or control at or below the node, in Queries.
 - **Lineage**: pins the first node of the picked subtree that the canvas draws (a control, block or
   query) and centers it, in Lineage; if a filter or focus hides them all, nothing is pinned.
 - **Structure**: selects the node and reveals it in the tree.
