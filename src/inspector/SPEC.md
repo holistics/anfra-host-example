@@ -80,7 +80,7 @@ The inspector state also resets when the path changes or the repo revision chang
 ```
 ┌ Ecommerce Overview          [Copy report] [×] ┐
 │ ● 4 ok  ● 1 error  ◌ 1 running  ◆ 2 dirty     │   ← status bar (new)
-│ [Overview] [Data] [Structure ⚠2] [Queries ⚠1] [Lineage] [Declaration ⚠1] │
+│ [Overview] [Data] [Structure ⚠2] [Lineage] [Queries ⚠1] [Declaration ⚠1] │
 ├───────────────────────────────────────────────┤
 │  tab body (scrolls)                            │
 └───────────────────────────────────────────────┘
@@ -90,7 +90,7 @@ The inspector state also resets when the path changes or the repo revision chang
   totals across them.
 - **Status bar**: counts by query state, plus dirty queries. A count of zero is hidden.
   Each count links to Queries with the matching filter.
-- **Tabs**: Overview · Data · Structure · Queries · Lineage · Declaration, in that order. A tab shows a badge with its issue
+- **Tabs**: Overview · Data · Structure · Lineage · Queries · Declaration, in that order. A tab shows a badge with its issue
   count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Declaration counts checks at warn or error level.
   Queries counts failed queries. Data (§4.11) has no badge.
 - **Default tab**: Overview. Pick goes to the tab chosen in the pick menu (§3).

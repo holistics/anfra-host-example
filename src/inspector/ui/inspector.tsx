@@ -182,14 +182,14 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               Structure
               <Count n={problems} />
             </TabsTrigger>
+            <TabsTrigger value="lineage">
+              <GitFork />
+              Lineage
+            </TabsTrigger>
             <TabsTrigger value="queries">
               <Database />
               Queries
               <Count n={counts?.error ?? 0} />
-            </TabsTrigger>
-            <TabsTrigger value="lineage">
-              <GitFork />
-              Lineage
             </TabsTrigger>
             <TabsTrigger value="wiring">
               <Code />
