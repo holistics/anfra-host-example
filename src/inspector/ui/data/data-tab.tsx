@@ -1,13 +1,6 @@
-import type {
-  ColumnMeta,
-  InspectedApp,
-  InspectedQuery,
-  InspectedStructure,
-  QueryDeclaration,
-  StructureNode,
-} from '@holistics/anfra-sdk/common';
+import type { ColumnMeta, InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -15,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { columnDoc, columnKind } from '../../model/column-kind';
-import { blockNodeKey, entityKey, usageOf } from '../../model/format';
+import { entityKey } from '../../model/format';
 import { type QueryInput, queryInputs } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
@@ -27,7 +20,6 @@ import { typeIcon } from '../shared/type-icon';
 
 interface Props {
   apps: InspectedApp[] | undefined;
-  structure: InspectedStructure | undefined;
   /** Each query's requests, newest first, keyed `<app>/<name>`. */
   requests: Map<string, { entry: RequestEntry }[]>;
   /** Whether the reader may export data; without it there is no download. */
@@ -41,21 +33,10 @@ interface Props {
 }
 
 /**
- * The tables behind the page, for someone who doesn't write queries: one per query, titled as the
- * page names it, with the rows it last returned. See SPEC.md §4.11.
+ * The tables behind the page, for someone who doesn't write queries: one per query, titled by its name, with the rows it last returned. See SPEC.md §4.11.
  */
-export function DataTab({
-  apps,
-  structure,
-  requests,
-  canExport,
-  metricDocs,
-  open,
-  onToggle,
-  onReveal,
-}: Props) {
+export function DataTab({ apps, requests, canExport, metricDocs, open, onToggle, onReveal }: Props) {
   const [search, setSearch] = useState('');
-  const nodes = useMemo(() => nodesByKey(structure?.nodes ?? []), [structure]);
   if (!apps) return <Note>Waiting for the Data App…</Note>;
   if (apps.length === 0) return <Note>This Data App hasn't created an SDK app.</Note>;
 
@@ -80,7 +61,7 @@ export function DataTab({
         {total === 0 && <Note>This app has no tables yet.</Note>}
         {apps.map((app, index) => {
           const tables = Object.entries(app.queries)
-            .map(([name, query]) => ({ name, query, title: titleOf(structure, nodes, index, name) }))
+            .map(([name, query]) => ({ name, query, title: name }))
             .filter(({ title }) => !term || title.toLowerCase().includes(term));
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: an app's index is its identity in the frame
@@ -122,27 +103,6 @@ export function DataTab({
       </div>
     </div>
   );
-}
-
-/** Every node in the structure by its key, for looking blocks up once per structure. */
-function nodesByKey(nodes: StructureNode[], map = new Map<string, StructureNode>()) {
-  for (const node of nodes) {
-    map.set(node.key, node);
-    nodesByKey(node.children, map);
-  }
-  return map;
-}
-
-/** What the page calls a query: the label of the first block that draws it, else the query's name. */
-function titleOf(
-  structure: InspectedStructure | undefined,
-  nodes: Map<string, StructureNode>,
-  app: number,
-  name: string,
-): string {
-  const id = usageOf(structure, 'query', app, name)?.blocks[0];
-  const key = id ? blockNodeKey(structure, id, 'query', app, name) : undefined;
-  return (key && nodes.get(key)?.label) || name;
 }
 
 function TableCard({
