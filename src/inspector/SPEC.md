@@ -112,7 +112,7 @@ single app there is no app header.
 
 The landing tab. It answers "is this app healthy, and where do I look?"
 
-1. **Trust card**: a 3-bar meter, a level name and a sentence of why. An (i) tooltip lists all the
+1. **Trust card**: a 3-bar meter, a level name and a sentence of why. An (i) popover lists all the
    levels. One query's level is the first rule that matches:
    1. *Unverified*: the query declares no dataset.
    2. *Verified, incomplete*: the query is in the `error` state, or hasn't returned yet (`idle` or
