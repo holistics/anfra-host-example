@@ -1,5 +1,5 @@
 import type { InspectedApp, InspectedStructure, LocateTarget } from '@holistics/anfra-sdk/common';
-import { TriangleAlert } from 'lucide-react';
+import { Info, TriangleAlert, X } from 'lucide-react';
 import {
   type Dispatch,
   type ReactNode,
@@ -88,6 +88,8 @@ export function LineageTab({
   useEffect(() => void loadElk(), []);
   const [centerOn, setCenterOn] = useState<{ id: string; nonce: number }>();
   const handledPick = useRef(pick?.nonce);
+  // The last pick landed on nothing the canvas draws: said, so the switch of tab isn't all that happens.
+  const [missedPick, setMissedPick] = useState(false);
   const targets = useMemo(() => lineageTargets(apps ?? []), [apps]);
   const key = targets.map(targetKey).join('|');
   // The set of fields this mount last started a trace for. `fetched` says so too, but only once the
@@ -164,7 +166,7 @@ export function LineageTab({
   const shown = useMemo(() => (focus ? focusGraph(filtered, focus.id) : filtered), [filtered, focus]);
 
   // A pick pins the first of its nodes the canvas draws, and brings it into view. If a filter or
-  // focus hides them all, the pick is dropped: it is no reason to change the reader's view.
+  // focus hides them all, the pick is dropped, with a note: it is no reason to change the reader's view.
   useEffect(() => {
     if (!pick || pick.nonce === handledPick.current) return;
     handledPick.current = pick.nonce;
@@ -173,9 +175,11 @@ export function LineageTab({
       if (hit) {
         onView((v) => ({ ...v, selected: hit.id }));
         setCenterOn({ id: hit.id, nonce: pick.nonce });
+        setMissedPick(false);
         return;
       }
     }
+    setMissedPick(true);
   }, [pick, shown, onView]);
 
   // A pinned block or query is outlined on the page too, until the pin moves or the tab closes.
@@ -252,6 +256,23 @@ export function LineageTab({
     <div className="flex h-full flex-col">
       {toolbar(() => setExpanded(true))}
       <Unavailable env={env} fetched={fetched} />
+      {missedPick && (
+        <div className="flex items-start gap-1.5 border-b bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+          <Info className="mt-px size-3.5 shrink-0" />
+          <span className="flex-1">
+            Nothing you picked is drawn here: it holds no query or control, or the current filter or focus
+            hides it.
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setMissedPick(false)}
+            className="-my-0.5 rounded-sm p-0.5 hover:bg-accent"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
       <div className="min-h-0 flex-1">{!expanded && canvas()}</div>
       <Dialog open={expanded} onOpenChange={setExpanded}>
         <DialogContent className="flex h-[90vh] w-[95vw] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[95vw]">

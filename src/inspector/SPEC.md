@@ -57,16 +57,20 @@ There is no modal or backdrop.
 
 **Pick** lives in the panel's header: it enters pick mode in the frame and opens the panel. Picking
 a node holds it highlighted and opens the **pick menu** beside it (anchored to the clicked element's
-rect, like the comment card in `src/comments/SPEC.md` §4.3), asking what to check:
-- **Data** ("Underlying data"): opens the table of the first query at or below the node, in Data, and switches to that tab.
+rect and following it as the frame scrolls, like the comment card in `src/comments/SPEC.md` §4.3),
+asking what to check. A pick that lands before the frame's structure waits up to 2s for it, then says
+it couldn't find the element:
+- **Data** ("Underlying data"): opens the table of the first query at or below the node, in Data, switches to that tab, and scrolls the table into view with a flash.
 - **Queries** ("How data is constructed"): opens the row of the first query or control at or below the node, in Queries.
 - **Lineage**: pins the first node of the picked subtree that the canvas draws (a control, block or
-  query) and centers it, in Lineage; if a filter or focus hides them all, nothing is pinned.
+  query) and centers it, in Lineage; if none is drawn (a filter or focus hides them all, or the
+  subtree holds nothing the canvas draws), nothing is pinned and a dismissible note says so.
 - **Structure**: selects the node and reveals it in the tree.
 
 Data and Queries are disabled ("None here") when the node holds no query (Data) or no query or
-control (Queries). The menu names the node (kind pill and label) and closes on Escape, a click
-outside or a choice; closing it highlights nothing and navigates nowhere. The tab the panel is on
+control (Queries). The menu names the node (kind pill and label); Up, Down, Home and End move between
+its choices. It closes on Escape, a click outside or a choice; closing it lets go of its own
+highlight (not a comment card's) and navigates nowhere. The tab the panel is on
 doesn't change what a pick does. The frame's pick report doesn't carry modifier keys or a position,
 so the host's injected script posts each click's position and element just before it. The frame
 leaves pick mode after a pick or on Escape.
