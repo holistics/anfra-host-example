@@ -375,7 +375,7 @@ one click away.
 - **One card per query**, in declaration order, grouped by app when there are several. Cards are
   closed by default, like Queries' rows; the title row opens one, and which are open survives a
   switch of tab:
-  - **Title**: the label of the first block that draws the query, else the query's name.
+  - **Title**: the query's name.
   - **Updated**: when the rows were returned.
   - **Table**: the first rows of the latest successful request (the same preview as in Queries ›
     Requests), with the columns' labels as headers, not their keys. Each header has an icon (Σ for a metric, the

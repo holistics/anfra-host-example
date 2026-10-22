@@ -216,7 +216,6 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
           <div className="h-full overflow-y-auto">
             <DataTab
               apps={apps}
-              structure={structure}
               requests={attributed.byQuery}
               canExport={source.env.reader.permissions.canExportData}
               metricDocs={source.env.metricDocs}
