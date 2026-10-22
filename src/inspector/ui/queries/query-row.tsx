@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { columnDoc, fieldKey } from '../../model/column-kind';
 import { dedent } from '../../model/declaration-code';
 import { plural, prettyJson } from '../../model/format';
 import type { QueryInput } from '../../model/inputs';
@@ -350,9 +351,7 @@ export function QueryRow({
 function filteredColumn(columns: ColumnMeta[], field: string): ColumnMeta | undefined {
   // An aggregated mapping reads `sum(model.field)`; the field is what's inside.
   const bare = /^\w+\((.*)\)$/.exec(field)?.[1] ?? field;
-  return columns.find(
-    (column) => (column.modelId ? `${column.modelId}.${column.fieldName}` : column.fieldName) === bare,
-  );
+  return columns.find((column) => fieldKey(column) === bare);
 }
 
 /** A titled, collapsible part of an opened query, with a hint on what it holds. */
@@ -446,7 +445,7 @@ function FieldList({
               </span>
             </>
           );
-          // An ad hoc column is the query's own: the catalog has nothing on it.
+          const doc = columnDoc(column, docs);
           if (column.adhoc) {
             return (
               <li key={column.name} className="flex items-center gap-2.5 px-3 py-2 text-xs">
@@ -454,8 +453,6 @@ function FieldList({
               </li>
             );
           }
-          // A dataset metric has no model; a model's field is keyed by `model.field`.
-          const doc = docs?.[column.modelId ? `${column.modelId}.${column.fieldName}` : column.fieldName];
           return (
             <FieldItem key={column.name} column={column} doc={doc} known={!!docs}>
               {summary}

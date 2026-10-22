@@ -103,7 +103,7 @@ function moveFocus(event: KeyboardEvent<HTMLDivElement>) {
     event.key === 'ArrowDown'
       ? (at + 1) % items.length
       : event.key === 'ArrowUp'
-        ? (at - 1 + items.length) % items.length
+        ? (at <= 0 ? items.length : at) - 1
         : event.key === 'Home'
           ? 0
           : event.key === 'End'

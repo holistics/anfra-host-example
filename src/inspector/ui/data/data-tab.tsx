@@ -1,10 +1,9 @@
 import type { ColumnMeta, InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { columnDoc, columnKind } from '../../model/column-kind';
@@ -14,6 +13,7 @@ import type { RequestEntry } from '../../model/requests';
 import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
 import { AgoTime } from '../shared/ago-time';
 import { Note } from '../shared/fields';
+import { HoverPopover } from '../shared/hover-popover';
 import { QueryIndicators, queryFilters } from '../shared/query-indicators';
 import { ResultTable, rowCount } from '../shared/result-table';
 import { scrollToAndFlash } from '../shared/reveal';
@@ -278,18 +278,6 @@ function ColumnHeader({
   doc: MetricDoc | undefined;
 }) {
   const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
-  const [open, setOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
-  const show = () => {
-    clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  // Grace period so the pointer can travel from the header into the popover.
-  const hideSoon = () => {
-    clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
-  };
   const rows: [string, ReactNode][] = [
     ['Type', doc?.type ?? columnKind(column)],
     ['Format', doc?.format && <code className="font-mono">{doc.format}</code>],
@@ -304,35 +292,30 @@ function ColumnHeader({
     ['Description', doc?.description],
   ];
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild onPointerEnter={show} onPointerLeave={hideSoon}>
+    <HoverPopover
+      side="bottom"
+      align="start"
+      className="w-72 space-y-2 p-3 text-xs font-normal tracking-normal normal-case"
+      trigger={
         <span className="inline-flex cursor-help items-center gap-1">
           <Icon className="size-3 shrink-0 text-muted-foreground" />
           {label}
         </span>
-      </PopoverTrigger>
-      <PopoverContent
-        side="bottom"
-        align="start"
-        onPointerEnter={show}
-        onPointerLeave={hideSoon}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        className="w-72 space-y-2 p-3 text-xs font-normal tracking-normal normal-case"
-      >
-        <div className="text-sm font-medium">{doc?.label || label}</div>
-        <dl className="space-y-1.5">
-          {rows.map(
-            ([term, value]) =>
-              value && (
-                <div key={term}>
-                  <dt className="text-muted-foreground">{term}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ),
-          )}
-        </dl>
-      </PopoverContent>
-    </Popover>
+      }
+    >
+      <div className="text-sm font-medium">{doc?.label || label}</div>
+      <dl className="space-y-1.5">
+        {rows.map(
+          ([term, value]) =>
+            value && (
+              <div key={term}>
+                <dt className="text-muted-foreground">{term}</dt>
+                <dd>{value}</dd>
+              </div>
+            ),
+        )}
+      </dl>
+    </HoverPopover>
   );
 }
 

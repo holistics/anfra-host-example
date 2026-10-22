@@ -66,7 +66,9 @@ interface Props {
   onLocate: (target: LocateTarget) => void;
   onHighlight: (node: string | null) => void;
   onReveal: (target: RevealTarget) => void;
+  /** A pick to land on, until it has been: then `onPicked`, so a remount doesn't land it again. */
   pick?: LineagePick;
+  onPicked: () => void;
 }
 
 /** Where each number on the page comes from, as a canvas: block, query, field, dataset, model, table. */
@@ -82,12 +84,12 @@ export function LineageTab({
   onHighlight,
   onReveal,
   pick,
+  onPicked,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   // The layout engine is most of the tab's weight: start loading it now, not at the first layout.
   useEffect(() => void loadElk(), []);
   const [centerOn, setCenterOn] = useState<{ id: string; nonce: number }>();
-  const handledPick = useRef(pick?.nonce);
   // The last pick landed on nothing the canvas draws: said, so the switch of tab isn't all that happens.
   const [missedPick, setMissedPick] = useState(false);
   const targets = useMemo(() => lineageTargets(apps ?? []), [apps]);
@@ -168,19 +170,16 @@ export function LineageTab({
   // A pick pins the first of its nodes the canvas draws, and brings it into view. If a filter or
   // focus hides them all, the pick is dropped, with a note: it is no reason to change the reader's view.
   useEffect(() => {
-    if (!pick || pick.nonce === handledPick.current) return;
-    handledPick.current = pick.nonce;
-    for (const key of pick.keys) {
-      const hit = shown.nodes.find((n) => n.structureKey === key);
-      if (hit) {
-        onView((v) => ({ ...v, selected: hit.id }));
-        setCenterOn({ id: hit.id, nonce: pick.nonce });
-        setMissedPick(false);
-        return;
-      }
-    }
-    setMissedPick(true);
-  }, [pick, shown, onView]);
+    if (!pick) return;
+    onPicked();
+    const hit = pick.keys
+      .map((key) => shown.nodes.find((n) => n.structureKey === key))
+      .find((n) => n !== undefined);
+    setMissedPick(!hit);
+    if (!hit) return;
+    onView((v) => ({ ...v, selected: hit.id }));
+    setCenterOn({ id: hit.id, nonce: pick.nonce });
+  }, [pick, shown, onView, onPicked]);
 
   // A pinned block or query is outlined on the page too, until the pin moves or the tab closes.
   const selected = view.selected ? shown.nodes.find((n) => n.id === view.selected) : undefined;

@@ -1,6 +1,6 @@
 import type { StructureNode } from '@holistics/anfra-sdk/common';
 import { Code, Database, GitFork, LayoutDashboard, ListTree, Sheet } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -87,6 +87,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [lineagePick, setLineagePick] = useState<LineagePick>();
 
   const handledPick = useRef(picked?.nonce);
+  const clearLineagePick = useCallback(() => setLineagePick(undefined), []);
 
   const reveal = (target: RevealTarget) => {
     if ('tab' in target) {
@@ -301,6 +302,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
             onHighlight={source.highlight}
             onReveal={reveal}
             pick={lineagePick}
+            onPicked={clearLineagePick}
           />
         </TabsContent>
 
