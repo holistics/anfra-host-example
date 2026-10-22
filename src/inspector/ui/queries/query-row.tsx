@@ -441,7 +441,7 @@ function Section({
     <Collapsible defaultOpen={defaultOpen} className="group/section space-y-2">
       <div className="flex items-center gap-1 text-sm font-medium">
         <CollapsibleTrigger className="flex items-center gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/section:rotate-90" />
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition group-focus-within/section:opacity-100 group-hover/section:opacity-100 group-data-[state=open]/section:rotate-90" />
           {title}
         </CollapsibleTrigger>
         {info && (
