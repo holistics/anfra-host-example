@@ -6,10 +6,11 @@ import type {
   StructureNode,
 } from '@holistics/anfra-sdk/common';
 import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { columnDoc, columnKind } from '../../model/column-kind';
@@ -18,7 +19,7 @@ import type { RequestEntry } from '../../model/requests';
 import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
 import { AgoTime } from '../shared/ago-time';
 import { Note } from '../shared/fields';
-import { ResultTable } from '../shared/result-table';
+import { ResultTable, rowCount } from '../shared/result-table';
 import { typeIcon } from '../shared/type-icon';
 
 interface Props {
@@ -170,6 +171,33 @@ function TableCard({
   // When the rows came back, not when they were asked for.
   const returned = latest && new Date(new Date(latest.at).getTime() + (latest.durationMs ?? 0));
   const columns = new Map(query.columns.map((c) => [c.name, c]));
+  const toolbar = (
+    <div className="flex items-center gap-1">
+      {canExport && complete && query.state !== 'error' && rows && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Download CSV"
+              onClick={() => download(`${title}.csv`, toCsv(rows.columns, rows.preview, labels))}
+            >
+              <Download />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download CSV</TooltipContent>
+        </Tooltip>
+      )}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon-xs" aria-label="Query" onClick={onTechnical}>
+            <Database />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Query</TooltipContent>
+      </Tooltip>
+    </div>
+  );
   return (
     <Collapsible
       open={open}
@@ -177,16 +205,34 @@ function TableCard({
       data-entity={entityKey('query', index, name)}
       className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}
     >
-      <CollapsibleTrigger className="group flex h-10 w-full items-center gap-2.5 rounded-md pr-2 pl-3 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50">
-        <h3 className="min-w-0 truncate font-medium">{title}</h3>
-        {query.state === 'error' && <span className="shrink-0 text-xs text-destructive">couldn't load</span>}
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-          {returned && query.state !== 'error' ? <AgoTime at={returned.toISOString()} /> : null}
-        </span>
-        <span className="flex size-6 shrink-0 items-center justify-center">
+      <div className="flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
+        <CollapsibleTrigger className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <h3 className="min-w-0 truncate font-medium">{title}</h3>
+          {query.state === 'error' && (
+            <span className="shrink-0 text-xs text-destructive">couldn't load</span>
+          )}
+          {rows && query.state !== 'error' && (
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              {rowCount(rows.preview.length, latest?.numRows)}
+            </span>
+          )}
+          <span
+            className={cn(
+              'shrink-0 text-xs text-muted-foreground',
+              !(rows && query.state !== 'error') && 'ml-auto',
+            )}
+          >
+            {returned && query.state !== 'error' ? <AgoTime at={returned.toISOString()} /> : null}
+          </span>
+        </CollapsibleTrigger>
+        {toolbar}
+        <CollapsibleTrigger
+          aria-label={open ? 'Collapse' : 'Expand'}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
           <ChevronRight className={cn('size-3 transition-transform', open && 'rotate-90')} />
-        </span>
-      </CollapsibleTrigger>
+        </CollapsibleTrigger>
+      </div>
       <CollapsibleContent className="space-y-3 px-3 pt-1.5 pb-3">
         {query.state === 'error' ? (
           // The rows before the error aren't today's answer, so they don't show.
@@ -197,6 +243,7 @@ function TableCard({
             rows={rows.preview}
             total={latest?.numRows}
             labels={labels}
+            hideCount
             renderHeader={(column, label) => {
               const meta = columns.get(column);
               return meta ? <ColumnHeader label={label} column={meta} doc={columnDoc(meta, docs)} /> : label;
@@ -208,27 +255,6 @@ function TableCard({
         ) : (
           <p className="text-xs text-muted-foreground">Loading this table…</p>
         )}
-        <div className="flex items-center gap-1">
-          {canExport && complete && query.state !== 'error' && rows && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Download CSV"
-                  onClick={() => download(`${title}.csv`, toCsv(rows.columns, rows.preview, labels))}
-                >
-                  <Download />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Download CSV</TooltipContent>
-            </Tooltip>
-          )}
-          <Button variant="ghost" size="xs" onClick={onTechnical}>
-            <Database />
-            Query
-          </Button>
-        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -245,19 +271,61 @@ function ColumnHeader({
   doc: MetricDoc | undefined;
 }) {
   const Icon = column.isMeasure ? Sigma : (typeIcon[column.semantic_type] ?? CircleHelp);
+  const [open, setOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+  const show = () => {
+    clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  // Grace period so the pointer can travel from the header into the popover.
+  const hideSoon = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+  const rows: [string, ReactNode][] = [
+    ['Type', doc?.type ?? columnKind(column)],
+    ['Format', doc?.format && <code className="font-mono">{doc.format}</code>],
+    [
+      'Formula',
+      doc?.definition && (
+        <code className="block rounded-md border bg-muted px-2 py-1.5 font-mono break-words whitespace-pre-wrap">
+          {doc.definition}
+        </code>
+      ),
+    ],
+    ['Description', doc?.description],
+  ];
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex items-center gap-1">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild onPointerEnter={show} onPointerLeave={hideSoon}>
+        <span className="inline-flex cursor-help items-center gap-1">
           <Icon className="size-3 shrink-0 text-muted-foreground" />
           {label}
         </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-64 text-xs">
-        <div className="font-medium">{columnKind(column)}</div>
-        {doc?.description && <div className="mt-0.5">{doc.description}</div>}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        onPointerEnter={show}
+        onPointerLeave={hideSoon}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        className="w-72 space-y-2 p-3 text-xs font-normal tracking-normal normal-case"
+      >
+        <div className="text-sm font-medium">{doc?.label || label}</div>
+        <dl className="space-y-1.5">
+          {rows.map(
+            ([term, value]) =>
+              value && (
+                <div key={term}>
+                  <dt className="text-muted-foreground">{term}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ),
+          )}
+        </dl>
+      </PopoverContent>
+    </Popover>
   );
 }
 
