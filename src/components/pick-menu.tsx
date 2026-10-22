@@ -17,8 +17,8 @@ interface Props {
 }
 
 const choices: { target: PickTarget; label: string; hint: string; icon: typeof Sheet }[] = [
-  { target: 'data', label: 'Data', hint: 'The table behind it', icon: Sheet },
-  { target: 'queries', label: 'Queries', hint: 'How it is asked for', icon: Code },
+  { target: 'data', label: 'Data', hint: 'Underlying data', icon: Sheet },
+  { target: 'queries', label: 'Queries', hint: 'How data is constructed', icon: Code },
   { target: 'lineage', label: 'Lineage', hint: 'Where it comes from', icon: GitFork },
   { target: 'structure', label: 'Structure', hint: 'Its place in the page', icon: ListTree },
 ];
