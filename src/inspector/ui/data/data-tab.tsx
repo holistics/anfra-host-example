@@ -3,6 +3,7 @@ import type {
   InspectedApp,
   InspectedQuery,
   InspectedStructure,
+  QueryDeclaration,
   StructureNode,
 } from '@holistics/anfra-sdk/common';
 import { ChevronRight, CircleHelp, Database, Download, Search, Sigma } from 'lucide-react';
@@ -15,10 +16,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { columnDoc, columnKind } from '../../model/column-kind';
 import { blockNodeKey, entityKey, usageOf } from '../../model/format';
+import { type QueryInput, queryInputs } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
 import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
 import { AgoTime } from '../shared/ago-time';
 import { Note } from '../shared/fields';
+import { QueryIndicators, queryFilters } from '../shared/query-indicators';
 import { ResultTable, rowCount } from '../shared/result-table';
 import { typeIcon } from '../shared/type-icon';
 
@@ -106,6 +109,8 @@ export function DataTab({
                   }
                   canExport={canExport}
                   docs={metricDocs?.[app.declaration.queries[name]?.dataset ?? '']}
+                  declaration={app.declaration.queries[name]}
+                  filters={queryFilters(app.declaration.queries[name], queryInputs(app, name)).active}
                   open={open.has(entityKey('query', index, name))}
                   onToggle={() => onToggle(entityKey('query', index, name))}
                   onTechnical={() => onReveal({ entity: 'query', app: index, name })}
@@ -148,6 +153,8 @@ function TableCard({
   latest,
   canExport,
   docs,
+  declaration,
+  filters,
   open,
   onToggle,
   onTechnical,
@@ -159,6 +166,9 @@ function TableCard({
   latest: RequestEntry | undefined;
   canExport: boolean;
   docs: MetricDocs[string] | undefined;
+  declaration: QueryDeclaration | undefined;
+  /** The filters narrowing the table now. */
+  filters: QueryInput[];
   open: boolean;
   onToggle: () => void;
   onTechnical: () => void;
@@ -211,20 +221,9 @@ function TableCard({
           {query.state === 'error' && (
             <span className="shrink-0 text-xs text-destructive">couldn't load</span>
           )}
-          {rows && query.state !== 'error' && (
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-              {rowCount(rows.preview.length, latest?.numRows)}
-            </span>
-          )}
-          <span
-            className={cn(
-              'shrink-0 text-xs text-muted-foreground',
-              !(rows && query.state !== 'error') && 'ml-auto',
-            )}
-          >
-            {returned && query.state !== 'error' ? <AgoTime at={returned.toISOString()} /> : null}
-          </span>
+          <span className="ml-auto" />
         </CollapsibleTrigger>
+        <QueryIndicators query={query} declaration={declaration} active={filters} showState={false} />
         {toolbar}
         <CollapsibleTrigger
           aria-label={open ? 'Collapse' : 'Expand'}
@@ -238,17 +237,32 @@ function TableCard({
           // The rows before the error aren't today's answer, so they don't show.
           <p className="text-xs text-muted-foreground">This table couldn't load.</p>
         ) : rows ? (
-          <ResultTable
-            columns={rows.columns}
-            rows={rows.preview}
-            total={latest?.numRows}
-            labels={labels}
-            hideCount
-            renderHeader={(column, label) => {
-              const meta = columns.get(column);
-              return meta ? <ColumnHeader label={label} column={meta} doc={columnDoc(meta, docs)} /> : label;
-            }}
-          />
+          <>
+            <ResultTable
+              columns={rows.columns}
+              rows={rows.preview}
+              total={latest?.numRows}
+              labels={labels}
+              hideCount
+              renderHeader={(column, label) => {
+                const meta = columns.get(column);
+                return meta ? (
+                  <ColumnHeader label={label} column={meta} doc={columnDoc(meta, docs)} />
+                ) : (
+                  label
+                );
+              }}
+            />
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {rowCount(rows.preview.length, latest?.numRows)}
+              {returned && (
+                <>
+                  <span aria-hidden>·</span>
+                  <AgoTime at={returned.toISOString()} />
+                </>
+              )}
+            </p>
+          </>
         ) : query.state === 'success' ? (
           // Its request has left the log, or the log couldn't tell it from another query's.
           <p className="text-xs text-muted-foreground">This table's rows aren't available here.</p>
