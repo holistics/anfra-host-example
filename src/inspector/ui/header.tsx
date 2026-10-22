@@ -9,6 +9,7 @@ import { TRUST_LEVELS, type Trust } from '../model/trust';
 import type { QueriesFilter } from '../model/types';
 import { copyText } from './shared/copy-button';
 import { stateDot, toneText } from './shared/tone';
+import { TrustPopover } from './shared/trust-popover';
 
 interface Props {
   title: string;
@@ -175,18 +176,20 @@ function CopyReport({ report }: { report: () => string }) {
   );
 }
 
-/** The trust level: L and its number in the tone's color, then the name; why on hover. */
+/** The trust level: L and its number in the tone's color, then the name; the levels, with why, on click. */
 function TrustPill({ trust }: { trust: Trust }) {
   const { name } = TRUST_LEVELS[trust.level];
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge className="cursor-default gap-1.5 bg-secondary px-2.5 py-1 font-semibold text-secondary-foreground">
+    <TrustPopover trust={trust} side="bottom" align="start" label="About the trust level">
+      <Badge
+        asChild
+        className="cursor-pointer gap-1.5 bg-secondary px-2.5 py-1 font-semibold text-secondary-foreground hover:bg-secondary/70"
+      >
+        <button type="button">
           <span className={toneText[trust.tone]}>L{trust.level}</span>
           <span>{name}</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>{trust.text}</TooltipContent>
-    </Tooltip>
+        </button>
+      </Badge>
+    </TrustPopover>
   );
 }
