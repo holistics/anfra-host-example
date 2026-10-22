@@ -217,3 +217,7 @@ export function declaredFilters(source: string | undefined): QueryInput[] {
     };
   });
 }
+
+/** Whether a filter narrows the query now: a declared one always does, an input only once it has a value. */
+export const isActive = (input: QueryInput) =>
+  input.kind === 'declared' || (input.value !== 'not set' && input.value !== 'no selection');

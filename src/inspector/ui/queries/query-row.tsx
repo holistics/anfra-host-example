@@ -5,7 +5,6 @@ import {
   ChevronRight,
   CircleHelp,
   GitFork,
-  ListFilter,
   type LucideIcon,
   Sigma,
   SlidersHorizontal,
@@ -18,17 +17,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { dedent } from '../../model/declaration-code';
 import { plural, prettyJson } from '../../model/format';
-import { declaredFilters, type QueryInput } from '../../model/inputs';
+import type { QueryInput } from '../../model/inputs';
 import type { RequestEntry } from '../../model/requests';
-import { queryTrust, TRUST_LEVELS } from '../../model/trust';
 import type { MetricDoc, MetricDocs, RevealTarget } from '../../model/types';
 import { AgoTime } from '../shared/ago-time';
 import { CodeBlock } from '../shared/code-block';
 import { EntityLink } from '../shared/entity-link';
 import { Field, Fields, InfoHint } from '../shared/fields';
 import { MiniTable } from '../shared/mini-table';
-import { stateDot } from '../shared/tone';
-import { TrustBars } from '../shared/trust-bars';
+import { QueryIndicators, queryFilters } from '../shared/query-indicators';
 import { typeIcon } from '../shared/type-icon';
 import { MapsTo } from './control-row';
 import { Drawn, EntityRow, type RowProps } from './entity-row';
@@ -68,15 +65,13 @@ export function QueryRow({
   )?.entry;
   const rows = query.state === 'success' ? query.rowCount.toLocaleString() : '—';
   const notRun = query.state === 'success' || query.state === 'error' ? 'Not returned.' : 'Not run yet.';
-  const trust = queryTrust(declaration, query);
   // Where its rows came from, when it ran, and how long that took: one line, whichever parts are known.
   const lastRun = [
     query.debug && (query.debug.fromCache ? 'cache' : 'database'),
     query.debug?.executedAt && <AgoTime at={query.debug.executedAt} />,
     latest?.durationMs !== undefined && `${latest.durationMs} ms`,
   ].filter(Boolean);
-  const allFilters = [...declaredFilters(declaration?.aql), ...inputs];
-  const activeFilters = allFilters.filter(isActive);
+  const { all: allFilters, active: activeFilters } = queryFilters(declaration, inputs);
   // Opens on the filters that narrow the query now; the rest is one click away.
   const [filterView, setFilterView] = useState<'active' | 'all'>('active');
   const filters = filterView === 'active' ? activeFilters : allFilters;
@@ -124,60 +119,7 @@ export function QueryRow({
         </TooltipTrigger>
         <TooltipContent side="top">Show in Lineage</TooltipContent>
       </Tooltip>
-      {/* An empty slot when nothing narrows the query, so the icons after it stay in line. */}
-      {activeFilters.length === 0 ? (
-        <span className="w-9 shrink-0" aria-hidden />
-      ) : (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="flex w-9 shrink-0 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums">
-              {activeFilters.length}
-              <ListFilter className="size-3.5 shrink-0" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            <div className="space-y-0.5">
-              <div>{plural(activeFilters.length, 'filter')} applied</div>
-              <ul>
-                {activeFilters.map((input, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: two filters can share a field and source
-                  <li key={`${input.kind}:${input.source}:${input.field}:${index}`}>
-                    {input.field}
-                    <span className="opacity-70">
-                      {' '}
-                      · {input.kind === 'declared' ? 'query' : input.self ? 'itself' : input.source}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            role="img"
-            className="flex h-3 w-6 shrink-0 items-end justify-end"
-            aria-label={`Trust level ${trust.level}`}
-          >
-            <TrustBars trust={trust} size="sm" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          Level {trust.level} · {TRUST_LEVELS[trust.level].name}
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            role="img"
-            aria-label={`State: ${query.state}`}
-            className={cn('size-2 shrink-0 rounded-full', stateDot[query.state])}
-          />
-        </TooltipTrigger>
-        <TooltipContent>{query.state}</TooltipContent>
-      </Tooltip>
+      <QueryIndicators query={query} declaration={declaration} active={activeFilters} />
     </>
   );
   // An error shows open or not: it is what a failing app is inspected for.
@@ -412,10 +354,6 @@ function filteredColumn(columns: ColumnMeta[], field: string): ColumnMeta | unde
     (column) => (column.modelId ? `${column.modelId}.${column.fieldName}` : column.fieldName) === bare,
   );
 }
-
-/** Whether a filter narrows the query now: a declared one always does, an input only once it has a value. */
-const isActive = (input: QueryInput) =>
-  input.kind === 'declared' || (input.value !== 'not set' && input.value !== 'no selection');
 
 /** A titled, collapsible part of an opened query, with a hint on what it holds. */
 function Section({
