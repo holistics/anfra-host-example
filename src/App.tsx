@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
+import { PickMenu } from '@/components/pick-menu';
 import { PromptPanel } from '@/components/prompt-panel';
 import { storedSidebarOpen, storedSidebarWidth } from '@/components/sidebar-resizer';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import {
   type InspectorTab,
   type MetricDocs,
   type NodeRequest,
+  type PickTarget,
 } from '@/inspector';
 import {
   catalog,
@@ -87,6 +89,8 @@ export function App() {
   const picking = pickFor === 'inspect';
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [picked, setPicked] = useState<NodeRequest>();
+  // The node just picked, while the menu asks what to check about it; its rect is where it was clicked.
+  const [pickMenu, setPickMenu] = useState<{ key: string; rect: AnchorRect | undefined }>();
   // The last click in the frame: whether it held Shift, and where; a pick's click is reported just before the pick.
   const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
   // The node being commented on, and where its card is anchored; `tracked` while the frame reports its rect.
@@ -179,6 +183,7 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each mount
   useEffect(() => {
     setPicked(undefined);
+    setPickMenu(undefined);
     setPickFor(undefined);
     setComment(undefined);
     setPendingComment(undefined);
@@ -201,6 +206,9 @@ export function App() {
     });
   }, [refreshCatalog, refreshDatasets]);
 
+  const pickMenuNode = pickMenu
+    ? findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], pickMenu.key)?.node
+    : undefined;
   const app = entries && path ? findApp(entries, path) : undefined;
   if (app) document.title = `${app.label} · anfra demo`;
 
@@ -215,17 +223,26 @@ export function App() {
 
   // Pick works on the structure, which the frame reads only while it is inspected: picking opens
   // the panel, and closing the panel ends picking.
+  const closePickMenu = useCallback(() => {
+    heldHighlight.current = null;
+    stage.current?.highlight(null);
+    setPickMenu(undefined);
+  }, []);
+  const choosePick = (to: PickTarget) => {
+    if (pickMenu) setPicked({ key: pickMenu.key, nonce: Date.now(), to });
+    closePickMenu();
+  };
   const togglePicking = () => {
     if (!picking) {
       setPanel('inspect');
-      // Queries and Lineage take a pick themselves; any other tab goes to Structure.
-      if (tab !== 'queries' && tab !== 'lineage') setTab('structure');
       closeComment();
+      closePickMenu();
     }
     setPickFor(picking ? undefined : 'inspect');
   };
   const toggleInspecting = () => {
     if (inspecting && picking) setPickFor(undefined);
+    if (inspecting) closePickMenu();
     setPanel(inspecting ? undefined : 'inspect');
   };
 
@@ -315,6 +332,8 @@ export function App() {
       if (event.data === toggleVersionsMessage) run('versions');
       if (event.data?.type === clickMessage && stage.current?.owns(event.source)) {
         lastClick.current = { click: event.data as FrameClick, at: Date.now() };
+        // Clicks in the frame never reach this document, so the pick menu's own outside-click can't see them.
+        closePickMenu();
       }
       if (event.data?.type === rectMessage && stage.current?.owns(event.source)) {
         const rect = event.data.rect as AnchorRect;
@@ -327,7 +346,7 @@ export function App() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('message', onMessage);
     };
-  }, []);
+  }, [closePickMenu]);
 
   const onPick = (node: string | null) => {
     const mode = pickFor;
@@ -346,11 +365,16 @@ export function App() {
           setPendingComment({ key: node, click: recent });
           return;
         }
-        // Shift goes to the node's first query or control in Queries; the inspector picks the tab. Queries
-        // and Lineage stay open and jump within themselves.
-        const inData = !!recent?.shift;
-        setPicked({ key: node, nonce: Date.now(), inData });
-        if (!inData && tab !== 'queries' && tab !== 'lineage') setTab('structure');
+        // The reader chooses where it goes in the pick menu, beside the node; the inspector picks the tab.
+        const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], node);
+        if (!found) return;
+        const rect =
+          recent?.rect && recent.attr === attributeFor(found.node)
+            ? recent.rect
+            : recent
+              ? { x: recent.x, y: recent.y, width: 0, height: 0 }
+              : undefined;
+        setPickMenu({ key: node, rect });
       }, 30);
     }
     // The frame leaves pick mode once something is picked, or when the reader presses Escape.
@@ -368,6 +392,13 @@ export function App() {
     setComment({ ...found, rect, tracked });
     return true;
   };
+  // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
+  const pickMenuKey = pickMenu?.key;
+  useEffect(() => {
+    if (!pickMenuKey) return;
+    heldHighlight.current = pickMenuKey;
+    stage.current?.highlight(pickMenuKey);
+  }, [pickMenuKey]);
   // The comment cursor on the page itself too, so it shows the moment Ask AI is clicked, not only
   // once the pointer reaches the frame.
   useEffect(() => {
@@ -454,6 +485,16 @@ export function App() {
         record={inspector.record}
         onPick={onPick}
       >
+        {pickMenuNode && (
+          <PickMenu
+            key={pickMenuNode.key}
+            node={pickMenuNode}
+            nodes={inspector.source.getSnapshot()?.structure.nodes ?? []}
+            rect={pickMenu?.rect}
+            onChoose={choosePick}
+            onClose={closePickMenu}
+          />
+        )}
         {comment && app && (
           <CommentCard
             key={comment.node.key}

@@ -55,15 +55,21 @@ There is no modal or backdrop.
 - **Reload**: remounts the frame. The snapshot, request log and transient UI state reset. The
   selected tab and panel width are kept.
 
-**Pick** lives in the panel's header: it enters pick mode in the frame and switches to Structure.
-Picking a node selects and reveals it in the tree. **Shift-click** instead opens the first query or
-control at or below the picked node (the node itself, if it is one) in Queries, switching to that tab;
-a node with none lands in Structure as usual.
-From the **Queries** tab, every pick does that, without Shift. From the **Lineage** tab, a pick stays in
-Lineage: it pins the first node of the picked subtree that the canvas draws (a control, block or query) and
-centers it; if a filter or focus hides them all, the pick is ignored. Other tabs switch to Structure. The frame's pick report doesn't carry modifier keys,
-so the host's injected script posts each click's Shift state just before it. The frame leaves pick
-mode after a pick or on Escape.
+**Pick** lives in the panel's header: it enters pick mode in the frame and opens the panel. Picking
+a node holds it highlighted and opens the **pick menu** beside it (anchored to the clicked element's
+rect, like the comment card in `src/comments/SPEC.md` §4.3), asking what to check:
+- **Data**: opens the table of the first query at or below the node, in Data, and switches to that tab.
+- **Queries**: opens the row of the first query or control at or below the node, in Queries.
+- **Lineage**: pins the first node of the picked subtree that the canvas draws (a control, block or
+  query) and centers it, in Lineage; if a filter or focus hides them all, nothing is pinned.
+- **Structure**: selects the node and reveals it in the tree.
+
+Data and Queries are disabled ("None here") when the node holds no query (Data) or no query or
+control (Queries). The menu names the node (kind pill and label) and closes on Escape, a click
+outside or a choice; closing it highlights nothing and navigates nowhere. The tab the panel is on
+doesn't change what a pick does. The frame's pick report doesn't carry modifier keys or a position,
+so the host's injected script posts each click's position and element just before it. The frame
+leaves pick mode after a pick or on Escape.
 
 The inspector state also resets when the path changes or the repo revision changes (live reload).
 
@@ -87,7 +93,7 @@ The inspector state also resets when the path changes or the repo revision chang
 - **Tabs**: Overview · Data · Structure · Queries · Lineage · Declaration, in that order. A tab shows a badge with its issue
   count, if any. Lineage (§4.10) has no badge. Structure counts structure problems. Declaration counts checks at warn or error level.
   Queries counts failed queries. Data (§4.11) has no badge.
-- **Default tab**: Overview. Pick switches to Structure, except from Queries and Lineage.
+- **Default tab**: Overview. Pick goes to the tab chosen in the pick menu (§3).
   Opening the panel again keeps the tab it was closed on.
 - **Copy report**: copies the report (§4.7) as JSON. The button's tooltip says "Report copied",
   or "Couldn't copy: logged to the console" if the clipboard refuses, in which case the report is
@@ -148,8 +154,8 @@ The page's marked elements as a tree, the same as today:
 - **Click or Enter** selects the node and scrolls it into view in the frame (locate).
 - On hover or focus, a row shows **Copy handle** (`[Label](data-anfra-block="id")`, or just the
   attribute), and for queries and controls with no problems, **Show in Queries**.
-- **Picked** node: it is selected, its ancestors expand and it scrolls into view. A Shift pick goes
-  to Queries instead, when the node holds a query or control.
+- **Picked** node (when Structure is chosen in the pick menu, §3): it is selected, its ancestors
+  expand and it scrolls into view.
 - Collapsed nodes stay collapsed across snapshots.
 - **Empty**: "Nothing is marked yet. Add data-anfra-container, … and they show up here."
 
@@ -386,7 +392,8 @@ one click away.
   cache tags appear here.
 - **Paged queries**: the table is the first page's rows. A paged query's download only shows when
   no page follows the first.
-- There is no filter, badge or pick behavior: a pick from this tab goes to Structure.
+- There is no filter or badge. A pick that chooses Data opens the first query's card here (it stays open
+  across tabs like any other).
 - Multi-app: an "App N · title" header over each app's cards.
 
 ## 5. Structure
@@ -454,7 +461,7 @@ function createInspectorStore(frame: { env; requests; highlight; locate }): {
 function Inspector(props: {
   source: InspectorSource;
   tab: InspectorTab; onTab(tab: InspectorTab): void;
-  picked: string | undefined;   // node picked in the frame; the host owns pick mode
+  picked: NodeRequest | undefined; // node picked in the frame and where to take it (`to`); the host owns pick mode and the pick menu
   onClose(): void;
 }): JSX.Element;
 ```
@@ -463,7 +470,7 @@ In this host, `App.tsx` makes a request log and a store per mounted frame (per p
 datasets). It passes `record` down to `mount()` in `src/data-app.ts`, whose one middleware on the
 plugin host hands each call to the recorder of the frame it is about, and passes `publish` as
 `onInspect`, which `mount()` feeds from `inspect.snapshot`. It renders `<Inspector>` in its
-resizable panel. The toolbar, pick mode and the panel slot stay host code.
+resizable panel. The toolbar, pick mode, the pick menu (`src/components/pick-menu.tsx`) and the panel slot stay host code.
 
 ### 5.3 Request log
 
