@@ -260,7 +260,7 @@ function TableCard({
                   <AgoTime at={returned.toISOString()} />
                 </>
               )}
-              {canExport && complete && query.state !== 'error' && (
+              {canExport && complete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

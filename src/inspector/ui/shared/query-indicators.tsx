@@ -1,5 +1,6 @@
 import type { InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
 import { ListFilter } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { plural } from '../../model/format';
@@ -101,16 +102,20 @@ export function QueryIndicators({
   declaration,
   active,
   showState = true,
+  beforeTrust,
 }: {
   query: InspectedQuery;
   declaration: QueryDeclaration | undefined;
   active: QueryInput[];
   /** Whether the state dot shows; a table that couldn't load already says so. */
   showState?: boolean;
+  /** Drawn between the filters and the trust level. */
+  beforeTrust?: ReactNode;
 }) {
   return (
     <>
       <FilterIndicator active={active} />
+      {beforeTrust}
       <TrustIndicator trust={queryTrust(declaration, query)} />
       {showState && <StateIndicator state={query.state} />}
     </>
