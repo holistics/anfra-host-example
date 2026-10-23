@@ -26,18 +26,30 @@ export function FilterIndicator({ active }: { active: QueryInput[] }) {
         </span>
       </TooltipTrigger>
       <TooltipContent side="left">
-        <div className="space-y-0.5">
+        <div className="max-w-72">
           <div className="mb-1 font-medium">{plural(active.length, 'filter')} applied</div>
           <ul className="space-y-1.5">
             {active.map((input, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: two filters can share a field and source
               <li key={`${input.kind}:${input.source}:${input.field}:${index}`}>
-                {input.field}
+                <span className="break-words">{input.field}</span>
                 <span className="opacity-70">
                   {' '}
                   · {input.kind === 'declared' ? 'query' : input.self ? 'itself' : input.source}
                 </span>
-                <div className="opacity-70">{input.value}</div>
+                {input.value !== '—' && (
+                  <div className="line-clamp-3 break-words opacity-70" title={input.value}>
+                    {input.value}
+                  </div>
+                )}
+                {input.pending && (
+                  <div
+                    className="line-clamp-3 break-words text-amber-600 dark:text-amber-400"
+                    title={input.pending}
+                  >
+                    pending: {input.pending}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
