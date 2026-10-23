@@ -245,7 +245,12 @@ function TableCard({
               renderHeader={(column, label) => {
                 const meta = columns.get(column);
                 return meta ? (
-                  <ColumnHeader label={label} column={meta} doc={columnDoc(meta, docs)} />
+                  <ColumnHeader
+                    label={label}
+                    column={meta}
+                    doc={columnDoc(meta, docs)}
+                    dataset={declaration?.dataset}
+                  />
                 ) : (
                   label
                 );
@@ -277,15 +282,22 @@ function ColumnHeader({
   label,
   column,
   doc,
+  dataset,
 }: {
   label: string;
   column: ColumnMeta;
   doc: MetricDoc | undefined;
+  /** The dataset the query reads. */
+  dataset: string | undefined;
 }) {
   const Icon = columnIcon(column);
+  // An ad hoc column is the query's own, so it has no place in the dataset; a dataset metric has no model.
+  const source = column.adhoc ? undefined : [dataset, column.modelId].filter(Boolean).join(' > ');
+  const format = doc?.format ? <code className="font-mono">{doc.format}</code> : 'None declared';
   const rows: [string, ReactNode][] = [
+    ['Source', source],
     ['Type', doc?.type ?? columnKind(column)],
-    ['Format', doc?.format && <code className="font-mono">{doc.format}</code>],
+    ['Format', format],
     [
       'Formula',
       doc?.definition && (
