@@ -1,5 +1,5 @@
 import type { ColumnMeta, InspectedApp, InspectedQuery, QueryDeclaration } from '@holistics/anfra-sdk/common';
-import { ChevronRight, Database, Download, Search } from 'lucide-react';
+import { ChevronRight, Database, Download, GitFork, Search } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -132,6 +132,7 @@ export function DataTab({
                   open={open.has(entityKey('query', index, name))}
                   onToggle={() => onToggle(entityKey('query', index, name))}
                   onTechnical={() => onReveal({ entity: 'query', app: index, name })}
+                  onLineage={() => onReveal({ lineage: 'query', app: index, name })}
                 />
               ))}
             </section>
@@ -154,6 +155,7 @@ function TableCard({
   open,
   onToggle,
   onTechnical,
+  onLineage,
 }: {
   index: number;
   name: string;
@@ -167,6 +169,7 @@ function TableCard({
   open: boolean;
   onToggle: () => void;
   onTechnical: () => void;
+  onLineage: () => void;
 }) {
   const labels = Object.fromEntries(query.columns.filter((c) => c.label).map((c) => [c.name, c.label]));
   const rows =
@@ -178,21 +181,14 @@ function TableCard({
   const columns = new Map(query.columns.map((c) => [c.name, c]));
   const toolbar = (
     <div className="flex items-center gap-1">
-      {canExport && complete && query.state !== 'error' && rows && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Download CSV"
-              onClick={() => download(`${name}.csv`, toCsv(rows.columns, rows.preview, labels))}
-            >
-              <Download />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Download CSV</TooltipContent>
-        </Tooltip>
-      )}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon-xs" aria-label="Lineage" onClick={onLineage}>
+            <GitFork />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Lineage</TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon-xs" aria-label="Query" onClick={onTechnical}>
@@ -256,7 +252,7 @@ function TableCard({
                 );
               }}
             />
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {rowCount(rows.preview.length, latest?.numRows)}
               {returned && (
                 <>
@@ -264,7 +260,23 @@ function TableCard({
                   <AgoTime at={returned.toISOString()} />
                 </>
               )}
-            </p>
+              {canExport && complete && query.state !== 'error' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="ml-auto"
+                      aria-label="Download CSV"
+                      onClick={() => download(`${name}.csv`, toCsv(rows.columns, rows.preview, labels))}
+                    >
+                      <Download />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download CSV</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </>
         ) : query.state === 'success' ? (
           // Its request has left the log, or the log couldn't tell it from another query's.
