@@ -131,7 +131,7 @@ export function QueryRow({
 
   return (
     <EntityRow kind="query" summary={summary} below={below} {...props}>
-      <Section title="Details">
+      <Section title="General">
         <Fields>
           <Field label="Dataset">
             <span className="inline-flex items-center gap-1.5">

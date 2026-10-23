@@ -208,7 +208,7 @@ function TableCard({
       open={open}
       onOpenChange={onToggle}
       data-entity={entityKey('query', index, name)}
-      className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}
+      className="rounded-md bg-muted/50"
     >
       <div className="flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         {/* The heading holds the button, not the other way round: a button may hold only phrasing content. */}

@@ -32,7 +32,7 @@ export function EntityRow({
   return (
     <div
       data-entity={props.entityKey}
-      className={cn('rounded-md border', props.open ? 'bg-muted/50' : 'bg-card')}
+      className="rounded-md bg-muted/50"
     >
       <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <button
