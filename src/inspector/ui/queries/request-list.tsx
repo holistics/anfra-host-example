@@ -75,7 +75,7 @@ function titleOf(entry: RequestEntry): string {
 function RequestCard({ entry }: { entry: RequestEntry }) {
   const [open, setOpen] = useState(false);
   return (
-    <li className={cn('rounded-md border', open ? 'bg-muted/50' : 'bg-card')}>
+    <li className="rounded-md bg-muted/50">
       {/* The same shell as a query row: one clickable line, the state as a dot, a chevron at the end. */}
       <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <button
