@@ -154,7 +154,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
       return;
     }
     if (picked.to === 'data' && structure) {
-      const query = firstEntityUnder(structure.nodes, picked.key, 'query');
+      const query = firstEntityUnder(structure.nodes, picked.key, ['query']);
       if (query) {
         const key = entityKey('query', query.app, query.name);
         setDataOpen((prev) => new Set(prev).add(key));

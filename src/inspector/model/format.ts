@@ -111,12 +111,14 @@ export function countProblems(nodes: StructureNode[]): number {
 
 /**
  * The first query or control at or below the node with `key`, in document order: what a pick of a
- * container or block leads to in Queries (with `only`, the first query: what leads to Data). Undefined when the node isn't there or holds none.
+ * container or block leads to in Queries. `kinds` narrows it: the first query alone is what leads to
+ * Data. Undefined when the node isn't there or holds none. The pick menu asks the same, to disable
+ * the choices that lead nowhere.
  */
 export function firstEntityUnder(
   nodes: StructureNode[],
   key: string,
-  only?: 'query',
+  kinds: readonly ('query' | 'control')[] = ['query', 'control'],
 ): { entity: LocateKind; app: number; name: string } | undefined {
   const find = (list: StructureNode[]): StructureNode | undefined => {
     for (const node of list) {
@@ -126,7 +128,7 @@ export function firstEntityUnder(
     }
   };
   const first = (node: StructureNode): StructureNode | undefined =>
-    node.kind === 'query' || (node.kind === 'control' && !only)
+    (node.kind === 'query' || node.kind === 'control') && kinds.includes(node.kind)
       ? node
       : node.children.map(first).find((entity) => entity !== undefined);
   const root = find(nodes);

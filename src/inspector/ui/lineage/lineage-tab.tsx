@@ -169,9 +169,11 @@ export function LineageTab({
 
   // A pick pins the first of its nodes the canvas draws, and brings it into view. If a filter or
   // focus hides them all, the pick is dropped, with a note: it is no reason to change the reader's view.
-  // It waits for the apps and the structure, which the graph's nodes come from: without them nothing is drawn yet.
+  // It waits for the apps and the structure, which the graph's nodes come from, and for the trace of
+  // this set of fields: without them the graph is empty or still growing, and a pick would be judged against that.
+  const traced = !env.lineage || (fetched?.key === key && fetched.status !== 'loading');
   useEffect(() => {
-    if (!pick || !apps || !structure) return;
+    if (!pick || !apps || !structure || !traced) return;
     onPicked();
     const hit = pick.keys
       .map((key) => shown.nodes.find((n) => n.structureKey === key))
@@ -180,7 +182,7 @@ export function LineageTab({
     if (!hit) return;
     onView((v) => ({ ...v, selected: hit.id }));
     setCenterOn({ id: hit.id, nonce: pick.nonce });
-  }, [pick, apps, structure, shown, onView, onPicked]);
+  }, [pick, apps, structure, traced, shown, onView, onPicked]);
 
   // A pinned block or query is outlined on the page too, until the pin moves or the tab closes.
   const selected = view.selected ? shown.nodes.find((n) => n.id === view.selected) : undefined;

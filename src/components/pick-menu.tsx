@@ -3,7 +3,7 @@ import { Code, GitFork, ListTree, Sheet } from 'lucide-react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { type AnchorRect, nameOf } from '@/comments';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
-import { attributeFor, kindIcons, kindPills, type PickTarget } from '@/inspector';
+import { attributeFor, firstEntityUnder, kindIcons, kindPills, type PickTarget } from '@/inspector';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -28,10 +28,10 @@ const choices: { target: PickTarget; label: string; hint: string; icon: typeof S
  */
 export function PickMenu({ node, rect, onChoose, onClose }: Props) {
   const Icon = kindIcons[node.kind];
-  const held = kindsUnder(node);
+  // The same rule as where the pick lands (the inspector's), so a choice is disabled exactly when it would lead nowhere.
   const missing: Partial<Record<PickTarget, boolean>> = {
-    data: !held.has('query'),
-    queries: !held.has('query') && !held.has('control'),
+    data: !firstEntityUnder([node], node.key, ['query']),
+    queries: !firstEntityUnder([node], node.key),
   };
 
   return (
@@ -86,13 +86,6 @@ export function PickMenu({ node, rect, onChoose, onClose }: Props) {
       </PopoverContent>
     </Popover>
   );
-}
-
-/** The kinds of the node and everything under it. */
-function kindsUnder(node: StructureNode, kinds = new Set<StructureNode['kind']>()) {
-  kinds.add(node.kind);
-  for (const child of node.children) kindsUnder(child, kinds);
-  return kinds;
 }
 
 /** Up and Down move between the choices, wrapping; Home and End go to the first and last, as a menu's keys do. */

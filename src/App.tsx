@@ -405,6 +405,8 @@ export function App() {
         const { click, at } = lastClick.current;
         const recent = click && Date.now() - at < 500 ? click : undefined;
         lastClick.current = { at: 0 };
+        // The pick's click came first, so it has been read: no later click is the pick's own.
+        if (recent && lastPick.current?.key === node) lastPick.current = undefined;
         if (mode === 'comment') {
           // Comment mode ends with the card opening, in one update: in between, the frame would stop
           // being inspected and drop the structure the highlight needs. The structure may still be
