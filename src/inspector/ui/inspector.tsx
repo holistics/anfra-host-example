@@ -1,7 +1,13 @@
 import type { StructureNode } from '@holistics/anfra-sdk/common';
-import { Code, Database, GitFork, LayoutDashboard, ListTree, Sheet } from 'lucide-react';
+import { Code, Database, GitFork, LayoutDashboard, ListTree, MoreHorizontal, Sheet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { toggleIn } from '@/lib/utils';
@@ -27,6 +33,9 @@ import { QueriesTab } from './queries/queries-tab';
 import { Note } from './shared/fields';
 import { StructureTree } from './structure/structure-tree';
 import { WiringTab } from './wiring/wiring-tab';
+
+/** Tabs kept behind the "..." menu until the reader opens one. */
+const HIDDEN_TABS: InspectorTab[] = ['structure', 'wiring'];
 
 interface Props {
   /** The mounted frame to inspect. */
@@ -85,6 +94,16 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   const [lineageView, setLineageView] = useState<LineageView>({ hidden: new Set(), crossFilters: false });
   const [lineage, setLineage] = useState<LineageFetch>();
   const [lineagePick, setLineagePick] = useState<LineagePick>();
+
+  // Tabs tucked behind the "..." menu; one the reader opens stays out until the app or path changes.
+  const [shown, setShown] = useState<Set<InspectorTab>>(new Set());
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets per app or path
+  useEffect(() => setShown(new Set()), [source, source.env.path]);
+  useEffect(() => {
+    if (HIDDEN_TABS.includes(tab)) setShown((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
+  }, [tab]);
+  const isShown = (t: InspectorTab) => !HIDDEN_TABS.includes(t) || shown.has(t) || tab === t;
+  const menuTabs = HIDDEN_TABS.filter((t) => !isShown(t));
 
   const handledPick = useRef(picked?.nonce);
   const clearLineagePick = useCallback(() => setLineagePick(undefined), []);
@@ -181,25 +200,51 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
               <Sheet />
               Data
             </TabsTrigger>
-            <TabsTrigger value="structure">
-              <ListTree />
-              Structure
-              <Count n={problems} />
-            </TabsTrigger>
-            <TabsTrigger value="lineage">
-              <GitFork />
-              Lineage
-            </TabsTrigger>
             <TabsTrigger value="queries">
               <Database />
               Queries
               <Count n={counts?.error ?? 0} />
             </TabsTrigger>
-            <TabsTrigger value="wiring">
-              <Code />
-              Declaration
-              <Count n={warnings} />
+            <TabsTrigger value="lineage">
+              <GitFork />
+              Lineage
             </TabsTrigger>
+            {isShown('structure') && (
+              <TabsTrigger value="structure">
+                <ListTree />
+                Structure
+                <Count n={problems} />
+              </TabsTrigger>
+            )}
+            {isShown('wiring') && (
+              <TabsTrigger value="wiring">
+                <Code />
+                Declaration
+                <Count n={warnings} />
+              </TabsTrigger>
+            )}
+            {menuTabs.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More tabs"
+                    className="inline-flex h-[calc(100%-1px)] items-center rounded-md px-2 text-foreground/60 transition-all hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {menuTabs.map((t) => (
+                    <DropdownMenuItem key={t} onSelect={() => onTab(t)}>
+                      {t === 'structure' ? <ListTree /> : <Code />}
+                      {t === 'structure' ? 'Structure' : 'Declaration'}
+                      <Count n={t === 'structure' ? problems : warnings} />
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </TabsList>
         </div>
 
