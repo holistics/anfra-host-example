@@ -163,3 +163,26 @@ describe('redirects in development', () => {
     }
   });
 });
+
+describe('app files in production', () => {
+  const cacheOf = async (env: NodeJS.ProcessEnv) => {
+    const tmp = makeRepo();
+    const warn = mock.method(console, 'warn', () => {});
+    try {
+      const config = loadConfig({ NODE_ENV: 'production', ANFRA_REPO: tmp.repo, ...env });
+      const app = createApp({ config, hostVersion: 'test', pageDir: tmp.page });
+      return (await app.request('/host/files/dashboards/overview.html')).headers.get('cache-control');
+    } finally {
+      warn.mock.restore();
+      rmSync(tmp.dir, { recursive: true, force: true });
+    }
+  };
+
+  test('cached a minute, when nothing edits them', async () => {
+    assert.equal(await cacheOf({}), 'public, max-age=60');
+  });
+
+  test('never cached with EDIT=1, so the panel reads what it saved', async () => {
+    assert.equal(await cacheOf({ EDIT: '1' }), 'no-store');
+  });
+});

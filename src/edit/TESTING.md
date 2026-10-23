@@ -6,6 +6,16 @@ It's an early demo on the branch `khaito/explore-editor`. The design is in [SPEC
 
 ---
 
+## 0. Try it online, no setup
+
+Open **https://explore-editor.pages.holistics.dev/apps/dashboards/ecommerce-overview** and go straight to [section 4](#4-test-it-step-by-step). Tests 1 to 6 all work there.
+
+- It's shared. Anyone with the link can save, so you may see someone else's edits. Every edit is gone when the site restarts.
+- Test 4's `git diff` step needs a local setup. Online, check the save in **Versions** (the clock icon) instead.
+- To test your own apps (Test 7), run it locally with the sections below.
+
+---
+
 ## 1. What you need
 
 | | Version | Check with |
@@ -22,7 +32,7 @@ The examples below use **anfra-demo-data** and its **Ecommerce Overview** dashbo
 
 ## 2. Get the branch
 
-The work is on the branch `khaito/explore-editor`: 4 commits on top of `main`.
+The work is on the branch `khaito/explore-editor`, on top of `main`.
 
 ```sh
 cd path/to/anfra-host-example

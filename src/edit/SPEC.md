@@ -13,6 +13,8 @@ Later phases are marked _(not built yet)_.
 
 - **Local only.** Editing writes the app's own file, so it is for a host on the author's machine.
   A hosted host shows the panel read-only: without `EDIT=1` the server serves no write route.
+  The one exception is a throwaway demo on sample data, such as `explore-editor.pages.holistics.dev`:
+  anyone can save there, and every edit is gone when its container restarts.
 - **The agent's file is the truth.** A saved edit goes into the app's file, where the agent sees it
   on its next change. Nothing is applied at load.
 - **Reader state is not the query.** Dashboard filters, date drills, cross-filters and sort clicks

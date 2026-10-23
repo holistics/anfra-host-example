@@ -70,7 +70,8 @@ export function createApp({ config, hostVersion, pageDir }: AppOptions) {
       );
       if (to) return moved(c, `/host/files/${encodePath(to + ext)}`);
     }
-    return serveAppFile(c, apps, rel, production ? 'short' : 'none');
+    // An editing host writes these files, and the Edit panel reads them back here before a save.
+    return serveAppFile(c, apps, rel, production && !config.edit ? 'short' : 'none');
   });
 
   // What each Data App's file last held, as live reload saw it or the Edit panel wrote it: a file whose
