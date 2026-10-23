@@ -98,12 +98,22 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
   // Tabs tucked behind the "..." menu; one the reader opens stays out until the app or path changes.
   const [shown, setShown] = useState<Set<InspectorTab>>(new Set());
   // biome-ignore lint/correctness/useExhaustiveDependencies: resets per app or path
-  useEffect(() => setShown(new Set()), [source, source.env.path]);
+  useEffect(() => setShown(new Set(HIDDEN_TABS.includes(tab) ? [tab] : [])), [source, source.env.path]);
   useEffect(() => {
     if (HIDDEN_TABS.includes(tab)) setShown((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
   }, [tab]);
   const isShown = (t: InspectorTab) => !HIDDEN_TABS.includes(t) || shown.has(t) || tab === t;
   const menuTabs = HIDDEN_TABS.filter((t) => !isShown(t));
+
+  // Picking the last tab from the "..." menu unmounts it, so focus moves to the tab it opened.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const focusTabAfterMenu = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the tab changes
+  useEffect(() => {
+    if (!focusTabAfterMenu.current) return;
+    focusTabAfterMenu.current = false;
+    tabsRef.current?.querySelector<HTMLElement>('[role="tab"][data-state="active"]')?.focus();
+  }, [tab]);
 
   const handledPick = useRef(picked?.nonce);
   const clearLineagePick = useCallback(() => setLineagePick(undefined), []);
@@ -191,7 +201,7 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
         />
         {/* The active tab's underline hangs a pixel below the list; room for it keeps a vertical scrollbar away. */}
         <div className="shrink-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b px-2 pt-1.5 pb-px">
-          <TabsList variant="line">
+          <TabsList ref={tabsRef} variant="line">
             <TabsTrigger value="overview">
               <LayoutDashboard />
               Overview
@@ -236,7 +246,13 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {menuTabs.map((t) => (
-                    <DropdownMenuItem key={t} onSelect={() => onTab(t)}>
+                    <DropdownMenuItem
+                      key={t}
+                      onSelect={() => {
+                        focusTabAfterMenu.current = true;
+                        onTab(t);
+                      }}
+                    >
                       {t === 'structure' ? <ListTree /> : <Code />}
                       {t === 'structure' ? 'Structure' : 'Declaration'}
                       <Count n={t === 'structure' ? problems : warnings} />
