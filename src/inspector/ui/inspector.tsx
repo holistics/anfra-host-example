@@ -386,5 +386,9 @@ export function Inspector({ source, tab, onTab, picked, picking, onTogglePicking
 /** An issue count on a tab; nothing when there are none. */
 function Count({ n }: { n: number }) {
   if (n === 0) return null;
-  return <Badge variant="destructive">{n}</Badge>;
+  return (
+    <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px] leading-none tabular-nums">
+      {n}
+    </Badge>
+  );
 }
