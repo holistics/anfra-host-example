@@ -30,10 +30,7 @@ export function EntityRow({
   ...props
 }: RowProps & { kind: LocateKind; summary: ReactNode; below?: ReactNode; children: ReactNode }) {
   return (
-    <div
-      data-entity={props.entityKey}
-      className="rounded-md bg-muted/50"
-    >
+    <div data-entity={props.entityKey} className="rounded-md bg-muted/50">
       <div className="group flex h-10 items-center gap-2.5 rounded-md pr-2 hover:bg-accent">
         <button
           type="button"
