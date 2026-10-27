@@ -6,6 +6,8 @@ them on purpose; disagreements known today are listed in §9.
 
 Status: **built**, except what is marked _(not built yet)_.
 
+For why the inspector exists and how it is meant to feel, read [PRD.md](./PRD.md) first.
+
 **How to read this spec.**
 - Quoted UI text ("Waiting for the Data App…") is the text the UI shows. Change both together.
 - Numbers for widths, durations, colours and zoom levels are today's values, given so a port can
@@ -435,17 +437,17 @@ none of the machinery. Everything technical is in Queries (§4.5), one click awa
 
 Where each piece of UI state lives decides when it resets. Tabs unmount when inactive.
 
-| State | Kept in | Survives a snapshot | Survives a tab switch | Survives closing the panel | Survives a remount |
-| --- | --- | --- | --- | --- | --- |
-| Selected tab | host | yes | — | yes | yes |
-| Panel width | host panel | yes | yes | no | no |
-| Hidden tabs shown from "…" | panel | yes | yes | no | no (path change resets) |
-| Queries search and filter, open rows and sections | panel | yes | yes | no | no |
-| Data open cards; Lineage kinds, cross-filters, pin, focus, trace and tables | panel | yes | yes | no | no |
-| Lineage zoom and pan, expanded modal | Lineage tab | yes | no | no | no |
-| Query's code tab and inner sections, "In N places", Requests "Show all" | the row | yes | no | no | no |
-| Structure collapsed nodes, Overview's "Show all" and collapsibles, Data search | the tab | yes | no | no | no |
-| Request log | host, per mount | — | yes | yes | no |
+| State                                                                          | Kept in         | Survives a snapshot | Survives a tab switch | Survives closing the panel | Survives a remount      |
+| ------------------------------------------------------------------------------ | --------------- | ------------------- | --------------------- | -------------------------- | ----------------------- |
+| Selected tab                                                                   | host            | yes                 | —                     | yes                        | yes                     |
+| Panel width                                                                    | host panel      | yes                 | yes                   | no                         | no                      |
+| Hidden tabs shown from "…"                                                     | panel           | yes                 | yes                   | no                         | no (path change resets) |
+| Queries search and filter, open rows and sections                              | panel           | yes                 | yes                   | no                         | no                      |
+| Data open cards; Lineage kinds, cross-filters, pin, focus, trace and tables    | panel           | yes                 | yes                   | no                         | no                      |
+| Lineage zoom and pan, expanded modal                                           | Lineage tab     | yes                 | no                    | no                         | no                      |
+| Query's code tab and inner sections, "In N places", Requests "Show all"        | the row         | yes                 | no                    | no                         | no                      |
+| Structure collapsed nodes, Overview's "Show all" and collapsibles, Data search | the tab         | yes                 | no                    | no                         | no                      |
+| Request log                                                                    | host, per mount | —                   | yes                   | yes                        | no                      |
 
 ## 5. Structure
 
@@ -453,6 +455,7 @@ Where each piece of UI state lives decides when it resets. Tabs unmount when ina
 
 ```
 src/inspector/
+  PRD.md                  the product overview: problem, users, concepts, journeys
   SPEC.md                 this file
   LINEAGE.md              the Lineage tab's model, layout and host contract
   index.ts                the public API; the only file a host imports from
