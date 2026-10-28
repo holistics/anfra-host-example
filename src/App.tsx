@@ -51,12 +51,12 @@ const sidebarOpen = storedSidebarOpen();
 const sidebarStyle = (sidebarWidth ? { '--sidebar-width': sidebarWidth } : {}) as CSSProperties;
 
 /** The action bar's order for the commands it knows; any other primary command goes before Inspect. */
-const toolbarOrder = ['shell.versions', 'askai.comment', 'shell.prompt', 'inspect.toggle'];
-/** The commands whose buttons carry a word beside the icon. */
-const toolbarText: Record<string, string> = {
-  'askai.comment': 'Ask AI',
+const toolbarOrder = ['shell.versions', 'askai.ask', 'shell.prompt', 'inspect.toggle'];
+/** The commands whose buttons carry a word beside the icon: their title, or a shorter one. */
+const toolbarText: Record<string, string | true> = {
+  'askai.ask': true,
   'shell.prompt': 'Prompt',
-  'inspect.toggle': 'Inspect',
+  'inspect.toggle': true,
 };
 /** An overflow menu's label, by its commands' icon. */
 const menuLabels: Record<string, string> = { download: 'Download a picture of the page' };
@@ -344,7 +344,7 @@ export function App() {
                       aria-disabled={!!state.disabled}
                       active={!!state.pressed}
                       onClick={() => !state.disabled && run(command)}
-                      text={toolbarText[command.id]}
+                      text={textOf(command)}
                       shortcut={command.shortcut}
                       className={cn(state.disabled && 'cursor-not-allowed opacity-50')}
                     >
@@ -400,6 +400,12 @@ export function App() {
       {toast && <ToastMessage toast={toast} onDone={() => setToast(undefined)} />}
     </TooltipProvider>
   );
+}
+
+/** The word beside a command's icon in the action bar, if it has one. */
+function textOf(command: Command): string | undefined {
+  const text = toolbarText[command.id];
+  return text === true ? command.title : text;
 }
 
 /** Where a primary command goes in the action bar. */

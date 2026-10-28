@@ -1,4 +1,4 @@
-// The Ask AI plugin's frame half: an "Ask AI" item in the menu on a block, comment mode (pick a
+// The Ask AI plugin's frame half: an "Ask AI" item in the menu on a block, Ask AI mode (pick a
 // marked element to comment on), and the card, drawn as the kernel's popover beside the node. It
 // imports types only, beside ./model, since everything it needs comes through the kernel.
 // Built by vite.config.ts (buildFrameHalf); the host half is ./plugin.ts. See SPEC.md.
@@ -20,7 +20,7 @@ export default function setup(kernel: FrameKernel): void {
   // Bumped per card, so a card that closes late doesn't clear the next one's state.
   let cards = 0;
 
-  // The host's command is pressed while comment mode is on or a card is open.
+  // The host's command is pressed while Ask AI mode is on or a card is open.
   const report = () => kernel.emit('state', { active: !!stopPicking || !!card });
 
   kernel.menuItem({
@@ -32,7 +32,7 @@ export default function setup(kernel: FrameKernel): void {
     },
   });
 
-  // The host's "Comment on an element": start comment mode, or cancel it, or close the card.
+  // The host's Ask AI command: start Ask AI mode, or cancel it, or close the card.
   kernel.handle('pick', () => {
     if (stopPicking) stopPicking();
     else if (card) card.close();
@@ -59,7 +59,7 @@ export default function setup(kernel: FrameKernel): void {
     kernel.overlay.show([element], { kind: node.kind, name: nameOf(node) });
 
   /**
-   * Comment mode: a clear sheet over the page with the comment cursor, so clicks reach no app.
+   * Ask AI mode: a clear sheet over the page with the comment cursor, so clicks reach no app.
    * Pointing outlines the marked element underneath, a click opens the card on it, Escape cancels.
    */
   function startPicking() {

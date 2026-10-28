@@ -1,5 +1,5 @@
 // The Ask AI plugin's host half: it builds the prompt, copies it, says where it may be sent, and
-// adds "Comment on an element" to the host's commands. The frame half (./frame.ts) draws the card.
+// adds "Ask AI" to the host's commands. The frame half (./frame.ts) draws the card.
 import { PermissionError, ValidationError } from '@holistics/anfra-sdk/common';
 import { definePlugin, type FrameHalf, type MountContext, type Plugin } from '@holistics/anfra-sdk/host';
 import { buildCommentPrompt, checkComment, type SendTarget } from './model';
@@ -21,7 +21,7 @@ export const sendTargets: SendTarget[] = [
 ];
 
 export function askAiPlugin(options: AskAiOptions, frame: FrameHalf): Plugin {
-  // Whether each mount is in comment mode or has a card open, as its frame reports.
+  // Whether each mount is in Ask AI mode or has a card open, as its frame reports.
   const active = new WeakMap<MountContext, boolean>();
 
   const promptFor = (request: unknown, mount: MountContext | undefined) => {
@@ -53,8 +53,8 @@ export function askAiPlugin(options: AskAiOptions, frame: FrameHalf): Plugin {
             throw new PermissionError(disabled);
           },
         },
-        // The command's: start or stop comment mode in the frame.
-        comment: (_request, call) => call.mount?.call('askai.pick'),
+        // The command's: start or stop Ask AI mode in the frame, or close its card.
+        toggle: (_request, call) => call.mount?.call('askai.pick'),
       },
       events: {
         state: (payload) =>
@@ -67,27 +67,43 @@ export function askAiPlugin(options: AskAiOptions, frame: FrameHalf): Plugin {
           active.set(mount, on);
           mount.commandsChanged();
         };
+        // Escape on the host page leaves the mode, or closes the card, as it does in the frame:
+        // starting from the toolbar or the palette leaves focus on the page.
+        const onKeyDown = (event: KeyboardEvent) => {
+          if (event.key !== 'Escape' || event.defaultPrevented || !active.get(mount)) return;
+          if (isTyping(event.target)) return;
+          event.preventDefault();
+          mount.call('askai.pick').catch(() => {});
+        };
+        mount.document.addEventListener('keydown', onKeyDown);
         const stops = [
           mount.on('askai.state', ({ active: on }: { active: boolean }) => set(on)),
           // A reloaded document has no card and isn't picking.
           mount.onReady(() => set(false)),
         ];
         return () => {
+          mount.document.removeEventListener('keydown', onKeyDown);
           for (const stop of stops) stop();
         };
       },
       commands: [
         {
-          id: 'comment',
-          title: 'Comment on an element',
+          id: 'ask',
+          title: 'Ask AI',
           icon: 'comment',
           placement: 'primary',
           shortcut: 'Alt+Shift+C',
-          run: { call: 'askai.comment' },
+          run: { call: 'askai.toggle' },
           state: ({ mount }) => ({ pressed: active.get(mount) === true }),
         },
       ],
     },
     frame,
   });
+}
+
+/** Whether a key went to something that takes text, whose Escape is its own. */
+function isTyping(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  return !!element && (element.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName ?? ''));
 }

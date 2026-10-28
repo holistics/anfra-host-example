@@ -17,7 +17,7 @@ Status: **built**, as an SDK plugin (`askai`).
   `data-anfra-control`. Their handles are what an agent searches the definition for.
 - **Content UI in the frame, host UI in the host.** The card is about a node of the app, so the
   plugin's frame half draws it beside the node, with the kernel's popover. The command that starts
-  comment mode is the host's, drawn in its toolbar and palette (ADR "content UI in the frame, host UI
+  Ask AI mode is the host's, drawn in its toolbar and palette (ADR "content UI in the frame, host UI
   in host slots").
 - **Rules on the host.** Building the prompt, copying it and refusing Send ("Disabled by admin") are
   the host half's calls. The frame half only draws, since it shares a realm with the definition.
@@ -28,7 +28,7 @@ Status: **built**, as an SDK plugin (`askai`).
 
 | Term | Meaning |
 | --- | --- |
-| **Comment mode** | The frame half's own pick: pointing outlines a marked element, a click opens the card on it. |
+| **Ask AI mode** | The frame half's own pick: pointing outlines a marked element, a click opens the card on it. |
 | **Node** | One marked element of the structure (`StructureNode`), addressed by its `key` (`0.2.1`). |
 | **Handle** | A node's identity for an agent: `[Label](data-anfra-block="id")`, or the attribute alone. |
 | **Card** | The comment box: the kernel's popover, beside the commented node. |
@@ -37,16 +37,15 @@ Status: **built**, as an SDK plugin (`askai`).
 
 ## 3. Entry points
 
-- **Command** `askai.comment`, "Comment on an element" (`comment` icon, primary): the toolbar shows
-  it as **Ask AI**, and the palette lists it. **Alt+Shift+C**, on the page or in the frame (the SDK
-  forwards a command's shortcut). It is pressed while comment mode is on or a card is open, and
+- **Command** `askai.ask`, "Ask AI" (`comment` icon, primary), in the toolbar and the palette. **Alt+Shift+C**, on the page or in the frame (the SDK
+  forwards a command's shortcut). It is pressed while Ask AI mode is on or a card is open, and
   pressing it then cancels either.
 - **Menu**: "Ask AI" in the menu on a marked block (right-click), which opens the card at once.
 
-Comment mode doesn't need the inspect panel, and doesn't open it. It is not the panel's pick mode:
-the panel's pick selects a node for the tabs; comment mode opens a card.
+Ask AI mode doesn't need the inspect panel, and doesn't open it. It is not the panel's pick mode:
+the panel's pick selects a node for the tabs; Ask AI mode opens a card.
 
-**Reset.** A reload, a path change or a live reload loads a new document: no card, no comment mode.
+**Reset.** A reload, a path change or a live reload loads a new document: no card, no Ask AI mode.
 
 ## 4. Behavior
 
@@ -55,7 +54,7 @@ the panel's pick selects a node for the tabs; comment mode opens a card.
 1. **Activate** (button, shortcut or palette). A clear sheet covers the page with the comment
    cursor, an arrow with a speech bubble, so clicks reach no app and the mode can't be mistaken for
    the panel's pick. Pointing outlines the marked element underneath with the SDK's overlay.
-2. **Pick.** A click on a marked element ends comment mode and opens the card beside it. The node
+2. **Pick.** A click on a marked element ends Ask AI mode and opens the card beside it. The node
    stays outlined while the card is open.
 3. **Write.** The textarea has focus. The card follows the node as the page scrolls or resizes (the
    popover's own).
@@ -66,8 +65,9 @@ the panel's pick selects a node for the tabs; comment mode opens a card.
 5. **Close.** Closing the card clears the outline.
 
 **Cancelling**
-- Escape while in comment mode leaves it; nothing opens.
-- The command, while in comment mode, cancels it; while a card is open, closes it.
+- Escape while in Ask AI mode leaves it; nothing opens. Escape on the host page does too (the host
+  half listens there), since starting from the toolbar or the palette leaves focus on the page.
+- The command, while in Ask AI mode, cancels it; while a card is open, closes it.
 - Escape in the card, or its ×, discards the card.
 - Clicking outside the card does **not** close it, so a half-written comment isn't lost to a stray
   click.
@@ -101,7 +101,7 @@ there's no room. 320px wide, or less in a narrow frame.
 ### 4.3 What the card is anchored to
 
 The node's element, as the kernel's popover follows it. The menu's "Ask AI" anchors to the block
-right-clicked; comment mode to the element clicked.
+right-clicked; Ask AI mode to the element clicked.
 
 ### 4.4 Prompt
 
@@ -142,7 +142,7 @@ src/askai/
   SPEC.md          this file
   index.ts         the plugin, with its frame half built: the only file a host imports
   plugin.ts        the host half: calls, the event, the command
-  frame.ts         the frame half: the menu item, comment mode, the card
+  frame.ts         the frame half: the menu item, Ask AI mode, the card
   model.ts         pure: handles, the prompt, the frame's request checked; SDK types only
   frame-half.d.ts  the type of `virtual:askai-frame`
 ```
@@ -157,9 +157,9 @@ src/askai/
 | `askai.copy` | frame | Checks `{ node, ancestors, comment }`, builds the prompt with the mount's app, copies it on the host page. Answers `{ prompt, copied }`. |
 | `askai.targets` | frame | The send targets, each with why it is off. |
 | `askai.send` | frame | Refused: `PermissionError("Disabled by admin")`. |
-| `askai.comment` | the command | Calls `askai.pick` in the frame. |
-| `askai.pick` | host, into the frame | Starts comment mode, or cancels it, or closes the card. |
-| `askai.state` | frame event | `{ active }`: comment mode on or a card open. The command's `pressed` follows it. |
+| `askai.toggle` | the command | Calls `askai.pick` in the frame. |
+| `askai.pick` | host, into the frame | Starts Ask AI mode, or cancels it, or closes the card. |
+| `askai.state` | frame event | `{ active }`: Ask AI mode on or a card open. The command's `pressed` follows it. |
 
 The host gives the plugin `appOf(mount)` (the app's label and file) and `copy(text)`.
 
