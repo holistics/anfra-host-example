@@ -38,9 +38,10 @@ describe('askai', () => {
     );
   });
 
-  it('adds Comment on an element, with its shortcut, to the host commands', () => {
-    const command = host.commands.find((each) => each.id === 'askai.comment');
+  it('adds Ask AI, with its shortcut, to the host commands', () => {
+    const command = host.commands.find((each) => each.id === 'askai.ask');
     assert.equal(command?.shortcut, 'Alt+Shift+C');
-    assert.deepEqual(command?.run, { call: 'askai.comment' });
+    assert.equal(command?.title, 'Ask AI');
+    assert.deepEqual(command?.run, { call: 'askai.toggle' });
   });
 });
