@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatAgo } from '@/inspector/model/format';
+import { formatAgo } from '@/lib/format';
 import { type MockChangeKind, type MockVersion, mockVersionsFor } from '@/lib/mock-versions';
 import { cn } from '@/lib/utils';
 

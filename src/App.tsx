@@ -1,14 +1,14 @@
-import { Download, History, MessageCircle, RotateCw, ScanSearch, ScrollText } from 'lucide-react';
+import { Ellipsis, RotateCw } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { type AnchorRect, buildCommentPrompt, CommentCard, findNode } from '@/comments';
 import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
-import { DataAppStage, type StageHandle } from '@/components/data-app-stage';
+import { DataAppStage } from '@/components/data-app-stage';
 import { Home } from '@/components/home';
-import { PickMenu } from '@/components/pick-menu';
+import { PluginPanel } from '@/components/plugin-panel';
 import { PromptPanel } from '@/components/prompt-panel';
 import { storedSidebarOpen, storedSidebarWidth } from '@/components/sidebar-resizer';
+import { useTheme } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,34 +23,14 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VersionsPanel } from '@/components/versions-panel';
 import {
-  clickMessage,
-  commentCursor,
+  type Command,
   type DatasetDescriptor,
-  type FrameClick,
-  lineageSource,
   loadCatalog,
-  openPaletteMessage,
-  type RenderFormat,
-  type RenderRequest,
-  reader,
-  rectMessage,
-  type StructureNode,
-  sdkVersion,
-  toggleCommentMessage,
-  toggleInspectMessage,
-  togglePromptMessage,
-  toggleVersionsMessage,
+  type Mounted,
+  type Rendering,
+  setPluginTheme,
 } from '@/data-app';
-import {
-  attributeFor,
-  createInspectorStore,
-  createRequestLog,
-  Inspector,
-  type InspectorTab,
-  type MetricDocs,
-  type NodeRequest,
-  type PickTarget,
-} from '@/inspector';
+import { chromeCommands, commandIcon, commandIcons } from '@/lib/commands';
 import {
   catalog,
   type Entry,
@@ -61,7 +41,8 @@ import {
   type Redirects,
   urlOf,
 } from '@/lib/host';
-import { altKey, modKey, shiftKey } from '@/lib/shortcut';
+import { onShell, setShellState } from '@/lib/shell';
+import { modKey, shortcutKeys } from '@/lib/shortcut';
 import { cn } from '@/lib/utils';
 
 // Read once: while dragging, the resizer sets the width on the wrapper itself.
@@ -69,50 +50,37 @@ const sidebarWidth = storedSidebarWidth();
 const sidebarOpen = storedSidebarOpen();
 const sidebarStyle = (sidebarWidth ? { '--sidebar-width': sidebarWidth } : {}) as CSSProperties;
 
-// Numbers each mount of a Data App: the stage and the inspect panel are keyed on it.
-let mounts = 0;
+/** The action bar's order for the commands it knows; any other primary command goes before Inspect. */
+const toolbarOrder = ['shell.versions', 'askai.comment', 'shell.prompt', 'inspect.toggle'];
+/** The commands whose buttons carry a word beside the icon. */
+const toolbarText: Record<string, string> = {
+  'askai.comment': 'Ask AI',
+  'shell.prompt': 'Prompt',
+  'inspect.toggle': 'Inspect',
+};
+/** An overflow menu's label, by its commands' icon. */
+const menuLabels: Record<string, string> = { download: 'Download a picture of the page' };
 
 export function App() {
   const [entries, setEntries] = useState<Entry[]>();
   const [redirects, setRedirects] = useState<Redirects>({});
   const [datasets, setDatasets] = useState<Record<string, DatasetDescriptor>>();
-  const [metricDocs, setMetricDocs] = useState<MetricDocs>();
   const [error, setError] = useState<string>();
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
   // Bumped to remount the Data App: the reload button, and live reload.
   const [revision, setRevision] = useState(0);
-  // The right-hand panel: the inspector, the prompt that made the app, or its version history. One at a time.
-  const [panel, setPanel] = useState<'inspect' | 'prompt' | 'versions'>();
-  const inspecting = panel === 'inspect';
-  // The frame has one pick mode: for the inspector, or to comment on a node (src/comments/SPEC.md).
-  const [pickFor, setPickFor] = useState<'inspect' | 'comment'>();
-  const picking = pickFor === 'inspect';
-  const [tab, setTab] = useState<InspectorTab>('overview');
-  const [picked, setPicked] = useState<NodeRequest>();
-  // The node just picked, while the menu asks what to check about it; its rect is where it was clicked,
-  // `tracked` while the frame reports it as the node moves.
-  const [pickMenu, setPickMenu] = useState<PickMenuAt>();
-  const pickMenuRef = useRef(pickMenu);
-  pickMenuRef.current = pickMenu;
-  // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the menu.
-  const [pendingPick, setPendingPick] = useState<PendingPick>();
-  // The last click in the frame, and where; a pick's click is reported just before the pick.
-  const lastClick = useRef<{ click?: FrameClick; at: number }>({ at: 0 });
-  // The last node picked for the menu, and when: a click reported just after it is that pick's own.
-  const lastPick = useRef<{ key: string; at: number }>(undefined);
-  // The node being commented on, and where its card is anchored; `tracked` while the frame reports its rect.
-  const [comment, setComment] = useState<Commented>();
-  const commentRef = useRef(comment);
-  commentRef.current = comment;
-  // A pick whose structure hasn't arrived yet: wait for the frame's snapshot, then open the card.
-  const [pendingComment, setPendingComment] = useState<PendingPick>();
-  const commenting = pickFor === 'comment' || !!comment || !!pendingComment;
-  const commentButton = useRef<HTMLButtonElement>(null);
-  // While set, the comment owns the frame outline: the Structure tree's hover/clear must not steal it.
-  const heldHighlight = useRef<string | null>(null);
+  // The page's own side panels: the prompt that made the app, or its version history. The inspect
+  // panel is the SDK's; one of the three shows at a time.
+  const [side, setSide] = useState<'prompt' | 'versions'>();
   const [toast, setToast] = useState<Toast>();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const stage = useRef<StageHandle>(null);
+  const [theme] = useTheme();
+  // The open Data App's mount: its panel and its commands' state live in the SDK, and `version` is
+  // bumped on each change to them, so the page draws them again.
+  const [mounted, setMounted] = useState<Mounted>();
+  const [version, setVersion] = useState(0);
+  // The panel belongs to one Data App: it closes when another is opened, and survives a reload.
+  const keptPanel = useRef<{ path: string | undefined; tab: string | undefined }>(undefined);
 
   const refreshCatalog = useCallback(
     () =>
@@ -127,13 +95,7 @@ export function App() {
   );
   const refreshDatasets = useCallback(
     () =>
-      loadCatalog().then(
-        (loaded) => {
-          setDatasets(loaded.datasets);
-          setMetricDocs(loaded.metricDocs);
-        },
-        (err: Error) => setError(`Couldn't load the datasets: ${err.message}`),
-      ),
+      loadCatalog().then(setDatasets, (err: Error) => setError(`Couldn't load the datasets: ${err.message}`)),
     [],
   );
 
@@ -141,6 +103,26 @@ export function App() {
     void refreshCatalog();
     void refreshDatasets();
   }, [refreshCatalog, refreshDatasets]);
+
+  // The plugins' UI (the panel's tabs, the menu and card in the frame) follows the page's theme.
+  useEffect(() => {
+    const style = getComputedStyle(document.documentElement);
+    const read = (name: string) => style.getPropertyValue(name).trim() || undefined;
+    setPluginTheme({
+      scheme: theme,
+      tokens: {
+        'color-bg': read('--background'),
+        'color-fg': read('--foreground'),
+        'color-muted': read('--muted-foreground'),
+        'color-border': read('--border'),
+        // The neutral theme has no accent colour; links and selection in the tabs take indigo.
+        'color-accent': theme === 'dark' ? '#a5b4fc' : '#4f46e5',
+        'color-danger': read('--destructive'),
+        radius: read('--radius'),
+        font: getComputedStyle(document.body).fontFamily || undefined,
+      },
+    });
+  }, [theme]);
 
   // Deep links: the address follows the open Data App, and back and forward follow the address.
   useEffect(() => {
@@ -154,51 +136,6 @@ export function App() {
     window.history.pushState(null, '', urlOf(next));
     setPath(next);
   };
-
-  // A new Data App starts with nothing inspected: one inspector store, request log and panel per
-  // mounted frame. The stage and the panel are keyed on `mount`, so a new store always comes with a
-  // new frame recording into it. A ref, not a memo: React may drop a memo and build it again, which
-  // would split the frame from its store; a ref keeps the mount until the app, its revision or the
-  // datasets change.
-  const mounted = useRef<{ deps: unknown[]; inspector: ReturnType<typeof mountInspector> }>(null);
-  const deps = [path, revision, datasets];
-  if (!mounted.current || deps.some((dep, i) => !Object.is(dep, mounted.current?.deps[i]))) {
-    mounted.current = { deps, inspector: mountInspector() };
-  }
-  const { inspector } = mounted.current;
-  function mountInspector() {
-    const requests = createRequestLog();
-    const store = createInspectorStore({
-      env: {
-        hostName: 'anfra demo',
-        path,
-        sdkVersion,
-        reader,
-        datasets: datasets ?? {},
-        metricDocs,
-        lineage: lineageSource,
-      },
-      requests: requests.log,
-      // Comment holds the outline until its card closes; ignore the tree's hover and clear meanwhile.
-      highlight: (node) => {
-        if (heldHighlight.current) return;
-        stage.current?.highlight(node);
-      },
-      locate: (target) => stage.current?.locate(target),
-      download: (node, format) => downloadNode(node, format),
-    });
-    return { ...store, record: requests.record, mount: ++mounts };
-  }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each mount
-  useEffect(() => {
-    setPicked(undefined);
-    setPickMenu(undefined);
-    setPendingPick(undefined);
-    setPickFor(undefined);
-    setComment(undefined);
-    setPendingComment(undefined);
-    heldHighlight.current = null;
-  }, [inspector.mount]);
 
   // Live reload, in development: a changed Data App reloads if it is the one open; a changed AML
   // reloads the datasets, and with them the open Data App.
@@ -228,319 +165,100 @@ export function App() {
     setPath(moved);
   }, [moved]);
 
-  // Pick works on the structure, which the frame reads only while it is inspected: picking opens
-  // the panel, and closing the panel ends picking.
-  // Only the menu's own hold is let go, and the tracking with it: a comment card may hold the outline instead.
-  const closePickMenu = useCallback(() => {
-    const open = pickMenuRef.current;
-    if (!open) return;
-    pickMenuRef.current = undefined;
-    if (heldHighlight.current === open.key) {
-      heldHighlight.current = null;
-      stage.current?.highlight(null);
-      if (open.tracked) stage.current?.track(false);
-    }
-    setPickMenu(undefined);
-  }, []);
-  // The menu, and a pick still waiting to open it: the inspector they lead to is going away.
-  const dropPick = () => {
-    closePickMenu();
-    setPendingPick(undefined);
-  };
-  const choosePick = (to: PickTarget) => {
-    if (pickMenu) setPicked({ key: pickMenu.key, nonce: Date.now(), to });
-    closePickMenu();
-  };
-  const togglePicking = () => {
-    if (!picking) {
-      setPanel('inspect');
-      closeComment();
-      dropPick();
-    }
-    setPickFor(picking ? undefined : 'inspect');
-  };
-  const toggleInspecting = () => {
-    if (inspecting && picking) setPickFor(undefined);
-    if (inspecting) dropPick();
-    setPanel(inspecting ? undefined : 'inspect');
-  };
-
-  // Commenting: pick a node, then a card beside it, with the node held highlighted until it closes.
-  // Only the card's own hold is let go, as with the pick menu.
-  const closeComment = useCallback(() => {
-    const open = commentRef.current;
-    if (open && heldHighlight.current === open.node.key) {
-      heldHighlight.current = null;
-      stage.current?.highlight(null);
-      if (open.tracked) stage.current?.track(false);
-    }
-    setComment(undefined);
-    setPendingComment(undefined);
-  }, []);
-  const closeCard = useCallback(() => {
-    closeComment();
-    commentButton.current?.focus();
-  }, [closeComment]);
-  // A comment and the pick menu each hold the outline; one at a time.
-  const toggleCommenting = () => {
-    if (comment || pendingComment) closeComment();
-    else {
-      if (pickFor !== 'comment') dropPick();
-      setPickFor(pickFor === 'comment' ? undefined : 'comment');
-    }
-  };
-  // The prompt panel stays chosen across apps, like the inspector, but shows only for an app with a
-  // prompt; one without leaves the button off rather than stuck on and disabled.
-  const prompting = panel === 'prompt' && !!app?.prompt;
-  const togglePrompt = () => {
-    if (picking) setPickFor(undefined);
-    if (!prompting) dropPick();
-    setPanel(prompting ? undefined : 'prompt');
-  };
-  // The versions panel (demo data for now) is chosen like the inspector: it shows for any open app.
-  const versioning = panel === 'versions' && !!app;
-  const toggleVersions = () => {
-    if (picking) setPickFor(undefined);
-    if (!versioning) dropPick();
-    setPanel(versioning ? undefined : 'versions');
-  };
-
-  // Cmd/Ctrl+K for the palette, Alt+Shift+P, Alt+Shift+I and Alt+Shift+V, on the page or forwarded from a Data App's frame (see keyForwarder). Run from
-  // a ref, so the listeners don't change with every render.
-  const shortcuts = useRef({
-    togglePrompt,
-    toggleInspecting,
-    toggleVersions,
-    toggleCommenting,
-    hasApp: !!app,
-    hasPrompt: !!app?.prompt,
-  });
-  shortcuts.current = {
-    togglePrompt,
-    toggleInspecting,
-    toggleVersions,
-    toggleCommenting,
-    hasApp: !!app,
-    hasPrompt: !!app?.prompt,
-  };
-  // A pick's own click, reported after the pick: it anchors the menu, or the pick waiting to open it.
-  const anchorPick = useRef<(key: string, click: FrameClick) => void>(undefined);
-  anchorPick.current = (key, click) => {
-    setPendingPick((pending) => (pending?.key === key && !pending.click ? { key, click } : pending));
-    const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
-    if (!found) return;
-    setPickMenu((menu) =>
-      menu?.key === key && !menu.rect ? { key, node: found.node, ...anchorFor(found.node, click) } : menu,
-    );
-  };
+  // Follow the mount's panel and commands. Opening the panel closes the page's own side panel; a
+  // reload of the same app opens it again where it was.
   useEffect(() => {
-    const run = (shortcut: 'prompt' | 'inspect' | 'versions' | 'comment') => {
-      const { togglePrompt, toggleInspecting, toggleVersions, toggleCommenting, hasApp, hasPrompt } =
-        shortcuts.current;
-      if (shortcut === 'prompt' && hasPrompt) togglePrompt();
-      if (shortcut === 'inspect' && hasApp) toggleInspecting();
-      if (shortcut === 'versions' && hasApp) toggleVersions();
-      if (shortcut === 'comment' && hasApp) toggleCommenting();
+    if (!mounted) return;
+    const { panel } = mounted.app;
+    const changed = () => {
+      setVersion((n) => n + 1);
+      keptPanel.current = panel.open ? { path: current.current, tab: panel.tab } : undefined;
+      if (panel.open) setSide(undefined);
     };
+    const stops = [panel.subscribe(changed), mounted.app.onCommandsChange(() => setVersion((n) => n + 1))];
+    const kept = keptPanel.current;
+    if (kept && kept.path === current.current) panel.show(kept.tab);
+    setVersion((n) => n + 1);
+    return () => {
+      for (const stop of stops) stop();
+    };
+  }, [mounted]);
+  const panel = mounted?.app.panel;
+  const inspecting = !!panel?.open;
+
+  // The page's side panels show only for an open app; the prompt panel only for one with a prompt.
+  const prompting = side === 'prompt' && !!app?.prompt;
+  const versioning = side === 'versions' && !!app;
+  const toggleSide = (which: 'prompt' | 'versions') => {
+    const open = which === 'prompt' ? prompting : versioning;
+    if (!open) panel?.hide();
+    setSide(open ? undefined : which);
+  };
+  useEffect(
+    () => setShellState({ prompting, versioning, hasPrompt: !!app?.prompt }),
+    [prompting, versioning, app],
+  );
+
+  // The shell's commands: from the action bar, the palette, or a shortcut on the page or in the frame.
+  const shellActions = useRef({ toggleSide });
+  shellActions.current = { toggleSide };
+  useEffect(
+    () =>
+      onShell((action) => {
+        if (action === 'prompt' || action === 'versions') shellActions.current.toggleSide(action);
+        if (action === 'palette') setPaletteOpen((open) => !open);
+      }),
+    [],
+  );
+
+  // Cmd/Ctrl+K opens the palette with or without an app; the commands' shortcuts run on the open one.
+  // The sidebar's own keys (Cmd/Ctrl+B, `/`) are its own listeners', which run first.
+  const mountedRef = useRef(mounted);
+  mountedRef.current = mounted;
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen((open) => !open);
         return;
       }
-      if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
-      const shortcut =
-        event.code === 'KeyP'
-          ? 'prompt'
-          : event.code === 'KeyI'
-            ? 'inspect'
-            : event.code === 'KeyV'
-              ? 'versions'
-              : event.code === 'KeyC'
-                ? 'comment'
-                : undefined;
-      if (!shortcut) return;
-      event.preventDefault();
-      run(shortcut);
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (event.data === openPaletteMessage) setPaletteOpen(true);
-      if (event.data === togglePromptMessage) run('prompt');
-      if (event.data === toggleInspectMessage) run('inspect');
-      if (event.data === toggleCommentMessage) run('comment');
-      if (event.data === toggleVersionsMessage) run('versions');
-      if (event.data?.type === clickMessage && stage.current?.owns(event.source)) {
-        const click = event.data as FrameClick;
-        lastClick.current = { click, at: Date.now() };
-        const pick = lastPick.current;
-        if (pick && Date.now() - pick.at < 500) {
-          // Only the first click is the pick's own; a later one closes the menu like any other.
-          lastPick.current = undefined;
-          anchorPick.current?.(pick.key, click);
-        }
-        // Clicks in the frame never reach this document, so the pick menu's own outside-click can't see them.
-        else closePickMenu();
-      }
-      if (event.data?.type === rectMessage && stage.current?.owns(event.source)) {
-        const rect = event.data.rect as AnchorRect;
-        setComment((current) => (current?.tracked ? { ...current, rect } : current));
-        setPickMenu((current) => (current?.tracked ? { ...current, rect } : current));
-      }
+      mountedRef.current?.app.handleKeydown(event);
     };
     window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('message', onMessage);
-    };
-  }, [closePickMenu]);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
-  const onPick = (node: string | null) => {
-    const mode = pickFor;
-    if (node) {
-      if (mode !== 'comment') lastPick.current = { key: node, at: Date.now() };
-      // The frame's click message may land just after the pick report, so read it a moment later, and
-      // only if it is that click's: a pick that isn't from a click doesn't inherit an old rect.
-      setTimeout(() => {
-        const { click, at } = lastClick.current;
-        const recent = click && Date.now() - at < 500 ? click : undefined;
-        lastClick.current = { at: 0 };
-        // The pick's click came first, so it has been read: no later click is the pick's own.
-        if (recent && lastPick.current?.key === node) lastPick.current = undefined;
-        if (mode === 'comment') {
-          // Comment mode ends with the card opening, in one update: in between, the frame would stop
-          // being inspected and drop the structure the highlight needs. The structure may still be
-          // on its way; pendingComment waits for it (see the effect below).
-          setPickFor(undefined);
-          setPendingComment({ key: node, click: recent });
-          return;
-        }
-        // The reader chooses where it goes in the pick menu, beside the node; the inspector picks the tab.
-        // The structure may still be on its way; pendingPick waits for it (see the effect below).
-        setPendingPick({ key: node, click: recent });
-      }, 30);
-    }
-    // The frame leaves pick mode once something is picked, or when the reader presses Escape.
-    if (!node || mode !== 'comment') setPickFor(undefined);
+  const commands = chromeCommands(mounted);
+  const stateOf = (command: Command) => {
+    void version;
+    return mounted ? mounted.app.commandState(command.id) : { disabled: 'The Data App is loading' };
   };
-
-  // The card anchors to the clicked element's rect when it is the picked node's, and follows it;
-  // otherwise to the click point, or with no click, the top of the stage (SPEC §4.3).
-  const commentOn = (key: string, click: FrameClick | undefined) => {
-    const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
-    if (!found) return false;
-    setPendingComment(undefined);
-    setComment({ ...found, ...anchorFor(found.node, click) });
-    return true;
-  };
-  // The menu anchors like the comment card.
-  const openPickMenu = (key: string, click: FrameClick | undefined) => {
-    const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], key);
-    if (!found) return false;
-    setPendingPick(undefined);
-    setPickMenu({ key, node: found.node, ...anchorFor(found.node, click) });
-    return true;
-  };
-  // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
-  const pickMenuKey = pickMenu?.key;
-  const pickMenuTracked = pickMenu?.tracked;
-  useEffect(() => {
-    if (!pickMenuKey) return;
-    heldHighlight.current = pickMenuKey;
-    stage.current?.highlight(pickMenuKey);
-    if (pickMenuTracked) stage.current?.track(true);
-  }, [pickMenuKey, pickMenuTracked]);
-  // The page re-rendered without the node (a reload, new data): the menu goes with it, and its hold.
-  // With the node still there, the menu takes its latest shape.
-  useEffect(() => {
-    if (!pickMenuKey) return;
-    const check = () => {
-      const found = findNode(inspector.source.getSnapshot()?.structure.nodes ?? [], pickMenuKey);
-      if (!found) closePickMenu();
-      else
-        setPickMenu((menu) =>
-          menu?.key === pickMenuKey && menu.node !== found.node ? { ...menu, node: found.node } : menu,
-        );
-    };
-    check();
-    return inspector.source.subscribe(check);
-  }, [pickMenuKey, inspector.source, closePickMenu]);
-  // The comment cursor on the page itself too, so it shows the moment Ask AI is clicked, not only
-  // once the pointer reaches the frame.
-  useEffect(() => {
-    if (pickFor !== 'comment') return;
-    const style = document.createElement('style');
-    style.textContent = `*{cursor:${commentCursor}!important}`;
-    document.head.appendChild(style);
-    return () => style.remove();
-  }, [pickFor]);
-  // A pick can land before the frame's first snapshot; wait for one, then give up.
-  const awaitStructure = (open: () => boolean, giveUp: () => void) => {
-    if (open()) return;
-    let done = false;
-    const undo = inspector.source.subscribe(() => {
-      if (done || !open()) return;
-      done = true;
-      clearTimeout(timer);
-    });
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      undo();
-      giveUp();
-      setToast({ tone: 'error', text: "Couldn't find that element in the page's structure." });
-    }, 2000);
-    return () => {
-      done = true;
-      undo();
-      clearTimeout(timer);
-    };
-  };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commentOn closes over the current store
-  useEffect(() => {
-    if (!pendingComment) return;
-    const { key, click } = pendingComment;
-    return awaitStructure(
-      () => commentOn(key, click),
-      () => setPendingComment(undefined),
-    );
-  }, [pendingComment, inspector.source]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: openPickMenu closes over the current store
-  useEffect(() => {
-    if (!pendingPick) return;
-    const { key, click } = pendingPick;
-    return awaitStructure(
-      () => openPickMenu(key, click),
-      () => setPendingPick(undefined),
-    );
-  }, [pendingPick, inspector.source]);
-  // Held from an effect, so it lands after the stage's own: leaving pick mode clears the highlight.
-  const commentKey = comment?.node.key;
-  const commentTracked = comment?.tracked;
-  useEffect(() => {
-    if (!commentKey) return;
-    heldHighlight.current = commentKey;
-    stage.current?.highlight(commentKey);
-    if (commentTracked) stage.current?.track(true);
-  }, [commentKey, commentTracked]);
-
-  // A picture of the app, or of one node. The browser's own download says it worked; a failure, or
-  // images left blank for want of CORS, is told in a toast.
-  const download = (request: RenderRequest) => {
-    stage.current?.render(request).then(
-      ({ omitted }) => {
-        if (omitted.length) {
-          setToast({
-            tone: 'note',
-            text: `Saved, with ${omitted.length === 1 ? 'an image' : `${omitted.length} images`} left blank: their servers send no CORS headers.`,
-          });
-        }
+  // A command's failure shows in a toast; so do images a picture left blank.
+  const run = (command: Command) => {
+    if (!mounted) return;
+    mounted.app.run(command.id).then(
+      (result) => {
+        if (!('call' in command.run) || command.run.call !== 'render.download') return;
+        const { omitted } = result as Rendering;
+        if (!omitted.length) return;
+        setToast({
+          tone: 'note',
+          text: `Saved, with ${omitted.length === 1 ? 'an image' : `${omitted.length} images`} left blank: their servers send no CORS headers.`,
+        });
       },
-      (err: Error) => setToast({ tone: 'error', text: `Couldn't save the picture: ${err.message}` }),
+      (err: Error) => setToast({ tone: 'error', text: `Couldn't run ${command.title}: ${err.message}` }),
     );
   };
-  const downloadNode = (node: StructureNode, format: RenderFormat) =>
-    download(node.kind === 'block' ? { block: node.id, format } : { container: node.id, format });
+
+  // The action bar: a plugin's primary commands as buttons, its overflow ones in a menu per icon.
+  const primary = commands
+    .filter((command) => command.placement !== 'overflow')
+    .sort((a, b) => rank(a) - rank(b));
+  const menus = new Map<string, Command[]>();
+  for (const command of commands.filter((each) => each.placement === 'overflow')) {
+    const icon = command.icon && commandIcons[command.icon] ? command.icon : 'more';
+    menus.set(icon, [...(menus.get(icon) ?? []), command]);
+  }
 
   let content: React.ReactNode;
   if (error) {
@@ -549,49 +267,17 @@ export function App() {
     content = entries ? <Home entries={entries} onSelect={select} /> : <Message>Loading…</Message>;
   } else if (entries && !app) {
     content = moved ? <Message>Loading…</Message> : <Message>No Data App at {path}.</Message>;
-  } else if (!datasets) {
+  } else if (!datasets || !app) {
     content = <Message>Loading…</Message>;
   } else {
     content = (
       <DataAppStage
-        key={inspector.mount}
-        ref={stage}
+        key={`${path}:${revision}`}
         path={path}
+        label={app.label}
         datasets={datasets}
-        // Commenting needs the structure, which the frame posts only while it is inspected.
-        inspecting={inspecting || commenting}
-        picking={!!pickFor}
-        cursor={pickFor === 'comment' ? 'comment' : undefined}
-        onInspect={inspector.publish}
-        record={inspector.record}
-        onPick={onPick}
-      >
-        {pickMenu && (
-          <PickMenu
-            key={pickMenu.key}
-            node={pickMenu.node}
-            rect={pickMenu.rect}
-            onChoose={choosePick}
-            onClose={closePickMenu}
-          />
-        )}
-        {comment && app && (
-          <CommentCard
-            key={comment.node.key}
-            node={comment.node}
-            rect={comment.rect}
-            prompt={(text) =>
-              buildCommentPrompt({
-                app: { label: app.label, file: `apps/${path}` },
-                node: comment.node,
-                ancestors: comment.ancestors,
-                comment: text,
-              })
-            }
-            onClose={closeCard}
-          />
-        )}
-      </DataAppStage>
+        onMount={setMounted}
+      />
     );
   }
 
@@ -621,63 +307,51 @@ export function App() {
                 <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
                   <RotateCw />
                 </ToolbarButton>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <ToolbarButton label="Download a picture of the page" disabled={!app}>
-                      <Download />
+                {[...menus].map(([icon, items]) => {
+                  const Icon = commandIcons[icon] ?? Ellipsis;
+                  return (
+                    <DropdownMenu key={icon}>
+                      <DropdownMenuTrigger asChild>
+                        <ToolbarButton label={menuLabels[icon] ?? 'More actions'}>
+                          <Icon />
+                        </ToolbarButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {items.map((command) => {
+                          const state = stateOf(command);
+                          return (
+                            <DropdownMenuItem
+                              key={command.id}
+                              disabled={!!state.disabled}
+                              title={state.disabled}
+                              onSelect={() => run(command)}
+                            >
+                              {command.title}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                })}
+                {primary.map((command) => {
+                  const state = stateOf(command);
+                  const Icon = commandIcon(command);
+                  return (
+                    <ToolbarButton
+                      key={command.id}
+                      label={state.disabled ?? command.title}
+                      aria-disabled={!!state.disabled}
+                      active={!!state.pressed}
+                      onClick={() => !state.disabled && run(command)}
+                      text={toolbarText[command.id]}
+                      shortcut={command.shortcut}
+                      className={cn(state.disabled && 'cursor-not-allowed opacity-50')}
+                    >
+                      <Icon />
                     </ToolbarButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => download({ format: 'png' })}>PNG</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => download({ format: 'pdf' })}>PDF</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <ToolbarButton
-                  label={versioning ? 'Close the versions panel' : 'Show version history (demo data)'}
-                  disabled={!app}
-                  active={versioning}
-                  onClick={toggleVersions}
-                  shortcut="V"
-                >
-                  <History />
-                </ToolbarButton>
-                <ToolbarButton
-                  ref={commentButton}
-                  label={commenting ? 'Stop commenting' : 'Comment on an element'}
-                  disabled={!app}
-                  active={commenting}
-                  onClick={toggleCommenting}
-                  text="Ask AI"
-                  shortcut="C"
-                >
-                  <MessageCircle />
-                </ToolbarButton>
-                <ToolbarButton
-                  label={
-                    !app || app.prompt
-                      ? prompting
-                        ? 'Close the prompt panel'
-                        : 'Show the prompt that made this app'
-                      : 'No prompt recorded for this app'
-                  }
-                  disabled={!app?.prompt}
-                  active={prompting}
-                  onClick={togglePrompt}
-                  text="Prompt"
-                  shortcut="P"
-                >
-                  <ScrollText />
-                </ToolbarButton>
-                <ToolbarButton
-                  label={inspecting ? 'Close the inspect panel' : 'Inspect the Data App'}
-                  disabled={!app}
-                  active={inspecting}
-                  onClick={toggleInspecting}
-                  text="Inspect"
-                  shortcut="I"
-                >
-                  <ScanSearch />
-                </ToolbarButton>
+                  );
+                })}
               </div>
             )}
           </header>
@@ -685,20 +359,11 @@ export function App() {
             <ResizablePanel id="stage" minSize="30%">
               {content}
             </ResizablePanel>
-            {inspecting && app && (
+            {inspecting && panel && mounted && (
               <>
                 <ResizableHandle />
                 <ResizablePanel id="inspect" defaultSize="440px" minSize="220px" maxSize="60%">
-                  <Inspector
-                    key={inspector.mount}
-                    source={inspector.source}
-                    tab={tab}
-                    onTab={setTab}
-                    picked={picked}
-                    picking={picking}
-                    onTogglePicking={togglePicking}
-                    onClose={toggleInspecting}
-                  />
+                  <PluginPanel panel={panel} tabs={mounted.host.tabs} />
                 </ResizablePanel>
               </>
             )}
@@ -706,7 +371,7 @@ export function App() {
               <>
                 <ResizableHandle />
                 <ResizablePanel id="prompt" defaultSize="320px" minSize="220px" maxSize="60%">
-                  <PromptPanel prompt={app.prompt} onClose={togglePrompt} />
+                  <PromptPanel prompt={app.prompt} onClose={() => toggleSide('prompt')} />
                 </ResizablePanel>
               </>
             )}
@@ -714,7 +379,7 @@ export function App() {
               <>
                 <ResizableHandle />
                 <ResizablePanel id="versions" defaultSize="360px" minSize="260px" maxSize="60%">
-                  <VersionsPanel onClose={toggleVersions} />
+                  <VersionsPanel onClose={() => toggleSide('versions')} />
                 </ResizablePanel>
               </>
             )}
@@ -727,15 +392,9 @@ export function App() {
           app={app}
           onSelect={select}
           onReload={() => setRevision((n) => n + 1)}
-          onDownload={(format) => download({ format })}
-          inspecting={inspecting}
-          prompting={prompting}
-          onInspect={toggleInspecting}
-          onPrompt={togglePrompt}
-          versioning={versioning}
-          onVersions={toggleVersions}
-          commenting={commenting}
-          onComment={toggleCommenting}
+          commands={commands}
+          stateOf={stateOf}
+          onRun={run}
         />
       </SidebarProvider>
       {toast && <ToastMessage toast={toast} onDone={() => setToast(undefined)} />}
@@ -743,40 +402,10 @@ export function App() {
   );
 }
 
-interface Commented {
-  node: StructureNode;
-  /** The nodes it sits in, outermost first. */
-  ancestors: StructureNode[];
-  rect: AnchorRect | undefined;
-  /** Whether the frame reports the node's rect as it moves. */
-  tracked: boolean;
-}
-
-/**
- * Where a comment card or the pick menu anchors: to the clicked element's rect when it is the node's,
- * `tracked` so it follows the node; otherwise to the click point, or with no click, the top of the stage.
- */
-function anchorFor(
-  node: StructureNode,
-  click: FrameClick | undefined,
-): { rect: AnchorRect | undefined; tracked: boolean } {
-  const tracked = !!click?.rect && click.attr === attributeFor(node);
-  const rect = tracked ? click?.rect : click ? { x: click.x, y: click.y, width: 0, height: 0 } : undefined;
-  return { rect, tracked };
-}
-
-interface PickMenuAt {
-  key: string;
-  node: StructureNode;
-  rect: AnchorRect | undefined;
-  /** Whether the frame reports the node's rect as it moves. */
-  tracked: boolean;
-}
-
-/** A picked node waiting for the structure, with the click that picked it. */
-interface PendingPick {
-  key: string;
-  click: FrameClick | undefined;
+/** Where a primary command goes in the action bar. */
+function rank(command: Command): number {
+  const at = toolbarOrder.indexOf(command.id);
+  return at === -1 ? toolbarOrder.length - 1.5 : at;
 }
 
 interface Toast {
@@ -809,13 +438,14 @@ function Message({ children }: { children: React.ReactNode }) {
   return <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">{children}</div>;
 }
 
-/** An icon button; with `text` it carries a visible label beside the icon, and with `shortcut` its tooltip shows the Alt+Shift keys to press. */
+/** An icon button; with `text` it carries a visible label beside the icon, and with `shortcut` its tooltip shows the keys to press. */
 function ToolbarButton({
   label,
   active,
   text,
   shortcut,
   children,
+  className,
   ...props
 }: { label: string; active?: boolean; text?: string; shortcut?: string } & React.ComponentProps<
   typeof Button
@@ -826,7 +456,7 @@ function ToolbarButton({
         <Button
           variant="ghost"
           size={text ? 'sm' : 'icon'}
-          className={cn(!text && 'size-8', active && 'bg-accent text-accent-foreground')}
+          className={cn(!text && 'size-8', active && 'bg-accent text-accent-foreground', className)}
           aria-label={label}
           aria-pressed={active}
           {...props}
@@ -841,9 +471,9 @@ function ToolbarButton({
           <>
             {' '}
             <KbdGroup>
-              <Kbd>{altKey}</Kbd>
-              <Kbd>{shiftKey}</Kbd>
-              <Kbd>{shortcut}</Kbd>
+              {shortcutKeys(shortcut).map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
             </KbdGroup>
           </>
         )}

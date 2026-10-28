@@ -22,13 +22,11 @@
     "format": "biome check --write ."
   },
   "dependencies": {
-    "@holistics/anfra-sdk": "0.13.1",
+    "@holistics/anfra-sdk": "0.14.0",
     "@hono/node-server": "^2.1.4",
-    "@xyflow/react": "^12.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "elkjs": "^0.12.0",
     "hono": "^4.13.13",
     "lucide-react": "^1.55.0",
     "radix-ui": "^1.7.0",
