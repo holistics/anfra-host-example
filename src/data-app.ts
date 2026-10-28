@@ -16,6 +16,8 @@ import {
   lineagePlugin,
   renderPlugin,
 } from '@holistics/anfra-sdk/plugins';
+import { askAiPlugin } from '@/askai';
+import { copyText } from '@/lib/clipboard';
 import { shellPlugin } from '@/lib/shell';
 import { allowOriginsHeader } from '../server/entry';
 
@@ -77,7 +79,7 @@ export function setPluginTheme(next: ThemeInput) {
 
 /**
  * The page's plugin host: every plugin anfra has, over the core API through this host's server, and
- * this host's own. Made again when the datasets are (an AML change), since the Backend resolves
+ * this host's own two. Made again when the datasets are (an AML change), since the Backend resolves
  * fields against them.
  *
  * - `core` runs the app's queries and suggests a filter's values, by `core.query`.
@@ -91,6 +93,7 @@ export function setPluginTheme(next: ThemeInput) {
  *   install it only for apps you trust with that, as this host does for its own repo.
  * - `inspect` adds the Inspect command and the panel's Overview, Data, Queries, Structure and
  *   Declaration tabs. This page draws the panel around them (src/components/plugin-panel.tsx).
+ * - `askai` (src/askai) comments on a part of the app and copies it as a prompt for an agent.
  * - `shell` (src/lib/shell.ts) is this page's own commands, so their shortcuts work in the frame.
  *
  * A Data App sees what is installed as `Anfra.plugins`: leave one out, and apps offer none of it.
@@ -112,6 +115,7 @@ function hostFor(datasets: Record<string, DatasetDescriptor>, allowOrigins: stri
           lineagePlugin(backend),
           renderPlugin(),
           inspectPlugin(),
+          askAiPlugin({ appOf: (mount) => apps.get(mount.frame), copy: copyText }),
           shellPlugin(),
         ],
         allowOrigins,
