@@ -1,14 +1,4 @@
-import {
-  AppWindowMac,
-  Download,
-  History,
-  MessageCircle,
-  Moon,
-  RotateCw,
-  ScanSearch,
-  ScrollText,
-  Sun,
-} from 'lucide-react';
+import { AppWindowMac, Moon, RotateCw, Sun } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTheme } from '@/components/theme-toggle';
 import {
@@ -20,10 +10,11 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import type { RenderFormat } from '@/data-app';
+import type { Command, CommandState } from '@/data-app';
+import { commandIcon } from '@/lib/commands';
 import type { AppEntry, Entry } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
-import { altKey, shiftKey } from '@/lib/shortcut';
+import { shortcutKeys } from '@/lib/shortcut';
 
 interface Props {
   open: boolean;
@@ -33,18 +24,10 @@ interface Props {
   app: AppEntry | undefined;
   onSelect: (path: string) => void;
   onReload: () => void;
-  onDownload: (format: RenderFormat) => void;
-  /** Whether the inspect and prompt panels are open, so their items say they close them. */
-  inspecting: boolean;
-  prompting: boolean;
-  onInspect: () => void;
-  onPrompt: () => void;
-  /** Whether the versions panel is open, so its item says it closes it. */
-  versioning: boolean;
-  onVersions: () => void;
-  /** Whether comment mode is on, so its item says it stops it. */
-  commenting: boolean;
-  onComment: () => void;
+  /** The open Data App's commands, the plugins' and this page's own, with how each shows now. */
+  commands: Command[];
+  stateOf: (command: Command) => CommandState;
+  onRun: (command: Command) => void;
 }
 
 /** Cmd/Ctrl+K: jump to a Data App, or run an action on the open one. */
@@ -55,15 +38,9 @@ export function CommandPalette({
   app,
   onSelect,
   onReload,
-  onDownload,
-  inspecting,
-  prompting,
-  onInspect,
-  onPrompt,
-  versioning,
-  onVersions,
-  commenting,
-  onComment,
+  commands,
+  stateOf,
+  onRun,
 }: Props) {
   const [theme, toggleTheme] = useTheme();
   const apps = useMemo(() => (entries ? appsOf(entries) : []), [entries]);
@@ -89,46 +66,24 @@ export function CommandPalette({
               <RotateCw />
               Refresh
             </CommandItem>
-            <CommandItem value="Download PNG picture image" onSelect={run(() => onDownload('png'))}>
-              <Download />
-              Download PNG
-            </CommandItem>
-            <CommandItem value="Download PDF picture" onSelect={run(() => onDownload('pdf'))}>
-              <Download />
-              Download PDF
-            </CommandItem>
-            <CommandItem value={inspecting ? 'Close the inspect panel' : 'Inspect'} onSelect={run(onInspect)}>
-              <ScanSearch />
-              {inspecting ? 'Close the inspect panel' : 'Inspect'}
-              <Shortcut letter="I" />
-            </CommandItem>
-            <CommandItem
-              value={versioning ? 'Close the versions panel' : 'Version history'}
-              onSelect={run(onVersions)}
-            >
-              <History />
-              {versioning ? 'Close the versions panel' : 'Version history'}
-              {!versioning && <span className="text-xs text-muted-foreground">Demo data · coming soon</span>}
-              <Shortcut letter="V" />
-            </CommandItem>
-            <CommandItem
-              value={commenting ? 'Stop commenting' : 'Comment on an element'}
-              onSelect={run(onComment)}
-            >
-              <MessageCircle />
-              {commenting ? 'Stop commenting' : 'Comment on an element'}
-              <Shortcut letter="C" />
-            </CommandItem>
-            {app.prompt && (
-              <CommandItem
-                value={prompting ? 'Close the prompt panel' : 'Prompt that made this app'}
-                onSelect={run(onPrompt)}
-              >
-                <ScrollText />
-                {prompting ? 'Close the prompt panel' : 'Prompt'}
-                <Shortcut letter="P" />
-              </CommandItem>
-            )}
+            {commands.map((command) => {
+              const state = stateOf(command);
+              const Icon = commandIcon(command);
+              return (
+                <CommandItem
+                  key={command.id}
+                  value={`${command.title} ${command.id}`}
+                  disabled={!!state.disabled}
+                  onSelect={run(() => onRun(command))}
+                >
+                  <Icon />
+                  {command.title}
+                  {state.pressed && <span className="text-xs text-muted-foreground">On</span>}
+                  {state.disabled && <span className="text-xs text-muted-foreground">{state.disabled}</span>}
+                  {command.shortcut && <Shortcut keys={shortcutKeys(command.shortcut)} />}
+                </CommandItem>
+              );
+            })}
           </CommandGroup>
         )}
         <CommandGroup heading="Appearance">
@@ -165,12 +120,12 @@ export function CommandPalette({
   );
 }
 
-function Shortcut({ letter }: { letter: string }) {
+function Shortcut({ keys }: { keys: string[] }) {
   return (
     <KbdGroup className="ml-auto">
-      <Kbd>{altKey}</Kbd>
-      <Kbd>{shiftKey}</Kbd>
-      <Kbd>{letter}</Kbd>
+      {keys.map((key) => (
+        <Kbd key={key}>{key}</Kbd>
+      ))}
     </KbdGroup>
   );
 }

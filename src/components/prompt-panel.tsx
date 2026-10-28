@@ -2,7 +2,7 @@ import { Check, Copy, X } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { copyText } from '@/inspector/ui/shared/copy-button';
+import { copyText } from '@/lib/clipboard';
 import type { AppPrompt } from '@/lib/host';
 
 interface Props {

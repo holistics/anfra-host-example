@@ -22,9 +22,9 @@ import {
   SidebarMenuSub,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { focusFilterMessage, toggleSidebarMessage } from '@/data-app';
 import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
+import { onShell } from '@/lib/shell';
 import { modKey } from '@/lib/shortcut';
 
 interface Props {
@@ -72,19 +72,18 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       (isMobile ? setOpenMobile : setOpen)(true);
       setFocusRequest((n) => n + 1);
     };
-    // The same shortcuts pressed inside a Data App's frame, which it forwards. Cmd/Ctrl+B is the
-    // sidebar's own, on the page.
-    const onMessage = (event: MessageEvent) => {
-      if (event.data === toggleSidebarMessage) return toggleSidebar();
-      if (event.data !== focusFilterMessage) return;
+    window.addEventListener('keydown', onKeyDown);
+    // The same keys pressed inside a Data App's frame, which runs them as the shell's commands.
+    // Cmd/Ctrl+B on the page is the sidebar's own.
+    const stop = onShell((action) => {
+      if (action === 'sidebar') toggleSidebar();
+      if (action !== 'filter') return;
       (isMobile ? setOpenMobile : setOpen)(true);
       setFocusRequest((n) => n + 1);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('message', onMessage);
+    });
     return () => {
       window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('message', onMessage);
+      stop();
     };
   }, [isMobile, setOpen, setOpenMobile, toggleSidebar]);
   useEffect(() => {
