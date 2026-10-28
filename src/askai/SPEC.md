@@ -87,8 +87,8 @@ there's no room. 320px wide, or less in a narrow frame.
 └─────────────────────────────────────────────┘
 ```
 
-- **Header**: the kind pill, the node's label (or its id or name when it has none), and the
-  popover's ×.
+- **Header**: the kind pill, the node's label (or its id or name when it has none), and ×. The
+  card draws its own × (`closeButton: false`), inside its 12px padding.
 - **Handle line**: the attribute as written, in mono, truncated with the full text in a tooltip.
 - **Problems**: when the node has markup problems, "⚠ N markup problems"; the tooltip lists them.
 - **Copy**: disabled while the comment is empty or only spaces (tooltip "Write a comment first").

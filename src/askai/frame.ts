@@ -120,6 +120,8 @@ export default function setup(kernel: FrameKernel): void {
     let closeCard = () => {};
     const opened = await kernel.popover({
       anchor: target,
+      // The card draws its own ×, inside its padding.
+      closeButton: false,
       mount: (root) => drawCard(root, target, targets, () => closeCard()),
       onClose: () => {
         if (id !== cards) return;
@@ -151,9 +153,12 @@ export default function setup(kernel: FrameKernel): void {
     style.textContent = CARD_CSS;
     const box = h('div', { class: 'card', role: 'dialog', 'aria-label': `Comment on ${nameOf(node)}` });
     const header = h('div', { class: 'header' });
+    const closeButton = h('button', { type: 'button', class: 'close', 'aria-label': 'Close' }, '×');
+    closeButton.addEventListener('click', close);
     header.append(
       h('span', { class: `pill ${node.kind}` }, node.kind),
       h('span', { class: 'name' }, nameOf(node)),
+      closeButton,
     );
     const attribute = attributeFor(node);
     box.append(header, h('div', { class: 'handle', title: attribute }, attribute));
@@ -265,8 +270,10 @@ function pathTo(
 
 // On the host's tokens, which the popover's root inherits.
 const CARD_CSS = `
-.card { width: min(320px, calc(100vw - 32px)); display: grid; gap: 8px; font: 13px/1.4 var(--anfra-font); color: var(--anfra-color-fg); }
-.header { display: flex; align-items: center; gap: 6px; padding-right: 24px; min-width: 0; }
+.card { box-sizing: border-box; width: min(320px, calc(100vw - 32px)); padding: 12px; display: grid; gap: 8px; font: 13px/1.4 var(--anfra-font); color: var(--anfra-color-fg); }
+.header { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.close { margin-left: auto; flex: none; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; color: var(--anfra-color-muted); font-size: 16px; line-height: 1; }
+.close:hover { color: var(--anfra-color-fg); background: color-mix(in srgb, var(--anfra-color-fg) 7%, transparent); }
 .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill { font-size: 11px; padding: 1px 6px; border-radius: 4px; flex: none; }
 .pill.container { color: #7c3aed; background: color-mix(in srgb, #7c3aed 14%, transparent); }
