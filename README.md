@@ -4,14 +4,14 @@ A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yo
 
 - A sidebar lists the repo's Data Apps; each opens at `/apps/<path>`.
 - The stage runs the open Data App in a sandboxed frame, on the SDK's plugin host with every plugin anfra has. Its queries come back to the page over the SDK's bridge and are answered by anfra through this host's server. So are its exports (a Data App's `query.export()` downloads a query's whole result as a CSV) and its lineage (`Anfra.lineage()` traces fields through the repo's catalog).
+- The toolbar and the command palette (Cmd/Ctrl+K) are drawn from the plugins' commands, and the inspect panel from their tabs: the SDK gives them as data, and this page draws them in its own look (shadcn/ui), with its colours mapped onto the SDK's `--anfra-*` theme. Their shortcuts work with focus in the frame too.
 - Pictures: the toolbar downloads a PNG or PDF of the whole app, a node's row in the Structure tab one of that container or block, and a Data App can save its own with `Anfra.render()`. The SDK draws them in the frame; this host turns that on by installing the `render` plugin (in [`src/data-app.ts`](src/data-app.ts)), since it has the page save a file the app's code made. Install it only for apps you trust with that.
-- A toolbar reloads the app, and opens the inspect panel:
-  - Structure: the app's parts as its markup declares them, as a tree. Hover a node to highlight it on the page, click to scroll to it, copy its handle (`[Revenue](data-anfra-block="revenue")`) to point an agent at it, or download a picture of it. Pick mode goes from the page to the tree.
-  - Data: every app's queries (state, rows, executed AQL and SQL), controls and selection, and every call the frame made through the plugins (exports, lineage, pictures saved), recorded by a middleware.
+- Inspect (Alt+Shift+I) opens the panel with the `inspect` and `lineage` plugins' tabs: Overview, Data, Queries, Lineage, Structure and Declaration. Pick mode, in Structure, goes from the page to the tree.
+- Ask AI (Alt+Shift+C, or "Ask AI" in the menu on a block) comments on a part of the app and copies it as a prompt for an agent. It is this host's own SDK plugin, in [`src/askai/`](src/askai/SPEC.md): a frame half that draws the card in the frame, and a host half that builds the prompt and copies it.
 - Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
-Tested with anfra 0.11.1 and `@holistics/anfra-sdk` 0.11.1. Bump them together: the SDK is released with anfra.
+Tested with anfra 0.14.0 and `@holistics/anfra-sdk` 0.14.0. Bump them together: the SDK is released with anfra.
 
 ## How it fits together
 
@@ -26,7 +26,7 @@ browser                          this host (Node, Hono)                 anfra se
 
 - **anfra** answers the core API only. Run with `--no-apps`, it serves no pages, and it must listen where only this server can reach it: `anfra serve` has no authentication.
 - **The server** (`server/`) is the one origin the browser talks to:
-  - `/api/core.show`, `/api/core.query`, `/api/core.query.export` and `/api/core.lineage`, passed to anfra, and `/api/core.search` for one question only (the catalog's models, for the inspector's Lineage tab), and nothing else of the core API. Queries, exports, lineage and that search are rate-limited per client, each with its own limit (lineage and the search count against the query limit's number). The spot to check your own session is marked in `server/anfra.ts`.
+  - `/api/core.show`, `/api/core.query`, `/api/core.query.export` and `/api/core.lineage`, passed to anfra, and nothing else of the core API. Queries, exports and lineage are rate-limited per client, each with its own limit (lineage counts against the query limit's number). The spot to check your own session is marked in `server/anfra.ts`.
   - `/exports/download/<token>/<name>`: an export's file, streamed from anfra. anfra makes its export links at this server's origin (`ANFRA_SITE_URL`, below), so the browser downloads through here, never from anfra directly. A link works for whoever has it until it expires; a host whose readers sign in checks the session here too (marked in `server/anfra.ts`).
   - `/host/apps` (the Data App tree, labelled by each file's `<title>`, and the [redirects](#redirects)), `/host/files/<path>` (a definition, or its preview image, sent sandboxed; a definition comes with an `X-Anfra-Allow-Origins` header, the origins the repo's Data Apps may load from beyond the SDK's CDNs, `apps.allow_origins` in its `.anfra/config.yml`, which the page passes the SDK) and, in development, `/host/events` (live reload). The core API has nothing to list or read app files, so the server reads them from the repo itself.
   - `/health`: this host's version and anfra's, or 503 while anfra does not answer.
@@ -80,7 +80,7 @@ Run anfra with `ANFRA_SITE_URL` at this host's public origin (`https://data.exam
 | `ANFRA_URL` | `http://127.0.0.1:7878` | Where anfra answers. Keep it off the public network. |
 | `PORT`, `HOSTNAME` | `8787`, `127.0.0.1` | Where this server listens. |
 | `NODE_ENV` | | `production` serves the built page, without live reload. |
-| `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client, and each of `core.lineage` and `core.search`. |
+| `QUERY_RATE_LIMIT` | `120` | `core.query` requests a minute per client, and `core.lineage`. |
 | `EXPORT_RATE_LIMIT` | `10` | `core.query.export` requests a minute per client. Each runs its query to the last row. |
 | `MCP` | | `1` passes anfra's MCP endpoint through at `/mcp`. See [MCP](#mcp). |
 | `TRUST_PROXY` | | `1` takes the client's address from `X-Forwarded-For`: the last entry, which the one proxy in front of this server appends. |
@@ -184,10 +184,11 @@ server/
   files.ts     a file under apps/, confined and sandboxed
   events.ts    live reload: the repo watched, changes debounced
 src/
-  data-app.ts  every SDK call: datasets, the reader, mounting a Data App
-  App.tsx      layout, routing, live reload
-  components/  sidebar, home, stage; ui/ is shadcn/ui
-  inspector/   the inspect panel, self-contained to carry to another host; SPEC.md says how
+  data-app.ts  every SDK call: datasets, the reader, the plugins, mounting a Data App
+  App.tsx      layout, routing, live reload, the toolbar drawn from the commands
+  components/  sidebar, home, stage, the inspect panel's chrome; ui/ is shadcn/ui
+  askai/       Ask AI, an SDK plugin of this host's own; SPEC.md says how it works
+  lib/shell.ts this page's own commands (panels, palette, sidebar), so their shortcuts work in the frame
   lib/host.ts  what the page asks the server, apart from the core API
 ```
 
