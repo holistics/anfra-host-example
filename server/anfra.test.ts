@@ -30,19 +30,9 @@ describe('the core API', () => {
     assert.deepEqual(asked, [{ url: 'http://anfra.test/api/core.lineage', body: JSON.stringify(body) }]);
   });
 
-  test("core.search answers the catalog's models, and nothing else", async () => {
-    const res = await post('core.search', { query: ['type:aml.model'] });
-    assert.equal(res.status, 200);
-    assert.equal(asked.length, 1);
-
-    for (const body of [{ query: ['revenue'] }, { query: ['type:aml.model', 'x'] }, {}, 'type:aml.model']) {
-      assert.equal((await post('core.search', body)).status, 404);
-    }
-    assert.equal(asked.length, 1);
-  });
-
   test('other ops stay private', async () => {
     assert.equal((await post('core.ingest', {})).status, 404);
+    assert.equal((await post('core.search', { query: ['type:aml.model'] })).status, 404);
     assert.equal(asked.length, 0);
   });
 });
