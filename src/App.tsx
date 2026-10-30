@@ -222,6 +222,14 @@ export function App() {
         setPaletteOpen((open) => !open);
         return;
       }
+      // Picking, Escape on the page ends the pick, as it does in the frame: starting it from the
+      // panel's strip or the palette leaves focus here.
+      const panel = mountedRef.current?.app.panel;
+      if (event.key === 'Escape' && !event.defaultPrevented && panel?.picking && !isTyping(event.target)) {
+        event.preventDefault();
+        panel.pick(false);
+        return;
+      }
       mountedRef.current?.app.handleKeydown(event);
     };
     window.addEventListener('keydown', onKeyDown);
@@ -251,8 +259,9 @@ export function App() {
   };
 
   // The action bar: a plugin's primary commands as buttons, its overflow ones in a menu per icon.
+  // The panel's (Pick) go in its strip.
   const primary = commands
-    .filter((command) => command.placement !== 'overflow')
+    .filter((command) => command.placement !== 'overflow' && command.placement !== 'panel')
     .sort((a, b) => rank(a) - rank(b));
   const menus = new Map<string, Command[]>();
   for (const command of commands.filter((each) => each.placement === 'overflow')) {
@@ -363,7 +372,13 @@ export function App() {
               <>
                 <ResizableHandle />
                 <ResizablePanel id="inspect" defaultSize="440px" minSize="220px" maxSize="60%">
-                  <PluginPanel panel={panel} tabs={mounted.host.tabs} />
+                  <PluginPanel
+                    panel={panel}
+                    tabs={mounted.host.tabs}
+                    commands={commands.filter((command) => command.placement === 'panel')}
+                    stateOf={stateOf}
+                    onRun={run}
+                  />
                 </ResizablePanel>
               </>
             )}
@@ -403,6 +418,12 @@ export function App() {
 }
 
 /** The word beside a command's icon in the action bar, if it has one. */
+/** Whether a key went to something that takes text, whose Escape is its own. */
+function isTyping(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  return !!element && (element.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName ?? ''));
+}
+
 function textOf(command: Command): string | undefined {
   const text = toolbarText[command.id];
   return text === true ? command.title : text;
