@@ -18,7 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Panel, Tab } from '@/data-app';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Command, CommandState, Panel, Tab } from '@/data-app';
+import { commandIcon } from '@/lib/commands';
 import { fitTabs, type TabFit } from '@/lib/tab-fit';
 import { cn } from '@/lib/utils';
 
@@ -35,14 +37,18 @@ const tabIcons: Record<string, LucideIcon> = {
 interface Props {
   panel: Panel;
   tabs: readonly Tab[];
+  /** The panel's commands (`placement: 'panel'`, Pick), drawn before the tabs. */
+  commands: readonly Command[];
+  stateOf: (command: Command) => CommandState;
+  onRun: (command: Command) => void;
 }
 
 /**
- * The panel's chrome: the plugins' tabs as a strip, and the open tab, drawn by its plugin in its
+ * The panel's chrome: its commands and the plugins' tabs as a strip, and the open tab, drawn by its plugin in its
  * own shadow root. What each tab shows, and the panel's state (the tab, the node selected, pick
  * mode), are the SDK's; this only places them. The page draws it again on each change to the panel.
  */
-export function PluginPanel({ panel, tabs }: Props) {
+export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
   const content = useRef<HTMLDivElement>(null);
   const tab = panel.tab;
 
@@ -85,6 +91,28 @@ export function PluginPanel({ panel, tabs }: Props) {
   return (
     <aside className="flex size-full flex-col bg-background" aria-label="Inspect panel">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b pr-1 pl-2">
+        {commands.map((command) => {
+          const state = stateOf(command);
+          const Icon = commandIcon(command);
+          return (
+            <Tooltip key={command.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('size-7 shrink-0', state.pressed && 'bg-accent text-accent-foreground')}
+                  aria-label={command.title}
+                  aria-pressed={!!state.pressed}
+                  aria-disabled={!!state.disabled}
+                  onClick={() => !state.disabled && onRun(command)}
+                >
+                  <Icon />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{state.disabled ?? command.title}</TooltipContent>
+            </Tooltip>
+          );
+        })}
         <div ref={bar} className="relative flex min-w-0 flex-1 items-center gap-0.5">
           <div role="tablist" className="flex min-w-0 items-center gap-0.5 overflow-hidden">
             {tabs

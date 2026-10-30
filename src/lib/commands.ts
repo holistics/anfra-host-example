@@ -4,6 +4,7 @@ import {
   History,
   type LucideIcon,
   MessageCircle,
+  MousePointer2,
   ScanSearch,
   ScrollText,
 } from 'lucide-react';
@@ -17,10 +18,14 @@ export const commandIcons: Record<string, LucideIcon> = {
   comment: MessageCircle,
   prompt: ScrollText,
   history: History,
+  pick: MousePointer2,
 };
 export const commandIcon = (command: Command): LucideIcon =>
   (command.icon && commandIcons[command.icon]) || AppWindow;
 
-/** The commands this page draws in its chrome: not the menu's on the page (`target`), nor its own hidden ones. */
+/**
+ * The commands this page draws in its chrome: not the menu's on the page (`target`), nor its own
+ * hidden ones. The action bar leaves out the panel's (`placement: 'panel'`), which its strip draws.
+ */
 export const chromeCommands = (mounted: Mounted | undefined): Command[] =>
   mounted?.host.commands.filter((command) => !command.target && !hiddenCommands.has(command.id)) ?? [];
