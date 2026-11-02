@@ -1,7 +1,7 @@
 import { ChevronRight, Folder } from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -222,8 +222,9 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
           className="group/app"
         >
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <AppIcon app={entry} checkClassName="group-data-[active=true]/app:ring-sidebar-current" />
+            <AppIcon app={entry} overlay={false} />
             <span>{entry.label}</span>
+            {entry.endorsed && <EndorsedMark className="icon-success-default!" />}
           </a>
         </SidebarMenuButton>
       </SidebarMenuItem>

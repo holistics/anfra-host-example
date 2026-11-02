@@ -1,6 +1,6 @@
 import { ChevronRight, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type AppEntry, type Entry, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
@@ -119,11 +119,12 @@ function AppCard({ app, onSelect }: { app: AppEntry; onSelect: (path: string) =>
         />
       )}
       <span className="flex items-center gap-3 px-4 py-3">
-        <AppIcon app={app} className="size-4 shrink-0 icon-weak" checkClassName="ring-card" />
+        <AppIcon app={app} overlay={false} className="size-4 shrink-0 icon-weak" />
         <span className="min-w-0">
           <span className="block truncate text-label">{app.label}</span>
           <span className="block truncate font-mono text-caption text-placeholder">{app.path}</span>
         </span>
+        {app.endorsed && <EndorsedMark />}
       </span>
     </a>
   );

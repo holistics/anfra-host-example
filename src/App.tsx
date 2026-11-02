@@ -1,6 +1,6 @@
 import { CircleAlert, Ellipsis, Info, LoaderCircle, RotateCw } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
@@ -313,8 +313,8 @@ export function App() {
             {app && (
               <AppIcon
                 app={app}
+                overlay={false}
                 className="size-4 shrink-0 icon-highlight-default"
-                checkClassName="ring-background"
               />
             )}
             {/* An app's name is the page's heading; elsewhere the bar is navigation, and the page has its own. */}
@@ -323,6 +323,7 @@ export function App() {
             ) : (
               <span className="truncate text-label text-default">anfra demo</span>
             )}
+            {app?.endorsed && <EndorsedMark className="ml-0" />}
             {app && <AppInfo app={app} />}
             {path && (
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
