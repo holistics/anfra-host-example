@@ -1,89 +1,147 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: reduced motion must win over every component's own motion */
+/*
+ * A port of anfra-cloud's web/src/main.css (its web/DESIGN.md says which token to use for
+ * what), so this host looks like the anfra Cloud app. Change a shared value there first.
+ * The theme: Inter and Geist Mono (bundled, never from a CDN: an on-prem install
+ * may be offline), the color, radius and elevation tokens, and the chart palette.
+ * Token structure follows the Holistics Design System (HDS):
+ *   Tier 1  primitives   --anfra-{hue}-{step}                       raw OKLCH, never used by components
+ *   Tier 2  semantic     --anfra-color-{scope}-{semantic}-{state}   scope = background | text | icon | border | focus-ring
+ *   Tier 3  shadcn alias --background, --primary, --sidebar-*, ...  so shadcn-vue components work unchanged
+ * Tailwind exposes Tier 2 per property: bg-hover, text-weak, border-field, icon-weak.
+ * Dark mode (.dark on <html>, set by src/components/theme-toggle.tsx before first render)
+ * redefines Tier 2 only. The default theme follows the system.
+ * This host's own additions: --code (a code well), --paper-* (the prompt panel), both in HDS terms.
+ */
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn/ui's neutral theme. The page follows the system's light or dark setting (src/main.tsx). */
-:root {
-  color-scheme: light;
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --code: oklch(0.975 0.003 250);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  /* The prompt panel: warm paper, with reddish code chips. */
-  --paper: oklch(0.984 0.004 85);
-  --paper-foreground: oklch(0.24 0.006 60);
-  --paper-muted: oklch(0.52 0.01 60);
-  --paper-border: oklch(0.92 0.008 75);
-  --paper-code: oklch(0.94 0.02 45);
-  --paper-code-foreground: oklch(0.52 0.16 33);
+/* Tailwind v4 already scopes hover: to (hover: hover), so a tap leaves no hover behind. */
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-heading: var(--font-sans);
 }
 
-.dark {
-  color-scheme: dark;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --code: oklch(0.185 0.005 250);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --paper: oklch(0.235 0.004 85);
-  --paper-foreground: oklch(0.93 0.008 80);
-  --paper-muted: oklch(0.7 0.01 70);
-  --paper-border: oklch(1 0 0 / 10%);
-  --paper-code: oklch(0.7 0.13 35 / 14%);
-  --paper-code-foreground: oklch(0.76 0.13 38);
+/*
+ * Type: one size per role, named for the role (DESIGN.md "Type scale"). Each class sets size and
+ * line height, and the weight where the role has its own: body text inherits it, so dark mode's
+ * heavier body weight still applies. Keep TYPE_ROLES in src/lib/utils.ts in step.
+ */
+@theme {
+  /* Tailwind's own sizes (text-xs ... text-9xl) are off: a size is a role. Font sizes only, not --text-color-*. */
+  --text-xs: initial;
+  --text-sm: initial;
+  --text-base: initial;
+  --text-lg: initial;
+  --text-xl: initial;
+  --text-2xl: initial;
+  --text-3xl: initial;
+  --text-4xl: initial;
+  --text-5xl: initial;
+  --text-6xl: initial;
+  --text-7xl: initial;
+  --text-8xl: initial;
+  --text-9xl: initial;
+  --text-title: 1.25rem; /* 20px: the one heading of a page or step */
+  --text-title--line-height: 1.75rem;
+  --text-title--font-weight: 600; /* also a dialog's title */
+  --text-body: 0.875rem; /* 14px: descriptions, field text, alerts, rows */
+  --text-body--line-height: 1.25rem;
+  --text-heading: 0.875rem; /* 14px semibold: section headings, card titles */
+  --text-heading--line-height: 1.25rem;
+  --text-heading--font-weight: 600;
+  --text-label: 0.875rem; /* 14px medium: buttons, links, field labels, names */
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 500;
+  --text-caption: 0.75rem; /* 12px: dividers, notes under a button, badges, roles, timestamps */
+  --text-caption--line-height: 1rem;
+  --text-code: 1.25rem; /* 20px: the 6-digit code field only */
+  --text-code--line-height: 1.75rem;
+}
+
+@utility icon-* {
+  color: --value(--icon-color-*);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Tier 2, per property (HDS grammar). bg-*, text-*, border-*, icon-* */
+  --background-color-default: var(--anfra-color-background-default);
+  --background-color-base-default: var(--anfra-color-background-base-default);
+  --background-color-secondary-default: var(--anfra-color-background-secondary-default);
+  --background-color-card-default: var(--anfra-color-background-card-default);
+  --background-color-raised-default: var(--anfra-color-background-raised-default);
+  --background-color-current-default: var(--anfra-color-background-current-default);
+  --background-color-hover: var(--anfra-color-background-hover);
+  --background-color-active: var(--anfra-color-background-active);
+  --background-color-disabled: var(--anfra-color-background-disabled);
+  --background-color-inverted-default: var(--anfra-color-background-inverted-default);
+  --background-color-interactive-highlight-default: var(
+    --anfra-color-background-interactive-highlight-default
+  );
+  --background-color-interactive-highlight-hover: var(--anfra-color-background-interactive-highlight-hover);
+  --background-color-interactive-overlay: var(--anfra-color-background-interactive-overlay);
+  --background-color-skeleton: var(--anfra-color-background-skeleton);
+  --background-color-highlight-default: var(--anfra-color-background-highlight-default);
+  --background-color-highlight-hover: var(--anfra-color-background-highlight-hover);
+  --background-color-highlight-active: var(--anfra-color-background-highlight-active);
+  --background-color-highlight-secondary-default: var(--anfra-color-background-highlight-secondary-default);
+  --background-color-highlight-secondary-hover: var(--anfra-color-background-highlight-secondary-hover);
+  --background-color-danger-default: var(--anfra-color-background-danger-default);
+  --background-color-danger-hover: var(--anfra-color-background-danger-hover);
+  --background-color-danger-secondary-default: var(--anfra-color-background-danger-secondary-default);
+  --background-color-warning-secondary-default: var(--anfra-color-background-warning-secondary-default);
+  --background-color-success-default: var(--anfra-color-background-success-default);
+  --background-color-success-secondary-default: var(--anfra-color-background-success-secondary-default);
+  --background-color-info-secondary-default: var(--anfra-color-background-info-secondary-default);
+  --text-color-default: var(--anfra-color-text-default);
+  --text-color-weak: var(--anfra-color-text-weak);
+  --text-color-placeholder: var(--anfra-color-text-placeholder);
+  --text-color-disabled: var(--anfra-color-text-disabled);
+  --text-color-highlight-default: var(--anfra-color-text-highlight-default);
+  --text-color-link-default: var(--anfra-color-text-link-default);
+  --text-color-link-hover: var(--anfra-color-text-link-hover);
+  --text-color-on-fill: var(--anfra-color-text-on-fill);
+  --text-color-inverted-default: var(--anfra-color-text-inverted-default);
+  --text-color-danger-default: var(--anfra-color-text-danger-default);
+  --text-color-warning-default: var(--anfra-color-text-warning-default);
+  --text-color-success-default: var(--anfra-color-text-success-default);
+  --text-color-info-default: var(--anfra-color-text-info-default);
+  --icon-color-default: var(--anfra-color-icon-default);
+  --icon-color-weak: var(--anfra-color-icon-weak);
+  --icon-color-hover: var(--anfra-color-icon-hover);
+  --icon-color-disabled: var(--anfra-color-icon-disabled);
+  --icon-color-highlight-default: var(--anfra-color-icon-highlight-default);
+  --icon-color-on-fill: var(--anfra-color-icon-on-fill);
+  --icon-color-inverted-default: var(--anfra-color-icon-inverted-default);
+  --icon-color-danger-default: var(--anfra-color-icon-danger-default);
+  --icon-color-warning-default: var(--anfra-color-icon-warning-default);
+  --icon-color-success-default: var(--anfra-color-icon-success-default);
+  --icon-color-info-default: var(--anfra-color-icon-info-default);
+  --border-color-default: var(--anfra-color-border-default);
+  --border-color-weak: var(--anfra-color-border-weak);
+  --border-color-strong: var(--anfra-color-border-strong);
+  --border-color-hover: var(--anfra-color-border-hover);
+  --border-color-field: var(--anfra-color-border-field);
+  --border-color-disabled: var(--anfra-color-border-disabled);
+  --border-color-highlight-default: var(--anfra-color-border-highlight-default);
+  --border-color-highlight-strong: var(--anfra-color-border-highlight-strong);
+  --border-color-danger-default: var(--anfra-color-border-danger-default);
+  --border-color-danger-strong: var(--anfra-color-border-danger-strong);
+  --border-color-warning-default: var(--anfra-color-border-warning-default);
+  --border-color-success-default: var(--anfra-color-border-success-default);
+  --outline-color-focus: var(--anfra-color-focus-ring-default);
+  --ring-color-focus: var(--anfra-color-focus-ring-default);
+  --ring-color-weak: var(--anfra-color-border-weak); /* current nav chip edge (ring-1 ring-inset) */
+  --ring-color-strong: var(--anfra-color-border-strong); /* floating surface edge without layout shift */
+  --fill-inverted-default: var(--anfra-color-background-inverted-default);
+
+  /* Tier 3, shadcn aliases (names the components already use) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -92,10 +150,10 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --color-code: var(--code);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -109,19 +167,549 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-current: var(--sidebar-current);
+  --color-sidebar-current-foreground: var(--sidebar-current-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* This host's own. bg-code only (a well for code), not --color-code: text-code is a type role. */
+  --background-color-code: var(--code);
   --color-paper: var(--paper);
   --color-paper-foreground: var(--paper-foreground);
   --color-paper-muted: var(--paper-muted);
   --color-paper-border: var(--paper-border);
   --color-paper-code: var(--paper-code);
   --color-paper-code-foreground: var(--paper-code-foreground);
+
+  /* Radius: brand scale 6 / 10 / 14 (anfra-landing DESIGN.md §5). Defined explicitly, not from --radius. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px; /* small controls inside UI: menu items, nav items, chips, kbd, inline code */
+  --radius-lg: 10px; /* controls: buttons (all sizes), inputs, icon buttons, alerts */
+  --radius-xl: 14px; /* surfaces: cards, popovers, dialogs, sheets, inset panel */
+  --radius-2xl: 16px; /* large raised surfaces only */
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
+  --radius-pill: 9999px; /* status pills and counters only, never buttons */
+  --radius-control: 10px;
+  --radius-card: 14px;
+
+  /* Elevation: neutral ink only (DESIGN.md §6). Tailwind's stock shadows map to e1/e2, so no custom shadow can appear. */
+  --shadow-e1: var(--anfra-e1);
+  --shadow-e2: var(--anfra-e2);
+  --shadow-2xs: var(--anfra-e1);
+  --shadow-xs: var(--anfra-e1);
+  --shadow-sm: var(--anfra-e1);
+  --shadow-md: var(--anfra-e2);
+  --shadow-lg: var(--anfra-e2);
+  --shadow-xl: var(--anfra-e2);
+  --shadow-2xl: var(--anfra-e2);
+
+  --ease-anfra-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-anfra-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ------------------------------------------------------------------ Tier 1: primitives */
+:root {
+  --anfra-ink-0: oklch(1 0 0); /* #ffffff */
+  --anfra-ink-100: oklch(0.961 0.007 304.2); /* #f3f1f6 */
+  --anfra-ink-200: oklch(0.879 0.016 302.5); /* #d9d5e0 */
+  --anfra-ink-300: oklch(0.723 0.017 306.3); /* #a8a3ae */
+  --anfra-ink-400: oklch(0.679 0.024 300); /* #9a95a5 */
+  --anfra-ink-500: oklch(0.531 0.024 300.8); /* #6e6978 */
+  --anfra-ink-550: oklch(0.485 0.022 306.3); /* #625c69 */
+  --anfra-ink-600: oklch(0.47 0.023 301.8); /* #5d5866 */
+  --anfra-ink-700: oklch(0.392 0.021 304.3); /* #48434f */
+  --anfra-ink-750: oklch(0.343 0.025 298.2); /* #3a3644 */
+  --anfra-ink-800: oklch(0.286 0.021 301.7); /* #2c2833 */
+  --anfra-ink-850: oklch(0.251 0.017 300.4); /* #232029 */
+  --anfra-ink-875: oklch(0.223 0.014 298.3); /* #1c1a21 */
+  --anfra-ink-900: oklch(0.201 0.022 301.1); /* #18141f */
+  --anfra-ink-950: oklch(0.176 0.008 297); /* #111014 */
+  --anfra-ink-1000: oklch(0.157 0.009 296.9); /* #0d0c10 */
+  --anfra-ink-a4: oklch(0.201 0.022 301.1 / 0.04); /* #18141f @ 4% */
+  --anfra-ink-a5: oklch(0.201 0.022 301.1 / 0.05); /* #18141f @ 5% */
+  --anfra-ink-a8: oklch(0.201 0.022 301.1 / 0.08); /* #18141f @ 8% */
+  --anfra-ink-a9: oklch(0.201 0.022 301.1 / 0.09); /* #18141f @ 9% */
+  --anfra-ink-a12: oklch(0.201 0.022 301.1 / 0.12); /* #18141f @ 12% */
+  --anfra-ink-a24: oklch(0.201 0.022 301.1 / 0.24); /* #18141f @ 24% */
+  --anfra-ink-a40: oklch(0.201 0.022 301.1 / 0.4); /* #18141f @ 40% */
+  --anfra-ink-a48: oklch(0.201 0.022 301.1 / 0.48); /* #18141f @ 48% */
+
+  --anfra-white-a4: oklch(1 0 0 / 0.04); /* #ffffff @ 4% */
+  --anfra-white-a6: oklch(1 0 0 / 0.06); /* #ffffff @ 6% */
+  --anfra-white-a8: oklch(1 0 0 / 0.08); /* #ffffff @ 8% */
+  --anfra-white-a10: oklch(1 0 0 / 0.1); /* #ffffff @ 10% */
+
+  --anfra-black-a60: oklch(0 0 0 / 0.6); /* #000000 @ 60% */
+
+  --anfra-paper-25: oklch(0.985 0.004 91.4); /* #fbfaf7 */
+  --anfra-paper-50: oklch(0.973 0.005 95.1); /* #f7f6f2 */
+  --anfra-paper-100: oklch(0.955 0.007 88.6); /* #f2f0eb */
+  --anfra-paper-200: oklch(0.925 0.01 87.5); /* #e9e6df */
+
+  --anfra-violet-100: oklch(0.946 0.027 304.8); /* #f1e9fc */
+  --anfra-violet-200: oklch(0.904 0.049 303.6); /* #e6d8fb */
+  --anfra-violet-300: oklch(0.878 0.072 302.8); /* #e0ccff */
+  --anfra-violet-400: oklch(0.794 0.124 300.7); /* #c9a9ff */
+  --anfra-violet-500: oklch(0.66 0.18 298.5); /* #a274f0 */
+  --anfra-violet-600: oklch(0.565 0.194 300.3); /* #8a51d4 */
+  --anfra-violet-700: oklch(0.517 0.192 299.1); /* #7a43c4 */
+  --anfra-violet-800: oklch(0.484 0.181 298.1); /* #6e3db5 */
+  --anfra-violet-900: oklch(0.386 0.146 297.6); /* #4f2a86 */
+  --anfra-violet-a18: oklch(0.565 0.194 300.3 / 0.18); /* #8a51d4 @ 18% */
+  --anfra-violet-a26: oklch(0.565 0.194 300.3 / 0.26); /* #8a51d4 @ 26% */
+  --anfra-violet-a40: oklch(0.565 0.194 300.3 / 0.4); /* #8a51d4 @ 40% */
+
+  --anfra-red-50: oklch(0.971 0.014 22.8); /* #fff2f1 */
+  --anfra-red-200: oklch(0.871 0.061 27.2); /* #fac6bf */
+  --anfra-red-300: oklch(0.779 0.121 27); /* #fb988d */
+  --anfra-red-400: oklch(0.7 0.171 27); /* #f66d62 */
+  --anfra-red-500: oklch(0.549 0.199 27.1); /* #cc2827 */
+  --anfra-red-700: oklch(0.501 0.17 27.2); /* #b02b27 */
+  --anfra-red-900: oklch(0.361 0.094 23.9); /* #662524 */
+  --anfra-red-950: oklch(0.239 0.039 12.4); /* #2f171a */
+
+  --anfra-amber-50: oklch(0.973 0.028 84.6); /* #fff5e1 */
+  --anfra-amber-200: oklch(0.881 0.08 78.2); /* #f5d29c */
+  --anfra-amber-300: oklch(0.84 0.12 69.6); /* #fdbc6f */
+  --anfra-amber-400: oklch(0.8 0.15 70.5); /* #faab3f */
+  --anfra-amber-500: oklch(0.64 0.139 69.5); /* #c17a00 */
+  --anfra-amber-700: oklch(0.501 0.1 70.3); /* #875814 */
+  --anfra-amber-900: oklch(0.427 0.072 72.5); /* #67481d */
+  --anfra-amber-950: oklch(0.267 0.028 66.2); /* #2f2317 */
+
+  --anfra-green-50: oklch(0.972 0.021 152.2); /* #ecfaef */
+  --anfra-green-200: oklch(0.87 0.06 151.8); /* #b8e0c1 */
+  --anfra-green-300: oklch(0.8 0.12 151.9); /* #7fd497 */
+  --anfra-green-400: oklch(0.721 0.15 151.9); /* #4dbf74 */
+  --anfra-green-500: oklch(0.559 0.13 152); /* #26894c */
+  --anfra-green-600: oklch(0.53 0.121 151.9); /* #267f47 */
+  --anfra-green-700: oklch(0.479 0.1 151.8); /* #296d40 */
+  --anfra-green-900: oklch(0.394 0.069 155.6); /* #235136 */
+  --anfra-green-950: oklch(0.256 0.025 165.3); /* #172720 */
+  /* dark v2 additions */
+  --anfra-ink-250: oklch(
+    0.835 0.018 300
+  ); /* #cac6d3  dark placeholder text (descriptions, captions), Lc 70+ on chrome/panel/card/raised */
+  --anfra-ink-450: oklch(0.58 0.022 300); /* #7c7886  dark field border, >= 3.59:1 on all dark grounds */
+  --anfra-ink-825: oklch(0.262 0.017 300); /* #26232c  dark raised surface, current chip */
+  --anfra-ink-925: oklch(0.19 0.012 300); /* #151318  dark work panel */
+  --anfra-violet-350: oklch(0.845 0.085 300); /* #d4c0fc  dark violet text / link */
+  --anfra-red-250: oklch(0.82 0.09 27); /* #f9aea5  dark danger text */
+}
+
+/* ------------------------------------------------------------------ Tier 2: semantic, light (:root) */
+:root {
+  color-scheme: light;
+
+  --anfra-color-background-default: var(--anfra-ink-0); /* Work panel (inset main area), page default */
+  --anfra-color-background-base-default: var(--anfra-paper-100); /* App chrome and sidebar ground */
+  --anfra-color-background-secondary-default: var(
+    --anfra-paper-50
+  ); /* Sunken area in the panel: code, read-only field, well, card footer */
+  --anfra-color-background-card-default: var(
+    --anfra-ink-0
+  ); /* Card in the panel (light: white + border-default) */
+  --anfra-color-background-raised-default: var(
+    --anfra-ink-0
+  ); /* Popover, menu, dialog, sheet, toast (+ border-strong + shadow-e2) */
+  --anfra-color-background-current-default: var(--anfra-ink-0); /* Current nav item chip on the chrome */
+  --anfra-color-background-hover: var(--anfra-ink-a5); /* Neutral hover layer (works on paper and on white) */
+  --anfra-color-background-active: var(--anfra-ink-a9); /* Neutral pressed layer; open trigger */
+  --anfra-color-background-disabled: var(
+    --anfra-ink-a4
+  ); /* Disabled control fill (all variants, never violet) */
+  --anfra-color-background-inverted-default: var(--anfra-ink-900); /* Tooltip, kbd hint */
+  --anfra-color-background-interactive-highlight-default: var(
+    --anfra-violet-100
+  ); /* Selected row / option / cell (violet wash) */
+  --anfra-color-background-interactive-highlight-hover: var(
+    --anfra-violet-200
+  ); /* Hover on a selected item */
+  --anfra-color-background-interactive-overlay: var(--anfra-ink-a40); /* Scrim behind dialog and sheet */
+  --anfra-color-background-skeleton: var(--anfra-ink-a5); /* Skeleton block */
+  --anfra-color-background-highlight-default: var(--anfra-violet-600); /* Primary (violet) fill */
+  --anfra-color-background-highlight-hover: var(--anfra-violet-700); /* Primary fill hover */
+  --anfra-color-background-highlight-active: var(--anfra-violet-800); /* Primary fill pressed */
+  --anfra-color-background-highlight-secondary-default: var(
+    --anfra-violet-100
+  ); /* Subtle violet: drop target, checked choice card */
+  --anfra-color-background-highlight-secondary-hover: var(--anfra-violet-200); /* Subtle violet hover */
+  --anfra-color-background-danger-default: var(--anfra-red-500); /* Destructive button fill */
+  --anfra-color-background-danger-hover: var(--anfra-red-700); /* Destructive fill hover/pressed */
+  --anfra-color-background-danger-secondary-default: var(
+    --anfra-red-50
+  ); /* Danger alert/badge bg; destructive menu item highlight */
+  --anfra-color-background-warning-secondary-default: var(--anfra-amber-50); /* Warning alert/badge bg */
+  --anfra-color-background-success-default: var(--anfra-green-600); /* Success solid (small badge/dot only) */
+  --anfra-color-background-success-secondary-default: var(--anfra-green-50); /* Success alert/badge bg */
+  --anfra-color-background-info-secondary-default: var(
+    --anfra-ink-a5
+  ); /* Info alert/badge bg (info = neutral) */
+  --anfra-color-background-selection: var(--anfra-violet-200); /* ::selection background */
+
+  --anfra-color-text-default: var(--anfra-ink-900); /* Headings, body, values */
+  --anfra-color-text-weak: var(--anfra-ink-700); /* Secondary text, nav item at rest, alert body */
+  --anfra-color-text-placeholder: var(
+    --anfra-ink-550
+  ); /* Descriptions, captions, muted labels, input placeholder */
+  --anfra-color-text-disabled: var(--anfra-ink-300); /* Disabled label (WCAG-exempt) */
+  --anfra-color-text-highlight-default: var(--anfra-violet-800); /* Violet text (= --primary-text) */
+  --anfra-color-text-link-default: var(--anfra-violet-800); /* Links */
+  --anfra-color-text-link-hover: var(--anfra-violet-900); /* Link hover */
+  --anfra-color-text-on-fill: var(--anfra-ink-0); /* Text on violet / danger / success solid */
+  --anfra-color-text-inverted-default: var(--anfra-ink-100); /* Text on background-inverted-default */
+  --anfra-color-text-danger-default: var(--anfra-red-700); /* Error message, destructive item text */
+  --anfra-color-text-warning-default: var(--anfra-amber-700); /* Warning text */
+  --anfra-color-text-success-default: var(--anfra-green-700); /* Success text */
+  --anfra-color-text-info-default: var(--anfra-ink-700); /* Info text (neutral) */
+  --anfra-color-text-selection: var(--anfra-ink-900); /* ::selection text */
+
+  --anfra-color-icon-default: var(--anfra-ink-700); /* Icons at rest */
+  --anfra-color-icon-weak: var(--anfra-ink-550); /* Secondary icons, chevrons */
+  --anfra-color-icon-hover: var(--anfra-ink-900); /* Icon on hover */
+  --anfra-color-icon-disabled: var(--anfra-ink-300); /* Disabled icon (exempt) */
+  --anfra-color-icon-highlight-default: var(--anfra-violet-600); /* Current nav icon, checked mark */
+  --anfra-color-icon-on-fill: var(--anfra-ink-0); /* Icon on solid fills */
+  --anfra-color-icon-inverted-default: var(--anfra-ink-100); /* Icon on inverted bg */
+  --anfra-color-icon-danger-default: var(--anfra-red-500); /* Danger icon */
+  --anfra-color-icon-warning-default: var(--anfra-amber-500); /* Warning icon */
+  --anfra-color-icon-success-default: var(--anfra-green-500); /* Success icon */
+  --anfra-color-icon-info-default: var(--anfra-ink-550); /* Info icon (neutral) */
+
+  --anfra-color-border-default: var(--anfra-ink-a12); /* Hairlines, card edge, dividers (decorative) */
+  --anfra-color-border-weak: var(--anfra-ink-a8); /* Row dividers, current chip edge (decorative) */
+  --anfra-color-border-strong: var(
+    --anfra-ink-a24
+  ); /* Frames: popover, dialog, outline button, inset panel edge */
+  --anfra-color-border-hover: var(--anfra-ink-550); /* Field / outline button border on hover */
+  --anfra-color-border-field: var(--anfra-ink-a48); /* Input, checkbox, switch track boundary (3:1) */
+  --anfra-color-border-disabled: var(--anfra-ink-a12); /* Disabled control border */
+  --anfra-color-border-highlight-default: var(--anfra-violet-200); /* Subtle violet edge */
+  --anfra-color-border-highlight-strong: var(
+    --anfra-violet-600
+  ); /* Selected edge, tab indicator, checked choice card (3:1) */
+  --anfra-color-border-danger-default: var(--anfra-red-200); /* Danger alert edge */
+  --anfra-color-border-danger-strong: var(--anfra-red-500); /* Invalid field (3:1) */
+  --anfra-color-border-warning-default: var(--anfra-amber-200); /* Warning alert edge */
+  --anfra-color-border-success-default: var(--anfra-green-200); /* Success alert edge */
+
+  --anfra-color-focus-ring-default: var(--anfra-violet-600); /* 2px focus outline, offset 3px */
+
+  /* Elevation (light): shadows. */
+  --anfra-e1: 0 1px 0 rgb(24 20 31 / 0.04), 0 1px 2px rgb(24 20 31 / 0.06);
+  --anfra-e2:
+    0 1px 0 rgb(24 20 31 / 0.03), 0 18px 40px -18px rgb(24 20 31 / 0.28), 0 2px 6px -2px rgb(24 20 31 / 0.08);
+
+  /* Motion (DESIGN.md §10). Unchanged. */
+  --anfra-t-press: 90ms;
+  --anfra-t-hover: 160ms;
+  --anfra-t-ui: 220ms;
+}
+
+/* ------------------------------------------------------------------ Tier 3: shadcn aliases (mode-independent) */
+:root {
+  --radius: 10px;
+
+  --background: var(--anfra-color-background-default);
+  --foreground: var(--anfra-color-text-default);
+  --card: var(--anfra-color-background-card-default);
+  --card-foreground: var(--anfra-color-text-default);
+  --popover: var(--anfra-color-background-raised-default);
+  --popover-foreground: var(--anfra-color-text-default);
+  --primary: var(--anfra-color-background-highlight-default);
+  --primary-foreground: var(--anfra-color-text-on-fill);
+  --primary-text: var(--anfra-color-text-highlight-default);
+  --secondary: var(--anfra-color-background-secondary-default);
+  --secondary-foreground: var(--anfra-color-text-default);
+  --muted: var(--anfra-color-background-secondary-default);
+  --muted-foreground: var(--anfra-color-text-placeholder);
+  --accent: var(--anfra-color-background-hover); /* shadcn "accent" = neutral hover, NOT the brand accent */
+  --accent-foreground: var(--anfra-color-text-default);
+  --destructive: var(
+    --anfra-color-background-danger-default
+  ); /* fill only; for text use text-danger-default */
+  --border: var(--anfra-color-border-default);
+  --input: var(--anfra-color-border-field);
+  --ring: var(--anfra-color-focus-ring-default);
+
+  --sidebar: var(--anfra-color-background-base-default);
+  --sidebar-foreground: var(--anfra-color-text-weak);
+  --sidebar-primary: var(--anfra-color-background-highlight-default);
+  --sidebar-primary-foreground: var(--anfra-color-text-on-fill);
+  --sidebar-accent: var(--anfra-color-background-hover);
+  --sidebar-accent-foreground: var(--anfra-color-text-default);
+  --sidebar-current: var(--anfra-color-background-current-default);
+  --sidebar-current-foreground: var(--anfra-color-text-default);
+  --sidebar-border: var(--anfra-color-border-default);
+  --sidebar-ring: var(--anfra-color-focus-ring-default);
+
+  /* This host's own, in HDS terms. */
+  --code: var(--anfra-color-background-secondary-default); /* a code well: sunken paper */
+  /* The prompt panel: a sunken paper card in the panel, ink text, neutral code chips (as anfra-cloud's
+     inline code: rounded-md bg-muted font-mono). */
+  --paper: var(--anfra-color-background-secondary-default);
+  --paper-foreground: var(--anfra-color-text-default);
+  --paper-muted: var(--anfra-color-text-placeholder);
+  --paper-border: var(--anfra-color-border-default);
+  --paper-code: var(--anfra-color-background-active);
+  --paper-code-foreground: var(--anfra-color-text-default);
+}
+
+/* ------------------------------------------------------------------ Tier 2: semantic, dark (.dark class) */
+.dark {
+  color-scheme: dark;
+
+  --anfra-color-background-default: var(--anfra-ink-925); /* was ink-950: chrome -> panel dL 0.019 -> 0.033 */
+  --anfra-color-background-base-default: var(--anfra-ink-1000);
+  --anfra-color-background-secondary-default: var(--anfra-ink-1000);
+  --anfra-color-background-card-default: var(--anfra-ink-875);
+  --anfra-color-background-raised-default: var(
+    --anfra-ink-825
+  ); /* was ink-850: card -> raised dL 0.028 -> 0.039 */
+  --anfra-color-background-current-default: var(--anfra-ink-825); /* was ink-875 (= nav hover color) */
+  --anfra-color-background-hover: var(--anfra-white-a6);
+  --anfra-color-background-active: var(--anfra-white-a10);
+  --anfra-color-background-disabled: var(--anfra-white-a4);
+  --anfra-color-background-inverted-default: var(--anfra-ink-100);
+  --anfra-color-background-interactive-highlight-default: var(--anfra-violet-a18);
+  --anfra-color-background-interactive-highlight-hover: var(--anfra-violet-a26);
+  --anfra-color-background-interactive-overlay: var(--anfra-black-a60);
+  --anfra-color-background-skeleton: var(--anfra-white-a6);
+  --anfra-color-background-highlight-secondary-default: var(--anfra-violet-a18);
+  --anfra-color-background-highlight-secondary-hover: var(--anfra-violet-a26);
+  --anfra-color-background-danger-secondary-default: var(--anfra-red-950);
+  --anfra-color-background-warning-secondary-default: var(--anfra-amber-950);
+  --anfra-color-background-success-secondary-default: var(--anfra-green-950);
+  --anfra-color-background-info-secondary-default: var(--anfra-white-a6);
+  --anfra-color-background-selection: var(--anfra-violet-a40);
+
+  --anfra-color-text-default: var(--anfra-ink-100);
+  --anfra-color-text-weak: var(--anfra-ink-200);
+  --anfra-color-text-placeholder: var(--anfra-ink-250); /* was ink-400: Lc 45 -> 72 */
+  --anfra-color-text-disabled: var(--anfra-ink-500); /* was ink-600 (exempt) */
+  --anfra-color-text-highlight-default: var(--anfra-violet-350); /* was violet-400: Lc 63 -> 73 */
+  --anfra-color-text-link-default: var(--anfra-violet-350); /* was violet-400 */
+  --anfra-color-text-link-hover: var(--anfra-violet-300);
+  --anfra-color-text-inverted-default: var(--anfra-ink-900);
+  --anfra-color-text-danger-default: var(--anfra-red-250); /* was red-300: Lc 60 -> 68 */
+  --anfra-color-text-warning-default: var(--anfra-amber-300);
+  --anfra-color-text-success-default: var(--anfra-green-300);
+  --anfra-color-text-info-default: var(--anfra-ink-200);
+  --anfra-color-text-selection: var(--anfra-ink-100);
+
+  --anfra-color-icon-default: var(--anfra-ink-200);
+  --anfra-color-icon-weak: var(--anfra-ink-300); /* was ink-400 */
+  --anfra-color-icon-hover: var(--anfra-ink-100);
+  --anfra-color-icon-disabled: var(--anfra-ink-500); /* was ink-600 (exempt) */
+  --anfra-color-icon-highlight-default: var(--anfra-violet-500);
+  --anfra-color-icon-inverted-default: var(--anfra-ink-900);
+  --anfra-color-icon-danger-default: var(--anfra-red-400);
+  --anfra-color-icon-warning-default: var(--anfra-amber-400);
+  --anfra-color-icon-success-default: var(--anfra-green-400);
+  --anfra-color-icon-info-default: var(--anfra-ink-300); /* was ink-400 */
+
+  --anfra-color-border-default: var(--anfra-ink-750); /* was ink-800: card edge 1.20 -> 1.47:1 */
+  --anfra-color-border-weak: var(--anfra-white-a8); /* was white-a6 */
+  --anfra-color-border-strong: var(--anfra-ink-700); /* was ink-750 */
+  --anfra-color-border-hover: var(--anfra-ink-400);
+  --anfra-color-border-field: var(--anfra-ink-450); /* was ink-500: 3.02 -> 3.59:1 min on rest grounds */
+  --anfra-color-border-disabled: var(--anfra-white-a8);
+  --anfra-color-border-highlight-default: var(--anfra-violet-a40);
+  --anfra-color-border-highlight-strong: var(--anfra-violet-500);
+  --anfra-color-border-danger-default: var(--anfra-red-900);
+  --anfra-color-border-danger-strong: var(--anfra-red-400);
+  --anfra-color-border-warning-default: var(--anfra-amber-900);
+  --anfra-color-border-success-default: var(--anfra-green-900);
+
+  --anfra-color-focus-ring-default: var(--anfra-violet-500);
+
+  /* A shadow does not show on dark: lift with a border instead (DESIGN.md §6). */
+  --anfra-e1: 0 0 0 1px var(--anfra-color-border-default);
+  --anfra-e2: 0 0 0 1px var(--anfra-color-border-strong);
+}
+
+::selection {
+  background-color: var(--anfra-color-background-selection);
+  color: var(--anfra-color-text-selection);
+}
+
+/*
+ * anfra Cloud chart tokens, Revision 2 (Variant B: "lightest + strong strokes").
+ * Validated with dataviz validate_palette.js (Machado 2009 CVD, OKLab dE x100).
+ *   Light fills  : adjacent CVD 13.3, normal 23.0, slots 1-4 all-pairs CVD 13.3. 5 slots at 2.41-2.44:1 on white.
+ *   Light strong : adjacent CVD 10.5, normal 20.2, all >= 3:1 on white, sheet and paper.
+ *   Dark         : adjacent CVD 13.1, normal 21.3, slots 1-4 all-pairs CVD 13.3, all >= 3:1 on card #1c1a21.
+ * Rules: fills (bars, areas, pie, cells) use --chart-cat-N. Lines, points, thin marks
+ * and outlines of light fills use --chart-cat-N-strong. Light fills need values in a
+ * label, tooltip or table view (WCAG 1.4.11 exception).
+ */
+:root {
+  /* categorical: fills */
+  --chart-cat-1: oklch(0.565 0.194 300.3); /* #8a51d4 violet */
+  --chart-cat-2: oklch(0.735 0.156 71.7); /* #e59608 amber */
+  --chart-cat-3: oklch(0.71 0.128 179.7); /* #07bba4 aqua */
+  --chart-cat-4: oklch(0.599 0.17 25); /* #d24c49 coral */
+  --chart-cat-5: oklch(0.729 0.141 258.3); /* #6ea8ff blue */
+  --chart-cat-6: oklch(0.714 0.159 125); /* #8cb331 lime */
+  --chart-cat-7: oklch(0.721 0.13 229.9); /* #32b3e6 sky */
+  --chart-cat-8: oklch(0.61 0.16 349.6); /* #c65491 pink */
+
+  /* categorical: strong strokes (lines, points, outlines), >= 3:1 on white/sheet/paper */
+  --chart-cat-1-strong: oklch(0.565 0.194 300.3); /* #8a51d4 */
+  --chart-cat-2-strong: oklch(0.64 0.136 72); /* #be7c04 */
+  --chart-cat-3-strong: oklch(0.621 0.113 179.3); /* #039c88 */
+  --chart-cat-4-strong: oklch(0.545 0.17 25.2); /* #bf3a39 */
+  --chart-cat-5-strong: oklch(0.635 0.142 258.5); /* #528adf */
+  --chart-cat-6-strong: oklch(0.623 0.155 124.9); /* #729605 */
+  --chart-cat-7-strong: oklch(0.627 0.124 229.7); /* #0495c4 */
+  --chart-cat-8-strong: oklch(0.556 0.16 350.1); /* #b44380 */
+
+  /* sequential violet, 1 = lowest value. Ordinal marks: use 4-9 */
+  --chart-seq-1: oklch(0.955 0.025 298.6); /* #f2edff */
+  --chart-seq-2: oklch(0.89 0.056 300.1); /* #e0d3fb */
+  --chart-seq-3: oklch(0.82 0.09 300.4); /* #cdb7f6 */
+  --chart-seq-4: oklch(0.74 0.13 300.3); /* #b897f0 */
+  --chart-seq-5: oklch(0.66 0.169 299.9); /* #a376e9 */
+  --chart-seq-6: oklch(0.58 0.191 300.2); /* #8e57d8 */
+  --chart-seq-7: oklch(0.5 0.18 300); /* #7541b8 */
+  --chart-seq-8: oklch(0.42 0.15 299.8); /* #5b3291 */
+  --chart-seq-9: oklch(0.34 0.114 300); /* #422569 */
+
+  /* diverging orange <- gray -> violet */
+  --chart-div-neg-4: oklch(0.421 0.11 49.9); /* #7b3702 */
+  --chart-div-neg-3: oklch(0.549 0.144 49.8); /* #b15204 */
+  --chart-div-neg-2: oklch(0.681 0.12 50); /* #d38151 */
+  --chart-div-neg-1: oklch(0.81 0.06 49); /* #e2b69f */
+  --chart-div-mid: oklch(0.931 0.004 91.4); /* #e9e8e5 */
+  --chart-div-pos-1: oklch(0.81 0.06 299.2); /* #c6b9e3 */
+  --chart-div-pos-2: oklch(0.679 0.12 300.3); /* #a486d7 */
+  --chart-div-pos-3: oklch(0.55 0.169 299.8); /* #8254c4 */
+  --chart-div-pos-4: oklch(0.421 0.17 300.1); /* #5e2b9a */
+
+  /* highlight mode + chrome */
+  --chart-highlight: var(--chart-cat-1);
+  --chart-highlight-wash: oklch(0.946 0.027 304.8); /* #f1e9fc anfra-violet-wash */
+  --chart-context: oklch(0.764 0.015 304.1); /* #b4b0ba, fills with labels */
+  --chart-context-strong: oklch(0.611 0.018 301); /* #85818d, lines, >= 3:1 */
+  --chart-other: var(--chart-context);
+  --chart-grid: oklch(0.201 0.022 301.1 / 0.08); /* ink #18141f at 8% */
+  --chart-axis: oklch(0.201 0.022 301.1 / 0.24); /* ink at 24% = anfra-rule-strong */
+  --chart-label: oklch(0.485 0.022 306.3); /* #625c69, 5.67:1 on paper */
+
+  /* shadcn-vue legacy aliases */
+  --chart-1: var(--chart-cat-1);
+  --chart-2: var(--chart-cat-2);
+  --chart-3: var(--chart-cat-3);
+  --chart-4: var(--chart-cat-4);
+  --chart-5: var(--chart-cat-5);
+}
+
+.dark {
+  /* categorical: all >= 3:1 on card #1c1a21 and bg #111014, so strong = fill */
+  --chart-cat-1: oklch(0.66 0.18 298.5); /* #a274f0 */
+  --chart-cat-2: oklch(0.669 0.142 71.8); /* #ca8407 */
+  --chart-cat-3: oklch(0.664 0.12 179.8); /* #05ab96 */
+  --chart-cat-4: oklch(0.545 0.17 25.2); /* #bf3a39 */
+  --chart-cat-5: oklch(0.669 0.177 258.1); /* #4993ff */
+  --chart-cat-6: oklch(0.67 0.16 124.9); /* #7fa51b */
+  --chart-cat-7: oklch(0.665 0.13 230.4); /* #10a1d4 */
+  --chart-cat-8: oklch(0.559 0.16 350.1); /* #b54481 */
+  --chart-cat-1-strong: var(--chart-cat-1);
+  --chart-cat-2-strong: var(--chart-cat-2);
+  --chart-cat-3-strong: var(--chart-cat-3);
+  --chart-cat-4-strong: var(--chart-cat-4);
+  --chart-cat-5-strong: var(--chart-cat-5);
+  --chart-cat-6-strong: var(--chart-cat-6);
+  --chart-cat-7-strong: var(--chart-cat-7);
+  --chart-cat-8-strong: var(--chart-cat-8);
+
+  /* sequential: dark to light, 9 = highest value */
+  --chart-seq-1: oklch(0.3 0.06 301); /* #332647 */
+  --chart-seq-2: oklch(0.37 0.09 299.4); /* #473368 */
+  --chart-seq-3: oklch(0.44 0.12 299.6); /* #5d408a */
+  --chart-seq-4: oklch(0.52 0.15 299.8); /* #7750b1 */
+  --chart-seq-5: oklch(0.6 0.17 299.9); /* #9163d5 */
+  --chart-seq-6: oklch(0.68 0.169 299.8); /* #a97cf0 */
+  --chart-seq-7: oklch(0.759 0.14 300.2); /* #bf9bfc */
+  --chart-seq-8: oklch(0.839 0.092 299.9); /* #d3bdfe */
+  --chart-seq-9: oklch(0.921 0.043 300.3); /* #e9dffe */
+
+  --chart-div-neg-4: oklch(0.8 0.13 54.8); /* #fea668 */
+  --chart-div-neg-3: oklch(0.701 0.15 55.3); /* #e48233 */
+  --chart-div-neg-2: oklch(0.579 0.13 55.2); /* #b3621e */
+  --chart-div-neg-1: oklch(0.46 0.09 55); /* #7e4921 */
+  --chart-div-mid: oklch(0.329 0.009 303.9); /* #363439 */
+  --chart-div-pos-1: oklch(0.459 0.091 300.1); /* #604b83 */
+  --chart-div-pos-2: oklch(0.581 0.15 299.9); /* #8962c5 */
+  --chart-div-pos-3: oklch(0.7 0.17 300.2); /* #b082f7 */
+  --chart-div-pos-4: oklch(0.8 0.119 299.8); /* #c9acff */
+
+  --chart-highlight-wash: oklch(0.3 0.06 301); /* #332647 */
+  --chart-context: oklch(0.461 0.02 300.8); /* #5a5662 */
+  --chart-context-strong: oklch(0.611 0.018 301); /* #85818d, 4.53:1 on card */
+  --chart-grid: oklch(0.286 0.021 301.7); /* #2c2833 */
+  --chart-axis: oklch(0.343 0.025 298.2); /* #3a3644 */
+  --chart-label: oklch(0.835 0.018 300); /* #cac6d3 */
+}
+
+@theme inline {
+  --color-chart-cat-1: var(--chart-cat-1);
+  --color-chart-cat-2: var(--chart-cat-2);
+  --color-chart-cat-3: var(--chart-cat-3);
+  --color-chart-cat-4: var(--chart-cat-4);
+  --color-chart-cat-5: var(--chart-cat-5);
+  --color-chart-cat-6: var(--chart-cat-6);
+  --color-chart-cat-7: var(--chart-cat-7);
+  --color-chart-cat-8: var(--chart-cat-8);
+  --color-chart-cat-1-strong: var(--chart-cat-1-strong);
+  --color-chart-cat-2-strong: var(--chart-cat-2-strong);
+  --color-chart-cat-3-strong: var(--chart-cat-3-strong);
+  --color-chart-cat-4-strong: var(--chart-cat-4-strong);
+  --color-chart-cat-5-strong: var(--chart-cat-5-strong);
+  --color-chart-cat-6-strong: var(--chart-cat-6-strong);
+  --color-chart-cat-7-strong: var(--chart-cat-7-strong);
+  --color-chart-cat-8-strong: var(--chart-cat-8-strong);
+  --color-chart-seq-1: var(--chart-seq-1);
+  --color-chart-seq-2: var(--chart-seq-2);
+  --color-chart-seq-3: var(--chart-seq-3);
+  --color-chart-seq-4: var(--chart-seq-4);
+  --color-chart-seq-5: var(--chart-seq-5);
+  --color-chart-seq-6: var(--chart-seq-6);
+  --color-chart-seq-7: var(--chart-seq-7);
+  --color-chart-seq-8: var(--chart-seq-8);
+  --color-chart-seq-9: var(--chart-seq-9);
+  --color-chart-div-neg-4: var(--chart-div-neg-4);
+  --color-chart-div-neg-3: var(--chart-div-neg-3);
+  --color-chart-div-neg-2: var(--chart-div-neg-2);
+  --color-chart-div-neg-1: var(--chart-div-neg-1);
+  --color-chart-div-mid: var(--chart-div-mid);
+  --color-chart-div-pos-1: var(--chart-div-pos-1);
+  --color-chart-div-pos-2: var(--chart-div-pos-2);
+  --color-chart-div-pos-3: var(--chart-div-pos-3);
+  --color-chart-div-pos-4: var(--chart-div-pos-4);
+  --color-chart-highlight: var(--chart-highlight);
+  --color-chart-highlight-wash: var(--chart-highlight-wash);
+  --color-chart-context: var(--chart-context);
+  --color-chart-context-strong: var(--chart-context-strong);
+  --color-chart-other: var(--chart-other);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-label: var(--chart-label);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  html {
+    @apply font-sans;
   }
   html,
   body,
@@ -131,6 +719,109 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Light text on near-black reads thinner: a touch more weight in dark (dark v2 audit). */
+  .dark body {
+    font-weight: 450;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+/*
+ * Focus is one 2px violet outline, offset 3px, on everything focusable; a control
+ * keeps its own border (DESIGN.md §8). Unlayered, so it wins over the components'
+ * outline-none utility.
+ */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+/* The palette's search is its one field, always focused, on a row of its own: its caret shows it. */
+[data-slot="command-input"]:focus-visible {
+  outline: none;
+}
+
+/* Keep option focus inside the select's clipped, rounded viewport. */
+[data-slot="select-item"]:focus-visible {
+  outline-offset: -2px;
+}
+
+/*
+ * Fields show focus on their own border, not with the outer outline: the border turns
+ * violet and doubles to 2px (an inset 1px shadow). A field in error stays red on focus, never
+ * violet: the semantic border color wins (DESIGN.md "Focus"). An input group shows it on its
+ * frame, around the prefix too; the input inside it has no border of its own.
+ */
+[data-slot="input-group-control"]:focus-visible {
+  outline: none;
+}
+:is([data-slot="input"], [data-slot="textarea"]):focus-visible,
+[data-slot="input-group"]:has([data-slot="input-group-control"]:focus-visible) {
+  outline: none;
+  border-color: var(--anfra-color-border-highlight-strong);
+  box-shadow: inset 0 0 0 1px var(--anfra-color-border-highlight-strong);
+}
+:is([data-slot="input"], [data-slot="textarea"]):is([aria-invalid="true"], [data-invalid] *):focus-visible,
+[data-slot="input-group"]:is(:has([aria-invalid="true"]), [data-invalid] *):has(
+  [data-slot="input-group-control"]:focus-visible
+) {
+  border-color: var(--anfra-color-border-danger-strong);
+  box-shadow: inset 0 0 0 1px var(--anfra-color-border-danger-strong);
+}
+
+/*
+ * Graph paper: the brand's ground for the signed-out pages only (brand DESIGN.md
+ * §7, with the auth exception). 24px minor and 120px major lines in ink, faded
+ * out behind the form so it never sits under text.
+ */
+@utility bg-graph-paper {
+  --graph-minor: color-mix(in oklch, var(--anfra-color-text-default) 4%, transparent);
+  --graph-major: color-mix(in oklch, var(--anfra-color-text-default) 7%, transparent);
+  background-color: var(--sidebar);
+  background-image:
+    radial-gradient(ellipse 44rem 36rem at 50% 16rem, var(--sidebar) 50%, transparent 100%),
+    linear-gradient(var(--graph-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--graph-major) 1px, transparent 1px),
+    linear-gradient(var(--graph-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--graph-minor) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-position:
+    0 0,
+    -1px -1px,
+    -1px -1px,
+    -1px -1px,
+    -1px -1px;
+}
+
+/* Reduced motion: no movement, fades of 200ms or less (brand DESIGN.md §10). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* While a resize edge is pressed, no frame (a Data App) takes the pointer; while the sidebar's edge is dragged, the
+   sidebar follows the pointer, with no easing (src/components/sidebar-resizer.tsx sets data-resizing). */
+[data-pressing] iframe {
+  pointer-events: none;
 }
 
 [data-resizing] [data-slot="sidebar-gap"],

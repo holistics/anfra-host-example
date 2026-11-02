@@ -35,7 +35,9 @@ export function SidebarResizer() {
     if (event.button !== 0 || state !== 'expanded' || !wrapper || !sidebar) return;
     event.preventDefault();
     const rail = event.currentTarget;
-    // Captured, so the drag keeps going over the Data App's iframe.
+    // Captured, so the drag keeps going over the Data App's iframe; and from the press to the release
+    // no frame takes the pointer (index.css), as a first move landing on one would go into it first.
+    wrapper.dataset.pressing = '';
     rail.setPointerCapture(event.pointerId);
     const startX = event.clientX;
     const startWidth = sidebar.getBoundingClientRect().width;
@@ -54,6 +56,7 @@ export function SidebarResizer() {
       rail.removeEventListener('pointerup', onUp);
       rail.removeEventListener('pointercancel', onUp);
       delete wrapper.dataset.resizing;
+      delete wrapper.dataset.pressing;
       if (!dragged.current) return;
       try {
         localStorage.setItem(KEY, String(width));
@@ -70,5 +73,14 @@ export function SidebarResizer() {
   const onClick = () => !dragged.current && toggleSidebar();
 
   const title = state === 'expanded' ? 'Drag to resize, click to collapse' : 'Expand';
-  return <SidebarRail onPointerDown={onPointerDown} onClick={onClick} title={title} />;
+  // anfra Cloud's edge: a 2px hairline on hover, eased like every other hover.
+  return (
+    <SidebarRail
+      onPointerDown={onPointerDown}
+      onClick={onClick}
+      title={title}
+      aria-label="Resize or collapse the sidebar"
+      className="transition-colors duration-160 ease-anfra-out after:w-0.5 in-data-[state=collapsed]:cursor-e-resize"
+    />
+  );
 }

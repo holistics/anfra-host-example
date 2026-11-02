@@ -13,21 +13,21 @@ export function AppInfo({ app }: { app: App }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          className="shrink-0 rounded-md icon-weak transition-colors duration-160 ease-anfra-out hover:icon-hover aria-expanded:icon-default"
           aria-label="About this app"
         >
           <Info className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="space-y-2 text-sm">
-        {app.description && <p>{app.description}</p>}
+      <PopoverContent className="space-y-2 text-body">
+        {app.description && <p className="text-pretty">{app.description}</p>}
         <Row label="Path">
-          <code className="break-all text-xs">{app.path}</code>
+          <code className="font-mono text-caption break-all">{app.path}</code>
         </Row>
         {app.endorsed && (
           <Row label="Status">
             <span className="inline-flex items-center gap-1">
-              <BadgeCheck className="size-3.5" /> Endorsed
+              <BadgeCheck className="size-4 icon-success-default" /> Endorsed
             </span>
           </Row>
         )}
@@ -45,7 +45,9 @@ export function AppInfo({ app }: { app: App }) {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[4.5rem_1fr] items-baseline gap-2">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-mono text-caption tracking-[0.025em] text-placeholder uppercase dark:font-[550]">
+        {label}
+      </span>
       <span className="min-w-0">{children}</span>
     </div>
   );

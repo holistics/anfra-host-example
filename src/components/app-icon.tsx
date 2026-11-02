@@ -23,11 +23,11 @@ export function AppIcon({ app, className, checkClassName }: Props) {
         aria-label="Endorsed"
         title="Endorsed"
         className={cn(
-          'absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-full bg-green-500 text-white ring-2 ring-sidebar',
+          'absolute -right-1 -bottom-1 flex size-2.5 items-center justify-center rounded-full bg-success-default ring-2 ring-sidebar',
           checkClassName,
         )}
       >
-        <Check className="size-1.5 stroke-[5]" />
+        <Check className="size-1.5 stroke-[5] icon-on-fill" />
       </span>
     </span>
   );

@@ -59,7 +59,7 @@ export function CommandPalette({
     >
       <CommandInput placeholder={app ? `Search apps, or act on ${app.label}…` : 'Search apps…'} />
       <CommandList>
-        <CommandEmpty>Nothing matches.</CommandEmpty>
+        <CommandEmpty>Nothing matches</CommandEmpty>
         {app && (
           <CommandGroup heading={app.label}>
             <CommandItem value="Refresh reload" onSelect={run(onReload)}>
@@ -78,8 +78,8 @@ export function CommandPalette({
                 >
                   <Icon />
                   {command.title}
-                  {state.pressed && <span className="text-xs text-muted-foreground">On</span>}
-                  {state.disabled && <span className="text-xs text-muted-foreground">{state.disabled}</span>}
+                  {state.pressed && <span className="text-caption text-placeholder">On</span>}
+                  {state.disabled && <span className="text-caption text-placeholder">{state.disabled}</span>}
                   {command.shortcut && <Shortcut keys={shortcutKeys(command.shortcut)} />}
                 </CommandItem>
               );
@@ -109,8 +109,12 @@ export function CommandPalette({
                 onSelect={run(() => onSelect(entry.path))}
               >
                 <Icon />
-                <span className="truncate">{entry.label}</span>
-                {folder && <span className="ml-auto truncate text-xs text-muted-foreground">{folder}</span>}
+                <span className="min-w-0 truncate">{entry.label}</span>
+                {folder && (
+                  <span className="ml-auto max-w-[45%] shrink-0 truncate text-caption text-placeholder">
+                    {folder}
+                  </span>
+                )}
               </CommandItem>
             );
           })}

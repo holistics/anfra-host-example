@@ -90,7 +90,7 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
 
   return (
     <aside className="flex size-full flex-col bg-background" aria-label="Inspect panel">
-      <header className="flex h-10 shrink-0 items-center gap-1 border-b pr-1 pl-2">
+      <header className="flex h-11 shrink-0 items-center gap-1 border-b border-default px-2">
         {commands.map((command) => {
           const state = stateOf(command);
           const Icon = commandIcon(command);
@@ -98,9 +98,9 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
             <Tooltip key={command.id}>
               <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn('size-7 shrink-0', state.pressed && 'bg-accent text-accent-foreground')}
+                  variant={state.pressed ? 'secondary' : 'ghost'}
+                  size="icon-xs"
+                  className={cn('shrink-0', state.disabled && 'text-disabled hover:bg-transparent')}
                   aria-label={command.title}
                   aria-pressed={!!state.pressed}
                   aria-disabled={!!state.disabled}
@@ -113,8 +113,8 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
             </Tooltip>
           );
         })}
-        <div ref={bar} className="relative flex min-w-0 flex-1 items-center gap-0.5">
-          <div role="tablist" className="flex min-w-0 items-center gap-0.5 overflow-hidden">
+        <div ref={bar} className="relative flex min-w-0 flex-1 items-center gap-1">
+          <div role="tablist" className="flex min-w-0 items-center gap-1 overflow-hidden">
             {tabs
               .filter((each) => !fit.more.includes(each.id))
               .map((each) => (
@@ -129,7 +129,7 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
           {moreTabs.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label="More tabs">
+                <Button variant="ghost" size="icon-xs" className="shrink-0" aria-label="More tabs">
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -149,7 +149,7 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
           <div
             ref={measure}
             aria-hidden
-            className="pointer-events-none invisible absolute top-0 left-0 flex gap-0.5"
+            className="pointer-events-none invisible absolute top-0 left-0 flex gap-1"
           >
             {tabs.map((each) => (
               <TabButton key={each.id} tab={each} selected tabIndex={-1} />
@@ -158,8 +158,8 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
         </div>
         <Button
           variant="ghost"
-          size="icon"
-          className="size-7"
+          size="icon-xs"
+          className="shrink-0"
           aria-label="Close the inspect panel"
           onClick={() => panel.hide()}
         >
@@ -171,9 +171,9 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
   );
 }
 
-/** The space between two tabs (`gap-0.5`), and the More button's width with its gap. */
-const GAP = 2;
-const MORE = 30;
+/** The space between two tabs (`gap-1`), and the More button's width (`icon-xs`) with its gap. */
+const GAP = 4;
+const MORE = 28;
 
 const sameFit = (a: TabFit, b: TabFit) =>
   a.shown.join() === b.shown.join() && a.more.join() === b.more.join();
@@ -192,8 +192,8 @@ function TabButton({
       role="tab"
       aria-selected={selected}
       className={cn(
-        'flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-accent-foreground [&_svg]:size-3.5',
-        selected && 'bg-accent font-medium text-foreground',
+        'flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-caption whitespace-nowrap transition-colors duration-160 ease-anfra-out [&_svg]:size-3.5',
+        selected ? 'bg-active font-medium text-default' : 'text-weak hover:bg-hover hover:text-default',
       )}
       {...props}
     >

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { copyText } from '@/lib/clipboard';
 import type { AppPrompt } from '@/lib/host';
+import { cn } from '@/lib/utils';
 
 interface Props {
   prompt: AppPrompt;
@@ -13,22 +14,22 @@ interface Props {
 /** The prompt that made the open Data App, boxed like a note, with the model that answered it and when. */
 export function PromptPanel({ prompt, onClose }: Props) {
   return (
-    <div className="flex h-full flex-col border-l">
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b px-2">
-        <h2 className="min-w-0 flex-1 truncate pl-2 text-sm font-medium">Prompt</h2>
+    <div className="flex h-full flex-col bg-background">
+      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-default px-2">
+        <h2 className="min-w-0 flex-1 truncate pl-1 text-heading">Prompt</h2>
         <CopyPrompt text={prompt.prompt} />
         <Button
           variant="ghost"
-          size="icon"
-          className="size-7"
+          size="icon-xs"
+          className="shrink-0"
           onClick={onClose}
           aria-label="Close the prompt panel"
         >
           <X />
         </Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <div className="space-y-3 rounded-lg border border-paper-border bg-paper px-4 py-3 font-sans text-[15px] leading-[1.7] break-words text-paper-foreground">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="space-y-3 rounded-xl border border-paper-border bg-paper px-4 py-3 font-sans text-body text-pretty break-words text-paper-foreground">
           {blocksOf(prompt.prompt)}
         </div>
         <Footer prompt={prompt} />
@@ -39,7 +40,12 @@ export function PromptPanel({ prompt, onClose }: Props) {
 
 function Footer({ prompt }: { prompt: AppPrompt }) {
   const parts: ReactNode[] = [];
-  if (prompt.model) parts.push(<span key="model">{prompt.model}</span>);
+  if (prompt.model)
+    parts.push(
+      <span key="model" className="font-mono">
+        {prompt.model}
+      </span>,
+    );
   if (prompt.effort) parts.push(<span key="effort">{prompt.effort} effort</span>);
   if (prompt.createdAt) parts.push(<Time key="created" label="Created" value={prompt.createdAt} />);
   if (prompt.updatedAt && prompt.updatedAt !== prompt.createdAt) {
@@ -47,7 +53,7 @@ function Footer({ prompt }: { prompt: AppPrompt }) {
   }
   if (parts.length === 0) return null;
   return (
-    <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 px-1 text-xs text-muted-foreground [&>*+*]:before:mr-2 [&>*+*]:before:content-['·']">
+    <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 px-1 text-caption text-placeholder tabular-nums [&>*+*]:before:mr-2 [&>*+*]:before:font-sans [&>*+*]:before:content-['·']">
       {parts}
     </p>
   );
@@ -122,7 +128,7 @@ function blocksOf(text: string): ReactNode[] {
     } else if (heading) {
       flush();
       blocks.push(
-        <p key={blocks.length} className="font-semibold">
+        <p key={blocks.length} className="text-heading text-balance">
           {inline(heading[1] ?? '')}
         </p>,
       );
@@ -146,7 +152,7 @@ function inline(text: string): ReactNode[] {
         <code
           // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
           key={i}
-          className="rounded bg-paper-code px-1 py-0.5 font-mono text-[0.85em] text-paper-code-foreground"
+          className="rounded-md bg-paper-code px-1 py-0.5 font-mono text-caption text-paper-code-foreground"
         >
           {part.slice(1, -1)}
         </code>
@@ -178,8 +184,11 @@ function CopyPrompt({ text }: { text: string }) {
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="size-7"
+          size="icon-xs"
+          className={cn(
+            'shrink-0',
+            copied ? '[&_svg]:icon-highlight-default' : '[&_svg]:icon-weak hover:[&_svg]:icon-default',
+          )}
           onClick={async () => setCopied(await copyText(text))}
           aria-label={label}
         >
