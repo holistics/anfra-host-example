@@ -21,6 +21,8 @@ export function EndorsedMark({ className }: { className?: string }) {
       role="img"
       aria-label="Endorsed"
       className={cn('ml-auto size-4 shrink-0 icon-success-default', className)}
-    />
+    >
+      <title>Endorsed</title>
+    </BadgeCheck>
   );
 }

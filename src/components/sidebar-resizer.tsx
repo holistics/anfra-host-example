@@ -55,6 +55,7 @@ export function SidebarResizer() {
       rail.removeEventListener('pointermove', onMove);
       rail.removeEventListener('pointerup', onUp);
       rail.removeEventListener('pointercancel', onUp);
+      rail.removeEventListener('lostpointercapture', onUp);
       delete wrapper.dataset.resizing;
       delete wrapper.dataset.pressing;
       if (!dragged.current) return;
@@ -67,6 +68,7 @@ export function SidebarResizer() {
     rail.addEventListener('pointermove', onMove);
     rail.addEventListener('pointerup', onUp);
     rail.addEventListener('pointercancel', onUp);
+    rail.addEventListener('lostpointercapture', onUp);
   };
 
   // A click that ends a drag doesn't also collapse the sidebar.
@@ -80,7 +82,7 @@ export function SidebarResizer() {
       onClick={onClick}
       title={title}
       aria-label="Resize or collapse the sidebar"
-      className="transition-colors duration-160 ease-anfra-out after:w-0.5 in-data-[state=collapsed]:cursor-e-resize"
+      className="after:w-0.5"
     />
   );
 }

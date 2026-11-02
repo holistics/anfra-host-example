@@ -19,7 +19,7 @@ export function AppInfo({ app }: { app: App }) {
           <Info className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="space-y-2 text-body">
+      <PopoverContent className="text-body">
         {app.description && <p className="text-pretty">{app.description}</p>}
         <Row label="Path">
           <code className="font-mono text-caption break-all">{app.path}</code>

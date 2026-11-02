@@ -21,6 +21,7 @@ import {
   SidebarMenuSub,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { isPlainClick } from '@/lib/click';
 import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 import { onShell } from '@/lib/shell';
@@ -209,7 +210,7 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
   if (entry.kind === 'app') {
     // A real link, so it opens in a new tab too; a plain click stays in the page.
     const onClick = (event: MouseEvent) => {
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+      if (!isPlainClick(event)) return;
       event.preventDefault();
       onSelect(entry.path);
     };

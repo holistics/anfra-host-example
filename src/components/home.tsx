@@ -2,6 +2,7 @@ import { ChevronRight, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { isPlainClick } from '@/lib/click';
 import { type AppEntry, type Entry, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
@@ -100,7 +101,7 @@ function Group({ group, onSelect }: { group: Category; onSelect: (path: string) 
 function AppCard({ app, onSelect }: { app: AppEntry; onSelect: (path: string) => void }) {
   // A real link, so it opens in a new tab too; a plain click stays in the page.
   const onClick = (event: MouseEvent) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    if (!isPlainClick(event)) return;
     event.preventDefault();
     onSelect(app.path);
   };

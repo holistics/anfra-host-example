@@ -472,7 +472,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-body text-sidebar-foreground outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:text-disabled aria-disabled:pointer-events-none aria-disabled:text-disabled data-active:bg-sidebar-current data-active:font-medium data-active:text-sidebar-current-foreground data-active:ring-1 data-active:ring-weak data-active:ring-inset data-active:hover:bg-sidebar-current data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:icon-weak data-active:[&_svg]:icon-highlight-default [&>span:last-child]:truncate",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-body text-sidebar-foreground outline-hidden focus-visible:outline-offset-[-2px] transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:text-disabled aria-disabled:pointer-events-none aria-disabled:text-disabled data-active:bg-sidebar-current data-active:font-medium data-active:text-sidebar-current-foreground data-active:ring-1 data-active:ring-weak data-active:ring-inset data-active:hover:bg-sidebar-current data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:icon-weak data-active:[&_svg]:icon-highlight-default [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -684,7 +684,7 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive || undefined}
       className={cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:text-disabled aria-disabled:pointer-events-none aria-disabled:text-disabled [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:icon-weak",
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-hidden focus-visible:outline-offset-[-2px] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:text-disabled aria-disabled:pointer-events-none aria-disabled:text-disabled [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:icon-weak",
         "data-active:bg-sidebar-current data-active:text-sidebar-current-foreground data-active:ring-1 data-active:ring-weak data-active:ring-inset data-active:[&>svg]:icon-highlight-default",
         size === "sm" && "text-caption",
         size === "md" && "text-body",

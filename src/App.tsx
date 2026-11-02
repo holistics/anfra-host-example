@@ -31,6 +31,7 @@ import {
   type Rendering,
   setPluginTheme,
 } from '@/data-app';
+import { isPlainClick } from '@/lib/click';
 import { chromeCommands, commandIcon, commandIcons } from '@/lib/commands';
 import {
   catalog,
@@ -489,9 +490,9 @@ function Missing({ path, onHome }: { path: string; onHome: () => void }) {
       <p className="text-body text-pretty text-weak">
         Nothing is at <span className="font-mono">{path}</span>.{' '}
         <a
-          href="/"
+          href={urlOf('')}
           onClick={(event) => {
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            if (!isPlainClick(event)) return;
             event.preventDefault();
             onHome();
           }}
@@ -531,10 +532,7 @@ function ToolbarButton({
         <Button
           variant={active ? 'secondary' : 'ghost'}
           size={text ? 'sm' : 'icon-sm'}
-          className={cn(
-            'aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:active:scale-100 aria-disabled:text-disabled',
-            className,
-          )}
+          className={cn(className)}
           aria-label={label}
           aria-pressed={active}
           {...props}

@@ -100,11 +100,7 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
                 <Button
                   variant={state.pressed ? 'secondary' : 'ghost'}
                   size="icon-xs"
-                  className={cn(
-                    'shrink-0',
-                    state.disabled &&
-                      'aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:text-disabled aria-disabled:hover:bg-transparent aria-disabled:hover:text-disabled aria-disabled:active:scale-100',
-                  )}
+                  className="shrink-0"
                   aria-label={command.title}
                   aria-pressed={!!state.pressed}
                   aria-disabled={!!state.disabled}
@@ -196,7 +192,7 @@ function TabButton({
       role="tab"
       aria-selected={selected}
       className={cn(
-        'flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-caption whitespace-nowrap transition-colors duration-160 ease-anfra-out [&_svg]:size-3.5',
+        'flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 focus-visible:outline-offset-[-2px] text-caption whitespace-nowrap transition-colors duration-160 ease-anfra-out [&_svg]:size-3.5',
         selected ? 'bg-active font-medium text-default' : 'text-weak hover:bg-hover hover:text-default',
       )}
       {...props}
