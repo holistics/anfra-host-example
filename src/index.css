@@ -412,6 +412,12 @@
 :root {
   --radius: 10px;
 
+  /* The anfra-design properties the SDK's designTheme() reads for plugin UI. The fonts are written
+     out because --font-sans/--font-mono live in `@theme inline`, which emits no property. */
+  --anfra-radius-lg: var(--radius);
+  --anfra-font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --anfra-font-mono: "Geist Mono Variable", ui-monospace, monospace;
+
   --background: var(--anfra-color-background-default);
   --foreground: var(--anfra-color-text-default);
   --card: var(--anfra-color-background-card-default);
@@ -735,12 +741,17 @@
 
 /*
  * Focus is one 2px violet outline, offset 3px, on everything focusable; a control
- * keeps its own border (DESIGN.md §8). Unlayered, so it wins over the components'
- * outline-none utility.
+ * keeps its own border (DESIGN.md §8). The outline itself is unlayered, so it wins over the
+ * components' outline-none utility; the offset alone sits in the base layer, so an
+ * outline-offset utility (focus-visible:outline-offset-[-2px]) still overrides it.
  */
 :focus-visible {
   outline: 2px solid var(--ring);
-  outline-offset: 3px;
+}
+@layer base {
+  :focus-visible {
+    outline-offset: 3px;
+  }
 }
 
 /* The palette's search is its one field, always focused, on a row of its own: its caret shows it. */
@@ -749,8 +760,10 @@
 }
 
 /* Keep option focus inside the select's clipped, rounded viewport; menu items show focus on their highlighted background. */
-[data-slot="select-item"]:focus-visible {
-  outline-offset: -2px;
+@layer base {
+  [data-slot="select-item"]:focus-visible {
+    outline-offset: -2px;
+  }
 }
 :is([data-slot="dropdown-menu-item"], [data-slot="dropdown-menu-checkbox-item"]):focus-visible {
   outline: none;

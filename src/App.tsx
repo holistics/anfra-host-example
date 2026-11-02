@@ -26,6 +26,7 @@ import { VersionsPanel } from '@/components/versions-panel';
 import {
   type Command,
   type DatasetDescriptor,
+  designTheme,
   loadCatalog,
   type Mounted,
   type Rendering,
@@ -106,26 +107,12 @@ export function App() {
     void refreshDatasets();
   }, [refreshCatalog, refreshDatasets]);
 
-  // The plugins' UI (the panel's tabs, the menu and card in the frame) follows the page's theme, with
-  // anfra Cloud's tokens (its lib/pluginTheme.ts): read as resolved values, as the frame can't see ours.
+  // The plugins' UI (the panel's tabs, the menu and card in the frame) follows the page's theme: the SDK
+  // reads each token from the anfra-design property on the page (re-run when the scheme changes).
   useEffect(() => {
-    const style = getComputedStyle(document.documentElement);
-    const read = (name: string) => style.getPropertyValue(name).trim() || undefined;
-    setPluginTheme({
-      scheme: theme,
-      tokens: {
-        'color-bg': read('--background'), // the white work panel, which the panel's tabs sit on
-        'color-fg': read('--anfra-color-text-default'),
-        'color-muted': read('--anfra-color-text-placeholder'),
-        'color-border': read('--anfra-color-border-default'),
-        'color-accent': read('--anfra-color-text-link-default'), // violet as text, links and selection
-        'color-danger': read('--anfra-color-text-danger-default'),
-        radius: '14px', // rounded-xl: the menu, popovers and modals float
-        font: getComputedStyle(document.body).fontFamily || undefined,
-        // Geist Mono, as index.css sets it: its `@theme inline` leaves no property to read.
-        'font-mono': "'Geist Mono Variable', ui-monospace, monospace",
-      },
-    });
+    setPluginTheme(
+      designTheme(theme === 'dark' ? 'dark' : 'light', getComputedStyle(document.documentElement)),
+    );
   }, [theme]);
 
   // Deep links: the address follows the open Data App, and back and forward follow the address.

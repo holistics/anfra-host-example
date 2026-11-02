@@ -37,8 +37,6 @@ export function SidebarResizer() {
     const rail = event.currentTarget;
     // Captured, so the drag keeps going over the Data App's iframe; and from the press to the release
     // no frame takes the pointer (index.css), as a first move landing on one would go into it first.
-    wrapper.dataset.pressing = '';
-    rail.setPointerCapture(event.pointerId);
     const startX = event.clientX;
     const startWidth = sidebar.getBoundingClientRect().width;
     let width = startWidth;
@@ -69,6 +67,13 @@ export function SidebarResizer() {
     rail.addEventListener('pointerup', onUp);
     rail.addEventListener('pointercancel', onUp);
     rail.addEventListener('lostpointercapture', onUp);
+    // Listeners first, so the flag can never outlive them; and set only once capture has succeeded.
+    try {
+      rail.setPointerCapture(event.pointerId);
+      wrapper.dataset.pressing = '';
+    } catch {
+      onUp();
+    }
   };
 
   // A click that ends a drag doesn't also collapse the sidebar.

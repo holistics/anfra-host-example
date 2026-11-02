@@ -271,6 +271,7 @@ function pathTo(
 // On the host's tokens, which the popover's root inherits, set to anfra-cloud's (web/DESIGN.md):
 // 14/20 body, 12/16 captions, 500 labels; 32px controls; 6px chips and items, 10px buttons and
 // fields, 14px menus; hover and pressed layers of ink; disabled as a faint fill, never opacity.
+// The menu's elevation is anfra-cloud's e2: a shadow on light, a 1px ring on dark (the SDK sets `color-scheme` on the root, which `light-dark()` follows).
 // The SDK always sets the radius, colors and hover and active layers; the radii here derive from it (10px, menus +4px); disabled is not a token, so it mixes from the text color.
 const CARD_CSS = `
 .card { box-sizing: border-box; width: min(320px, calc(100vw - 32px)); padding: 12px; display: grid; gap: 8px; font: 400 14px/20px var(--anfra-font); color: var(--anfra-color-fg); --hover: var(--anfra-color-hover); --active: var(--anfra-color-active); --disabled: color-mix(in srgb, var(--anfra-color-fg) 4%, transparent); --ease: cubic-bezier(0.22, 1, 0.36, 1); }
@@ -299,7 +300,7 @@ button[aria-disabled], button.primary[aria-disabled] { background: var(--disable
 .split { position: relative; display: flex; }
 .split > button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .split > button:nth-child(2) { border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 0 8px; }
-.list { position: absolute; right: 0; bottom: calc(100% + 4px); display: grid; min-width: 220px; padding: 4px; background: var(--anfra-color-bg); border: 1px solid var(--anfra-color-border); border-radius: calc(var(--anfra-radius) + 4px); box-shadow: 0 1px 0 rgb(24 20 31 / 0.03), 0 18px 40px -18px rgb(24 20 31 / 0.28), 0 2px 6px -2px rgb(24 20 31 / 0.08); }
+.list { position: absolute; right: 0; bottom: calc(100% + 4px); display: grid; min-width: 220px; padding: 4px; background: var(--anfra-color-bg); border: 1px solid var(--anfra-color-border); border-radius: calc(var(--anfra-radius) + 4px); box-shadow: light-dark(0 1px 0 rgb(24 20 31 / 0.03), 0 0 0 1px var(--anfra-color-border-strong)), light-dark(0 18px 40px -18px rgb(24 20 31 / 0.28), 0 0 #0000), light-dark(0 2px 6px -2px rgb(24 20 31 / 0.08), 0 0 #0000); }
 .list[hidden] { display: none; }
 .list button { border: 0; border-radius: 6px; height: auto; min-height: 32px; padding: 6px 8px; font-weight: 400; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
 .list button:active { scale: none; }
