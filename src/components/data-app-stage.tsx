@@ -1,5 +1,5 @@
-import { CircleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ErrorAlert } from '@/components/error-alert';
 import { type DatasetDescriptor, type Mounted, mount } from '@/data-app';
 
 interface Props {
@@ -51,13 +51,7 @@ export function DataAppStage({ path, label, datasets, onMount }: Props) {
       <div ref={container} className="size-full" />
       {error && (
         <div className="absolute inset-0 bg-background p-6">
-          <div
-            role="alert"
-            className="mx-auto grid max-w-lg grid-cols-[auto_1fr] gap-x-2 rounded-xl border border-danger-default bg-danger-secondary-default px-2.5 py-2 text-body text-default"
-          >
-            <CircleAlert className="size-4 translate-y-0.5 icon-danger-default" />
-            <p className="text-pretty text-weak">{error}</p>
-          </div>
+          <ErrorAlert>{error}</ErrorAlert>
         </div>
       )}
     </div>

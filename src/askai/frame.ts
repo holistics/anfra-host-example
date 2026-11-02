@@ -271,9 +271,9 @@ function pathTo(
 // On the host's tokens, which the popover's root inherits, set to anfra-cloud's (web/DESIGN.md):
 // 14/20 body, 12/16 captions, 500 labels; 32px controls; 6px chips and items, 10px buttons and
 // fields, 14px menus; hover and pressed layers of ink; disabled as a faint fill, never opacity.
-// The frame sees only the SDK's few tokens, so the ink layers mix from the text color.
+// The SDK gives hover and active layers; disabled is not a token, so it mixes from the text color.
 const CARD_CSS = `
-.card { box-sizing: border-box; width: min(320px, calc(100vw - 32px)); padding: 12px; display: grid; gap: 8px; font: 400 14px/20px var(--anfra-font); color: var(--anfra-color-fg); --hover: color-mix(in srgb, var(--anfra-color-fg) 5%, transparent); --active: color-mix(in srgb, var(--anfra-color-fg) 9%, transparent); --disabled: color-mix(in srgb, var(--anfra-color-fg) 4%, transparent); --ease: cubic-bezier(0.22, 1, 0.36, 1); }
+.card { box-sizing: border-box; width: min(320px, calc(100vw - 32px)); padding: 12px; display: grid; gap: 8px; font: 400 14px/20px var(--anfra-font); color: var(--anfra-color-fg); --hover: var(--anfra-color-hover, color-mix(in srgb, var(--anfra-color-fg) 5%, transparent)); --active: var(--anfra-color-active, color-mix(in srgb, var(--anfra-color-fg) 9%, transparent)); --disabled: color-mix(in srgb, var(--anfra-color-fg) 4%, transparent); --ease: cubic-bezier(0.22, 1, 0.36, 1); }
 .header { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .close { margin-left: auto; flex: none; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 10px; color: var(--anfra-color-muted); font-size: 16px; line-height: 1; }
 .close:hover { color: var(--anfra-color-fg); background: var(--hover); }

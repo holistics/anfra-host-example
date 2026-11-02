@@ -5,6 +5,7 @@ import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { DataAppStage } from '@/components/data-app-stage';
+import { ErrorAlert } from '@/components/error-alert';
 import { Home } from '@/components/home';
 import { PluginPanel } from '@/components/plugin-panel';
 import { PromptPanel } from '@/components/prompt-panel';
@@ -277,7 +278,7 @@ export function App() {
   } else if (!path) {
     content = entries ? <Home entries={entries} onSelect={select} /> : <Loading />;
   } else if (entries && !app) {
-    content = moved ? <Loading /> : <Missing path={path} />;
+    content = moved ? <Loading /> : <Missing path={path} onHome={() => select('')} />;
   } else if (!datasets || !app) {
     content = <Loading />;
   } else {
@@ -310,13 +311,7 @@ export function App() {
                 </KbdGroup>
               </TooltipContent>
             </Tooltip>
-            {app && (
-              <AppIcon
-                app={app}
-                overlay={false}
-                className="size-4 shrink-0 icon-highlight-default"
-              />
-            )}
+            {app && <AppIcon app={app} className="size-4 shrink-0 icon-highlight-default" />}
             {/* An app's name is the page's heading; elsewhere the bar is navigation, and the page has its own. */}
             {app ? (
               <h1 className="truncate text-label text-default">{app.label}</h1>
@@ -487,13 +482,21 @@ function Loading() {
 }
 
 /** A link to a Data App that isn't in the repo. */
-function Missing({ path }: { path: string }) {
+function Missing({ path, onHome }: { path: string; onHome: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-1 bg-background p-6 text-center">
       <p className="text-heading">No Data App here</p>
       <p className="text-body text-pretty text-weak">
         Nothing is at <span className="font-mono">{path}</span>.{' '}
-        <a href="/" className="underline underline-offset-2 hover:text-default">
+        <a
+          href="/"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            event.preventDefault();
+            onHome();
+          }}
+          className="underline underline-offset-2 hover:text-default"
+        >
           Go home
         </a>
       </p>
@@ -505,13 +508,7 @@ function Missing({ path }: { path: string }) {
 function ErrorMessage({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-full bg-background p-6">
-      <div
-        role="alert"
-        className="mx-auto grid max-w-lg grid-cols-[auto_1fr] gap-x-2 rounded-xl border border-danger-default bg-danger-secondary-default px-2.5 py-2 text-body text-default"
-      >
-        <CircleAlert className="size-4 translate-y-0.5 icon-danger-default" />
-        <p className="text-pretty text-weak">{children}</p>
-      </div>
+      <ErrorAlert>{children}</ErrorAlert>
     </div>
   );
 }
@@ -535,7 +532,7 @@ function ToolbarButton({
           variant={active ? 'secondary' : 'ghost'}
           size={text ? 'sm' : 'icon-sm'}
           className={cn(
-            'aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:text-disabled',
+            'aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:active:scale-100 aria-disabled:text-disabled',
             className,
           )}
           aria-label={label}

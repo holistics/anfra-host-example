@@ -127,15 +127,15 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
       {/* The logomark, then the way home: anfra Cloud's org row. The mark is never set beside a typed "anfra". */}
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-1">
-            <img
-              src="/logo.svg"
-              alt="anfra"
-              draggable={false}
-              className="mx-1.5 size-5 shrink-0 object-contain"
-            />
+          <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <a href="/">
+                <img
+                  src="/logo.svg"
+                  alt="anfra"
+                  draggable={false}
+                  className="size-5 shrink-0 object-contain"
+                />
                 <span className="truncate text-label">Demo</span>
               </a>
             </SidebarMenuButton>
@@ -215,15 +215,10 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
     };
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={entry.path === selected}
-          tooltip={entry.path}
-          className="group/app"
-        >
+        <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <AppIcon app={entry} overlay={false} />
-            <span>{entry.label}</span>
+            <AppIcon app={entry} />
+            <span className="min-w-0 truncate">{entry.label}</span>
             {entry.endorsed && <EndorsedMark className="icon-success-default!" />}
           </a>
         </SidebarMenuButton>

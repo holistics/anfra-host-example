@@ -100,7 +100,11 @@ export function PluginPanel({ panel, tabs, commands, stateOf, onRun }: Props) {
                 <Button
                   variant={state.pressed ? 'secondary' : 'ghost'}
                   size="icon-xs"
-                  className={cn('shrink-0', state.disabled && 'text-disabled hover:bg-transparent')}
+                  className={cn(
+                    'shrink-0',
+                    state.disabled &&
+                      'aria-disabled:cursor-not-allowed aria-disabled:bg-transparent aria-disabled:text-disabled aria-disabled:hover:bg-transparent aria-disabled:hover:text-disabled aria-disabled:active:scale-100',
+                  )}
                   aria-label={command.title}
                   aria-pressed={!!state.pressed}
                   aria-disabled={!!state.disabled}

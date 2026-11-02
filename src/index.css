@@ -748,9 +748,12 @@
   outline: none;
 }
 
-/* Keep option focus inside the select's clipped, rounded viewport. */
+/* Keep option focus inside the select's clipped, rounded viewport; menu items show focus on their highlighted background. */
 [data-slot="select-item"]:focus-visible {
   outline-offset: -2px;
+}
+:is([data-slot="dropdown-menu-item"], [data-slot="dropdown-menu-checkbox-item"]):focus-visible {
+  outline: none;
 }
 
 /*
