@@ -1,9 +1,11 @@
-import { Ellipsis, RotateCw } from 'lucide-react';
+import { CircleAlert, Ellipsis, Info, LoaderCircle, RotateCw } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { AppInfo } from '@/components/app-info';
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { DataAppStage } from '@/components/data-app-stage';
+import { ErrorAlert } from '@/components/error-alert';
 import { Home } from '@/components/home';
 import { PluginPanel } from '@/components/plugin-panel';
 import { PromptPanel } from '@/components/prompt-panel';
@@ -18,18 +20,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VersionsPanel } from '@/components/versions-panel';
 import {
   type Command,
   type DatasetDescriptor,
+  designTheme,
   loadCatalog,
   type Mounted,
   type Rendering,
   setPluginTheme,
 } from '@/data-app';
+import { isPlainClick } from '@/lib/click';
 import { chromeCommands, commandIcon, commandIcons } from '@/lib/commands';
 import {
   catalog,
@@ -104,24 +107,12 @@ export function App() {
     void refreshDatasets();
   }, [refreshCatalog, refreshDatasets]);
 
-  // The plugins' UI (the panel's tabs, the menu and card in the frame) follows the page's theme.
+  // The plugins' UI (the panel's tabs, the menu and card in the frame) follows the page's theme: the SDK
+  // reads each token from the anfra-design property on the page (re-run when the scheme changes).
   useEffect(() => {
-    const style = getComputedStyle(document.documentElement);
-    const read = (name: string) => style.getPropertyValue(name).trim() || undefined;
-    setPluginTheme({
-      scheme: theme,
-      tokens: {
-        'color-bg': read('--background'),
-        'color-fg': read('--foreground'),
-        'color-muted': read('--muted-foreground'),
-        'color-border': read('--border'),
-        // The neutral theme has no accent colour; links and selection in the tabs take indigo.
-        'color-accent': theme === 'dark' ? '#a5b4fc' : '#4f46e5',
-        'color-danger': read('--destructive'),
-        radius: read('--radius'),
-        font: getComputedStyle(document.body).fontFamily || undefined,
-      },
-    });
+    setPluginTheme(
+      designTheme(theme === 'dark' ? 'dark' : 'light', getComputedStyle(document.documentElement)),
+    );
   }, [theme]);
 
   // Deep links: the address follows the open Data App, and back and forward follow the address.
@@ -271,13 +262,13 @@ export function App() {
 
   let content: React.ReactNode;
   if (error) {
-    content = <Message>{error}</Message>;
+    content = <ErrorMessage>{error}</ErrorMessage>;
   } else if (!path) {
-    content = entries ? <Home entries={entries} onSelect={select} /> : <Message>Loading…</Message>;
+    content = entries ? <Home entries={entries} onSelect={select} /> : <Loading />;
   } else if (entries && !app) {
-    content = moved ? <Message>Loading…</Message> : <Message>No Data App at {path}.</Message>;
+    content = moved ? <Loading /> : <Missing path={path} onHome={() => select('')} />;
   } else if (!datasets || !app) {
-    content = <Message>Loading…</Message>;
+    content = <Loading />;
   } else {
     content = (
       <DataAppStage
@@ -294,8 +285,8 @@ export function App() {
     <TooltipProvider delayDuration={300}>
       <SidebarProvider className="h-full" style={sidebarStyle} defaultOpen={sidebarOpen}>
         <AppSidebar entries={entries} selected={path} onSelect={select} />
-        <SidebarInset className="min-w-0 overflow-hidden md:peer-data-[variant=inset]:border">
-          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+        <SidebarInset className="min-w-0 overflow-hidden">
+          <header className="flex h-12 shrink-0 items-center gap-2 rounded-t-xl border-b border-default bg-background px-3">
             <Tooltip>
               <TooltipTrigger asChild>
                 <SidebarTrigger />
@@ -308,11 +299,17 @@ export function App() {
                 </KbdGroup>
               </TooltipContent>
             </Tooltip>
-            <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
-            <h1 className="truncate text-sm font-medium">{app?.label ?? 'anfra demo'}</h1>
+            {app && <AppIcon app={app} className="size-4 shrink-0 icon-highlight-default" />}
+            {/* An app's name is the page's heading; elsewhere the bar is navigation, and the page has its own. */}
+            {app ? (
+              <h1 className="truncate text-label text-default">{app.label}</h1>
+            ) : (
+              <span className="truncate text-label text-default">anfra demo</span>
+            )}
+            {app?.endorsed && <EndorsedMark className="ml-0" />}
             {app && <AppInfo app={app} />}
             {path && (
-              <div className="ml-auto flex items-center gap-1">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
                   <RotateCw />
                 </ToolbarButton>
@@ -355,7 +352,6 @@ export function App() {
                       onClick={() => !state.disabled && run(command)}
                       text={textOf(command)}
                       shortcut={command.shortcut}
-                      className={cn(state.disabled && 'cursor-not-allowed opacity-50')}
                     >
                       <Icon />
                     </ToolbarButton>
@@ -450,19 +446,59 @@ function ToastMessage({ toast, onDone }: { toast: Toast; onDone: () => void }) {
     <div
       role="status"
       className={cn(
-        'fixed right-4 bottom-4 z-50 max-w-sm rounded-md border px-3 py-2 text-sm shadow-md',
-        toast.tone === 'error'
-          ? 'border-destructive/40 bg-destructive text-white'
-          : 'bg-popover text-popover-foreground',
+        'fixed right-4 bottom-4 z-50 flex max-w-sm items-start gap-2 rounded-xl border border-default bg-popover px-3 py-2 text-body text-pretty text-default shadow-e2',
+        '[&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0',
       )}
     >
-      {toast.text}
+      {toast.tone === 'error' ? (
+        <CircleAlert className="icon-danger-default" />
+      ) : (
+        <Info className="icon-info-default" />
+      )}
+      <span className="min-w-0">{toast.text}</span>
     </div>
   );
 }
 
-function Message({ children }: { children: React.ReactNode }) {
-  return <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">{children}</div>;
+/** Something on its way: the stage's spinner, as anfra Cloud's. */
+function Loading() {
+  return (
+    <div className="grid h-full place-items-center bg-background">
+      <LoaderCircle role="status" aria-label="Loading" className="size-4 animate-spin icon-weak" />
+    </div>
+  );
+}
+
+/** A link to a Data App that isn't in the repo. */
+function Missing({ path, onHome }: { path: string; onHome: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-1 bg-background p-6 text-center">
+      <p className="text-heading">No Data App here</p>
+      <p className="text-body text-pretty text-weak">
+        Nothing is at <span className="font-mono">{path}</span>.{' '}
+        <a
+          href={urlOf('')}
+          onClick={(event) => {
+            if (!isPlainClick(event)) return;
+            event.preventDefault();
+            onHome();
+          }}
+          className="underline underline-offset-2 hover:text-default"
+        >
+          Go home
+        </a>
+      </p>
+    </div>
+  );
+}
+
+/** The page's own failure, as a danger alert at the top of the stage. */
+function ErrorMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-full bg-background p-6">
+      <ErrorAlert>{children}</ErrorAlert>
+    </div>
+  );
 }
 
 /** An icon button; with `text` it carries a visible label beside the icon, and with `shortcut` its tooltip shows the keys to press. */
@@ -481,9 +517,9 @@ function ToolbarButton({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="ghost"
-          size={text ? 'sm' : 'icon'}
-          className={cn(!text && 'size-8', active && 'bg-accent text-accent-foreground', className)}
+          variant={active ? 'secondary' : 'ghost'}
+          size={text ? 'sm' : 'icon-sm'}
+          className={cn(className)}
           aria-label={label}
           aria-pressed={active}
           {...props}

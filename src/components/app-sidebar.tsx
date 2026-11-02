@@ -1,10 +1,9 @@
 import { ChevronRight, Folder } from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { SidebarResizer } from '@/components/sidebar-resizer';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
@@ -22,6 +21,7 @@ import {
   SidebarMenuSub,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { isPlainClick } from '@/lib/click';
 import { type Entry, type FolderEntry, filterEntries, foldersOf, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 import { onShell } from '@/lib/shell';
@@ -125,14 +125,23 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
     (searching ? setSearched : setBrowsed)((prev) => ({ ...prev, [path]: open }));
   return (
     <Sidebar variant="inset">
+      {/* The logomark, then the way home: anfra Cloud's org row. The mark is never set beside a typed "anfra". */}
       <SidebarHeader>
-        <a href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
-          <img src="/logo.svg" alt="" className="size-6 object-contain" />
-          anfra
-          <Badge variant="secondary" className="mt-1">
-            demo
-          </Badge>
-        </a>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <a href="/">
+                <img
+                  src="/logo.svg"
+                  alt="anfra"
+                  draggable={false}
+                  className="size-5 shrink-0 object-contain"
+                />
+                <span className="truncate text-label">Demo</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       {/* On desktop, reach over the inset padding, so the scrollbar sits on the edge and the gap is inside it. */}
       <SidebarContent className="md:-mr-2">
@@ -173,16 +182,16 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
                 />
               ))}
               {entries?.length === 0 && (
-                <p className="px-2 text-sm text-muted-foreground">No Data Apps in the repo's apps folder.</p>
+                <p className="px-2 text-caption text-weak">No Data Apps in the repo's apps folder</p>
               )}
               {entries && entries.length > 0 && shown?.length === 0 && (
-                <p className="px-2 text-sm text-muted-foreground">Nothing matches.</p>
+                <p className="px-2 text-caption text-weak">Nothing matches</p>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="flex-row items-center justify-between border-t">
+      <SidebarFooter className="flex-row items-center justify-between">
         <AnfraStatus />
         <ThemeToggle />
       </SidebarFooter>
@@ -201,24 +210,17 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
   if (entry.kind === 'app') {
     // A real link, so it opens in a new tab too; a plain click stays in the page.
     const onClick = (event: MouseEvent) => {
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+      if (!isPlainClick(event)) return;
       event.preventDefault();
       onSelect(entry.path);
     };
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={entry.path === selected}
-          tooltip={entry.path}
-          className="group/app"
-        >
+        <SidebarMenuButton asChild isActive={entry.path === selected} tooltip={entry.path}>
           <a href={urlOf(entry.path)} onClick={onClick}>
-            <AppIcon
-              app={entry}
-              checkClassName="group-hover/app:ring-sidebar-accent group-data-[active=true]/app:ring-sidebar-accent"
-            />
-            <span>{entry.label}</span>
+            <AppIcon app={entry} />
+            <span className="min-w-0 truncate">{entry.label}</span>
+            {entry.endorsed && <EndorsedMark className="icon-success-default!" />}
           </a>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -234,7 +236,7 @@ function Item({ entry, selected, onSelect, isOpen, onToggle }: ItemProps) {
       >
         <CollapsibleTrigger asChild>
           <SidebarMenuButton tooltip={entry.description && { children: entry.description, hidden: false }}>
-            <ChevronRight className="transition-transform group-data-[state=open]/folder:rotate-90" />
+            <ChevronRight className="transition-transform duration-160 ease-anfra-out group-data-[state=open]/folder:rotate-90" />
             <FolderIcon />
             <span>{entry.name}</span>
           </SidebarMenuButton>

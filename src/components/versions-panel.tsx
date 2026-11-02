@@ -8,9 +8,9 @@ import { type MockChangeKind, type MockVersion, mockVersionsFor } from '@/lib/mo
 import { cn } from '@/lib/utils';
 
 const changeStyle: Record<MockChangeKind, { icon: ReactNode; className: string }> = {
-  added: { icon: <Plus className="size-3" />, className: 'text-emerald-600 dark:text-emerald-400' },
-  changed: { icon: <Pencil className="size-3" />, className: 'text-amber-600 dark:text-amber-400' },
-  removed: { icon: <Minus className="size-3" />, className: 'text-destructive' },
+  added: { icon: <Plus className="size-3" />, className: 'icon-success-default' },
+  changed: { icon: <Pencil className="size-3" />, className: 'icon-warning-default' },
+  removed: { icon: <Minus className="size-3" />, className: 'icon-danger-default' },
 };
 
 interface Props {
@@ -26,25 +26,25 @@ export function VersionsPanel({ onClose }: Props) {
   const versions = mockVersionsFor();
 
   return (
-    <div className="flex h-full flex-col border-l">
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b px-2">
-        <h2 className="min-w-0 flex-1 truncate pl-2 text-sm font-medium">Versions</h2>
+    <div className="flex h-full flex-col bg-background">
+      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-default px-2">
+        <h2 className="min-w-0 flex-1 truncate pl-1 text-heading">Versions</h2>
         <Badge variant="outline">Demo data</Badge>
         <Button
           variant="ghost"
-          size="icon"
-          className="size-7"
+          size="icon-xs"
+          className="shrink-0"
           onClick={onClose}
           aria-label="Close the versions panel"
         >
           <X />
         </Button>
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <MockBanner />
-        <ol className="space-y-2">
+        <ol className="overflow-hidden rounded-xl border border-default bg-card" aria-label="Versions">
           {versions.map((version) => (
-            <li key={version.id}>
+            <li key={version.id} className="border-t border-weak first:border-t-0">
               <VersionRow version={version} />
             </li>
           ))}
@@ -59,15 +59,15 @@ function MockBanner() {
   return (
     <div
       role="note"
-      className="flex items-start gap-2 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground"
+      className="grid grid-cols-[auto_1fr] gap-x-2 rounded-xl border border-default bg-info-secondary-default px-2.5 py-2 text-body text-default"
     >
-      <History className="mt-px size-3.5 shrink-0" />
-      <div className="space-y-1">
+      <History className="mt-0.5 size-4 shrink-0 icon-info-default" />
+      <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">
           <Badge variant="outline">Demo data</Badge>
           <Badge variant="secondary">Coming soon</Badge>
         </div>
-        <p>
+        <p className="text-pretty">
           Version history isn't available yet. The versions below are made up, to show how it will look once
           it is ready.
         </p>
@@ -78,26 +78,32 @@ function MockBanner() {
 
 function VersionRow({ version }: { version: MockVersion }) {
   return (
-    <div className={cn('space-y-2 rounded-lg border p-3', version.current && 'bg-muted/30')}>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant={version.current ? 'default' : 'outline'}>{version.id}</Badge>
-        {version.current && <span className="text-xs font-medium">Current</span>}
-        <span className="ml-auto text-[10px] tracking-wide text-muted-foreground uppercase">Sample</span>
+    <div className="space-y-2 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-label text-default">{version.id}</span>
+        {version.current && (
+          <span className="inline-flex h-5 shrink-0 items-center gap-1.5 rounded-pill bg-highlight-secondary-default px-2 text-caption font-medium whitespace-nowrap text-highlight-default before:size-1.5 before:shrink-0 before:rounded-full before:bg-current">
+            Current
+          </span>
+        )}
+        <span className="ml-auto font-mono text-caption tracking-[0.025em] text-placeholder uppercase dark:font-[550]">
+          Sample
+        </span>
       </div>
-      <p className="text-sm">{version.summary}</p>
-      <ul className="space-y-0.5">
+      <p className="text-body text-pretty text-default">{version.summary}</p>
+      <ul className="space-y-1">
         {version.changes.map((change) => (
           <li
             key={`${change.kind}:${change.text}`}
-            className={cn('flex items-center gap-1.5 text-xs', changeStyle[change.kind].className)}
+            className={cn('flex items-center gap-1.5 text-caption', changeStyle[change.kind].className)}
           >
             {changeStyle[change.kind].icon}
-            <span className="text-foreground">{change.text}</span>
+            <span className="text-weak">{change.text}</span>
           </li>
         ))}
       </ul>
       <div className="flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+        <p className="min-w-0 flex-1 truncate text-caption text-placeholder tabular-nums">
           {version.author} · <VersionTime at={version.createdAt} />
         </p>
         <SoonButton icon={<GitCompare />}>Compare</SoonButton>
@@ -126,7 +132,7 @@ function SoonButton({ icon, children }: { icon: ReactNode; children: ReactNode }
       <TooltipTrigger asChild>
         {/* A disabled button swallows pointer events, so the span carries the tooltip. */}
         <span>
-          <Button variant="outline" size="xs" disabled>
+          <Button variant="outline" disabled>
             {icon}
             {children}
           </Button>

@@ -35,8 +35,8 @@ export function SidebarResizer() {
     if (event.button !== 0 || state !== 'expanded' || !wrapper || !sidebar) return;
     event.preventDefault();
     const rail = event.currentTarget;
-    // Captured, so the drag keeps going over the Data App's iframe.
-    rail.setPointerCapture(event.pointerId);
+    // Captured, so the drag keeps going over the Data App's iframe; and from the press to the release
+    // no frame takes the pointer (index.css), as a first move landing on one would go into it first.
     const startX = event.clientX;
     const startWidth = sidebar.getBoundingClientRect().width;
     let width = startWidth;
@@ -53,7 +53,9 @@ export function SidebarResizer() {
       rail.removeEventListener('pointermove', onMove);
       rail.removeEventListener('pointerup', onUp);
       rail.removeEventListener('pointercancel', onUp);
+      rail.removeEventListener('lostpointercapture', onUp);
       delete wrapper.dataset.resizing;
+      delete wrapper.dataset.pressing;
       if (!dragged.current) return;
       try {
         localStorage.setItem(KEY, String(width));
@@ -64,11 +66,28 @@ export function SidebarResizer() {
     rail.addEventListener('pointermove', onMove);
     rail.addEventListener('pointerup', onUp);
     rail.addEventListener('pointercancel', onUp);
+    rail.addEventListener('lostpointercapture', onUp);
+    // Listeners first, so the flag can never outlive them; and set only once capture has succeeded.
+    try {
+      rail.setPointerCapture(event.pointerId);
+      wrapper.dataset.pressing = '';
+    } catch {
+      onUp();
+    }
   };
 
   // A click that ends a drag doesn't also collapse the sidebar.
   const onClick = () => !dragged.current && toggleSidebar();
 
   const title = state === 'expanded' ? 'Drag to resize, click to collapse' : 'Expand';
-  return <SidebarRail onPointerDown={onPointerDown} onClick={onClick} title={title} />;
+  // anfra Cloud's edge: a 2px hairline on hover, eased like every other hover.
+  return (
+    <SidebarRail
+      onPointerDown={onPointerDown}
+      onClick={onClick}
+      title={title}
+      aria-label="Resize or collapse the sidebar"
+      className="after:w-0.5"
+    />
+  );
 }

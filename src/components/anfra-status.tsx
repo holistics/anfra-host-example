@@ -29,11 +29,11 @@ export function AnfraStatus() {
   const title =
     typeof state === 'object' ? `host ${state.host}` : state ? 'The host is not answering' : undefined;
   return (
-    <span className="flex min-w-0 items-center gap-2 px-2 text-sm text-muted-foreground" title={title}>
+    <span className="flex min-w-0 items-center gap-2 px-2 text-caption text-weak" title={title}>
       <span
         className={cn(
-          'size-2 shrink-0 rounded-full',
-          !state ? 'bg-muted-foreground/40' : anfra ? 'bg-green-500' : 'bg-destructive',
+          'size-2 shrink-0 rounded-full bg-current',
+          !state ? 'icon-disabled' : anfra ? 'icon-success-default' : 'icon-danger-default',
         )}
       />
       <span className="truncate">{text}</span>

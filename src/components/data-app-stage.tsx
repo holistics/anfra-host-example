@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ErrorAlert } from '@/components/error-alert';
 import { type DatasetDescriptor, type Mounted, mount } from '@/data-app';
 
 interface Props {
@@ -49,8 +50,8 @@ export function DataAppStage({ path, label, datasets, onMount }: Props) {
     <div className="relative size-full">
       <div ref={container} className="size-full" />
       {error && (
-        <div className="absolute inset-0 grid place-items-center bg-background p-6 text-center text-sm text-muted-foreground">
-          {error}
+        <div className="absolute inset-0 bg-background p-6">
+          <ErrorAlert>{error}</ErrorAlert>
         </div>
       )}
     </div>

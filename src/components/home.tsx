@@ -1,7 +1,8 @@
 import { ChevronRight, Folder } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { isPlainClick } from '@/lib/click';
 import { type AppEntry, type Entry, urlOf } from '@/lib/host';
 import { iconOf } from '@/lib/icons';
 
@@ -53,14 +54,16 @@ export function Home({ entries, onSelect }: Props) {
   const groups = categories(entries, '', '');
   if (groups.length === 0) {
     return (
-      <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">
-        No Data Apps in the repo's apps folder.
+      <div className="flex h-full flex-col items-center justify-center gap-1 bg-background p-6 text-center">
+        <p className="text-heading">No Data Apps yet</p>
+        <p className="text-body text-pretty text-weak">The repo's apps folder has none</p>
       </div>
     );
   }
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8">
+    <div className="h-full overflow-y-auto px-6 pt-6 pb-12">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6">
+        <h1 className="truncate text-title">Data Apps</h1>
         {groups.map((group) => (
           <Group key={group.path} group={group} onSelect={onSelect} />
         ))}
@@ -74,15 +77,15 @@ function Group({ group, onSelect }: { group: Category; onSelect: (path: string) 
   return (
     <Collapsible asChild defaultOpen={!group.collapsed}>
       <section className="group/section">
-        <CollapsibleTrigger className="mb-3 flex w-full items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-          <ChevronRight className="size-4 transition-transform group-data-[state=open]/section:rotate-90" />
-          <Icon className="size-4" />
+        <CollapsibleTrigger className="mb-3 flex w-full items-center gap-2 rounded-md text-heading text-weak transition-colors duration-160 ease-anfra-out hover:text-default [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:icon-weak">
+          <ChevronRight className="transition-transform duration-160 ease-anfra-out group-data-[state=open]/section:rotate-90" />
+          <Icon />
           {group.name || 'Apps'}
-          <span className="text-xs font-normal">{group.apps.length}</span>
+          <span className="text-caption text-placeholder tabular-nums">{group.apps.length}</span>
         </CollapsibleTrigger>
         <CollapsibleContent>
           {group.description && (
-            <p className="-mt-1 mb-3 text-sm text-muted-foreground">{group.description}</p>
+            <p className="-mt-1 mb-3 text-body text-pretty text-placeholder">{group.description}</p>
           )}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4">
             {group.apps.map((app) => (
@@ -98,7 +101,7 @@ function Group({ group, onSelect }: { group: Category; onSelect: (path: string) 
 function AppCard({ app, onSelect }: { app: AppEntry; onSelect: (path: string) => void }) {
   // A real link, so it opens in a new tab too; a plain click stays in the page.
   const onClick = (event: MouseEvent) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    if (!isPlainClick(event)) return;
     event.preventDefault();
     onSelect(app.path);
   };
@@ -106,26 +109,23 @@ function AppCard({ app, onSelect }: { app: AppEntry; onSelect: (path: string) =>
     <a
       href={urlOf(app.path)}
       onClick={onClick}
-      className="group flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground transition-colors hover:bg-accent"
+      className="group flex flex-col overflow-hidden rounded-xl border border-default bg-card text-card-foreground transition-colors duration-160 ease-anfra-out hover:border-hover"
     >
       {app.image && (
         <img
           src={app.image}
           alt=""
           loading="lazy"
-          className="aspect-[1200/630] w-full border-b bg-muted object-cover"
+          className="aspect-[1200/630] w-full border-b border-default bg-muted object-cover"
         />
       )}
-      <span className="flex items-center gap-3 p-4">
-        <AppIcon
-          app={app}
-          className="size-5 shrink-0 text-muted-foreground"
-          checkClassName="ring-card group-hover:ring-accent"
-        />
+      <span className="flex items-center gap-3 px-4 py-3">
+        <AppIcon app={app} className="size-4 shrink-0 icon-weak" />
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium">{app.label}</span>
-          <span className="block truncate text-xs text-muted-foreground">{app.path}</span>
+          <span className="block truncate text-label">{app.label}</span>
+          <span className="block truncate font-mono text-caption text-placeholder">{app.path}</span>
         </span>
+        {app.endorsed && <EndorsedMark />}
       </span>
     </a>
   );

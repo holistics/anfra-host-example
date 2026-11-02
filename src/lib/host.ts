@@ -61,8 +61,9 @@ export function onRepoEvent(listener: (event: RepoEvent) => void): () => void {
   return () => source.close();
 }
 
-/** A Data App's page: `/apps/<path without .html>`. */
+/** A Data App's page: `/apps/<path without .html>`; no path is home, `/`. */
 export function urlOf(path: string): string {
+  if (!path) return '/';
   return `/apps/${path
     .replace(/\.html$/i, '')
     .split('/')

@@ -8,6 +8,7 @@
 //   @holistics/anfra-sdk/plugins  anfra's plugins: queries, exports, lineage, pictures, inspect
 import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
 import type { DatasetDescriptor, ThemeInput, User } from '@holistics/anfra-sdk/common';
+import { designTheme } from '@holistics/anfra-sdk/common';
 import { createHost, type Host, type MountedDataApp } from '@holistics/anfra-sdk/host';
 import {
   corePlugin,
@@ -23,6 +24,7 @@ import { allowOriginsHeader } from '../server/entry';
 
 export type { DatasetDescriptor, Rendering } from '@holistics/anfra-sdk/common';
 export type { Command, CommandState, Host, MountedDataApp, Panel, Tab } from '@holistics/anfra-sdk/host';
+export { designTheme };
 
 /**
  * The core API, as this host's server lets it through (server/anfra.ts): `core.show`, `core.query`,
