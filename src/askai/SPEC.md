@@ -156,7 +156,7 @@ src/askai/
 | --- | --- | --- |
 | `askai.copy` | frame | Checks `{ node, ancestors, comment }`, builds the prompt with the mount's app, copies it on the host page. Answers `{ prompt, copied }`. |
 | `askai.targets` | frame | The send targets, each with why it is off. |
-| `askai.send` | frame | Refused: `PermissionError("Disabled by admin")`. |
+| `askai.send` | frame | Refused: `forbidden("Disabled by admin")`, a `DataAppError` with code `forbidden`. |
 | `askai.toggle` | the command | Calls `askai.pick` in the frame. |
 | `askai.pick` | host, into the frame | Starts Ask AI mode, or cancels it, or closes the card. |
 | `askai.state` | frame event | `{ active }`: Ask AI mode on or a card open. The command's `pressed` follows it. |

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { PermissionError, ValidationError } from '@holistics/anfra-sdk/common';
+import { hasErrorCode } from '@holistics/anfra-sdk/common';
 import { createHost } from '@holistics/anfra-sdk/host';
 import { corePlugin } from '@holistics/anfra-sdk/plugins';
 import { askAiPlugin, sendTargets } from './plugin';
@@ -23,11 +23,13 @@ describe('askai', () => {
   });
 
   it('refuses to send', async () => {
-    await assert.rejects(host.call('askai.send', {}), PermissionError);
+    await assert.rejects(host.call('askai.send', {}), (err) => hasErrorCode(err, 'forbidden'));
   });
 
   it('refuses to copy a request that is not a comment on a node', async () => {
-    await assert.rejects(host.call('askai.copy', { comment: 'x' }), ValidationError);
+    await assert.rejects(host.call('askai.copy', { comment: 'x' }), (err) =>
+      hasErrorCode(err, 'invalid_request'),
+    );
   });
 
   it('copies only for a mounted app', async () => {
