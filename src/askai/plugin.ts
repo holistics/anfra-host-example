@@ -1,6 +1,6 @@
 // The Ask AI plugin's host half: it builds the prompt, copies it, says where it may be sent, and
 // adds "Ask AI" to the host's commands. The frame half (./frame.ts) draws the card.
-import { PermissionError, ValidationError } from '@holistics/anfra-sdk/common';
+import { forbidden, invalidRequest } from '@holistics/anfra-sdk/common';
 import { definePlugin, type FrameHalf, type MountContext, type Plugin } from '@holistics/anfra-sdk/host';
 import { buildCommentPrompt, checkComment, type SendTarget } from './model';
 
@@ -26,9 +26,9 @@ export function askAiPlugin(options: AskAiOptions, frame: FrameHalf): Plugin {
 
   const promptFor = (request: unknown, mount: MountContext | undefined) => {
     const comment = checkComment(request);
-    if (!comment) throw new ValidationError('A comment needs a node and some text.');
+    if (!comment) throw invalidRequest('A comment needs a node and some text.');
     const app = mount && options.appOf(mount);
-    if (!app) throw new ValidationError('No Data App is open.');
+    if (!app) throw invalidRequest('No Data App is open.');
     return buildCommentPrompt({ app, ...comment });
   };
 
@@ -50,7 +50,7 @@ export function askAiPlugin(options: AskAiOptions, frame: FrameHalf): Plugin {
         send: {
           frame: true,
           handler: () => {
-            throw new PermissionError(disabled);
+            throw forbidden(disabled);
           },
         },
         // The command's: start or stop Ask AI mode in the frame, or close its card.
