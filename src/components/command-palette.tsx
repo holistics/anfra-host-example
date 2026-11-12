@@ -1,4 +1,4 @@
-import { AppWindowMac, Moon, RotateCw, Sun } from 'lucide-react';
+import { AppWindowMac, Moon, Sun } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTheme } from '@/components/theme-toggle';
 import {
@@ -23,7 +23,6 @@ interface Props {
   /** The open Data App, whose actions the palette offers. */
   app: AppEntry | undefined;
   onSelect: (path: string) => void;
-  onReload: () => void;
   /** The open Data App's commands, the plugins' and this page's own, with how each shows now. */
   commands: Command[];
   stateOf: (command: Command) => CommandState;
@@ -37,7 +36,6 @@ export function CommandPalette({
   entries,
   app,
   onSelect,
-  onReload,
   commands,
   stateOf,
   onRun,
@@ -62,10 +60,6 @@ export function CommandPalette({
         <CommandEmpty>Nothing matches</CommandEmpty>
         {app && (
           <CommandGroup heading={app.label}>
-            <CommandItem value="Refresh reload" onSelect={run(onReload)}>
-              <RotateCw />
-              Refresh
-            </CommandItem>
             {commands.map((command) => {
               const state = stateOf(command);
               const Icon = commandIcon(command);

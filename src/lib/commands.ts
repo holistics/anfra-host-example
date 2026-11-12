@@ -5,6 +5,7 @@ import {
   type LucideIcon,
   MessageCircle,
   MousePointer2,
+  RotateCw,
   ScanSearch,
   ScrollText,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ export const commandIcons: Record<string, LucideIcon> = {
   prompt: ScrollText,
   history: History,
   pick: MousePointer2,
+  refresh: RotateCw,
 };
 export const commandIcon = (command: Command): LucideIcon =>
   (command.icon && commandIcons[command.icon]) || AppWindow;

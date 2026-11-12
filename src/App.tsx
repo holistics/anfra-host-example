@@ -1,4 +1,4 @@
-import { CircleAlert, Ellipsis, Info, LoaderCircle, RotateCw } from 'lucide-react';
+import { CircleAlert, Ellipsis, Info, LoaderCircle } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { AppIcon, EndorsedMark } from '@/components/app-icon';
 import { AppInfo } from '@/components/app-info';
@@ -70,7 +70,7 @@ export function App() {
   const [datasets, setDatasets] = useState<Record<string, DatasetDescriptor>>();
   const [error, setError] = useState<string>();
   const [path, setPath] = useState(() => pathOf(window.location.pathname));
-  // Bumped to remount the Data App: the reload button, and live reload.
+  // Bumped to remount the Data App on a live reload. Refresh, core's command, reruns its queries instead.
   const [revision, setRevision] = useState(0);
   // The page's own side panels: the prompt that made the app, or its version history. The inspect
   // panel is the SDK's; one of the three shows at a time.
@@ -310,9 +310,6 @@ export function App() {
             {app && <AppInfo app={app} />}
             {path && (
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                <ToolbarButton label="Reload" disabled={!app} onClick={() => setRevision((n) => n + 1)}>
-                  <RotateCw />
-                </ToolbarButton>
                 {[...menus].map(([icon, items]) => {
                   const Icon = commandIcons[icon] ?? Ellipsis;
                   return (
@@ -402,7 +399,6 @@ export function App() {
           entries={entries}
           app={app}
           onSelect={select}
-          onReload={() => setRevision((n) => n + 1)}
           commands={commands}
           stateOf={stateOf}
           onRun={run}
