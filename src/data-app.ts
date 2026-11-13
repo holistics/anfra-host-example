@@ -5,7 +5,8 @@
 //   @holistics/anfra-sdk/host     the plugin host: mounts a Data App in a sandboxed frame, answers
 //                                 its calls over the bridge with the plugins installed, and gives
 //                                 the plugins' commands and tabs for this page to draw
-//   @holistics/anfra-sdk/plugins  anfra's plugins: queries, exports, lineage, pictures, inspect
+//   @holistics/anfra-sdk/plugins  anfra's plugins: queries, exports, lineage, pictures, inspect,
+//                                 underlying data
 import { coreApiBackend, coreClient, loadDatasets } from '@holistics/anfra-sdk/api';
 import type { DatasetDescriptor, ThemeInput, User } from '@holistics/anfra-sdk/common';
 import { designTheme } from '@holistics/anfra-sdk/common';
@@ -16,6 +17,7 @@ import {
   inspectPlugin,
   lineagePlugin,
   renderPlugin,
+  viewUnderlyingDataPlugin,
 } from '@holistics/anfra-sdk/plugins';
 import { askAiPlugin } from '@/askai';
 import { copyText } from '@/lib/clipboard';
@@ -117,6 +119,7 @@ function hostFor(datasets: Record<string, DatasetDescriptor>, allowOrigins: stri
           lineagePlugin(backend),
           renderPlugin(),
           inspectPlugin(),
+          viewUnderlyingDataPlugin(),
           askAiPlugin({ appOf: (mount) => apps.get(mount.frame), copy: copyText }),
           shellPlugin(),
         ],
