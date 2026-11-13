@@ -12,7 +12,7 @@ A host for [anfra](https://github.com/holistics/anfra) Data Apps that you run yo
 - Light or dark follows the system until you pick one with the toggle next to the title.
 - In development, the open app reloads when its file or the AML changes.
 
-Tested with anfra 0.19.0 and `@holistics/anfra-sdk` 0.19.0. Bump them together: the SDK is released with anfra.
+Tested with anfra 0.20.0 and `@holistics/anfra-sdk` 0.20.0. Bump them together: the SDK is released with anfra.
 
 ## How it fits together
 
