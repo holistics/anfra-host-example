@@ -1,4 +1,4 @@
-import { ChevronRight, Folder } from 'lucide-react';
+import { ArrowUpRight, ChevronRight, Download, Folder } from 'lucide-react';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { AnfraStatus } from '@/components/anfra-status';
 import { AppIcon, EndorsedMark } from '@/components/app-icon';
@@ -37,6 +37,8 @@ interface Props {
 type Toggled = Record<string, boolean>;
 
 const FOLDERS_KEY = 'sidebar-folders';
+
+const INSTALL_URL = 'https://anfra.ai/docs/local-dev/installation';
 
 const storedFolders = (): Toggled => {
   try {
@@ -191,9 +193,23 @@ export function AppSidebar({ entries, selected, onSelect }: Props) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="flex-row items-center justify-between">
-        <AnfraStatus />
-        <ThemeToggle />
+      <SidebarFooter>
+        {/* The way to run anfra on your own machine, at its install guide. */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Install anfra to build Data Apps on your machine">
+              <a href={INSTALL_URL} target="_blank" rel="noreferrer">
+                <Download />
+                <span>Install anfra</span>
+                <ArrowUpRight className="ml-auto text-weak" />
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <div className="flex items-center justify-between">
+          <AnfraStatus />
+          <ThemeToggle />
+        </div>
       </SidebarFooter>
       <SidebarResizer />
     </Sidebar>
